@@ -20,6 +20,26 @@ function applyAvatarSize(value){
  avatar.resize();
 }
 applyAvatarSize(desktop?localStorage.getItem('dudidam-avatar-size')||380:380);
+function applyPanelZoom(value){
+ const zoom=Math.max(75,Math.min(145,Number(value)||100));
+ document.documentElement.style.setProperty('--panel-zoom',String(zoom/100));
+ const slider=$('#panelZoom'),output=$('#panelZoomValue');
+ if(slider)slider.value=String(zoom);
+ if(output)output.textContent=zoom+'%';
+ if(desktop)localStorage.setItem('dudidam-panel-zoom',String(zoom));
+ requestAnimationFrame(()=>document.querySelectorAll('dialog[open]').forEach(clampDialog));
+}
+function applyPanelTransparency(value){
+ const transparency=Math.max(0,Math.min(80,Number(value)||0));
+ const alpha=Math.max(.2,1-transparency/100);
+ document.documentElement.style.setProperty('--panel-alpha',alpha.toFixed(2));
+ const slider=$('#panelOpacity'),output=$('#panelOpacityValue');
+ if(slider)slider.value=String(transparency);
+ if(output)output.textContent=transparency+'%';
+ if(desktop)localStorage.setItem('dudidam-panel-transparency',String(transparency));
+}
+applyPanelZoom(desktop?localStorage.getItem('dudidam-panel-zoom')||100:100);
+applyPanelTransparency(desktop?localStorage.getItem('dudidam-panel-transparency')||5:5);
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,6000);}
 function state(text=''){$('#state').textContent=text;$('#state').hidden=!text;avatar.thinking=busy;}
 function setWakeStatus(text,active=false){const el=$('#wakeIndicator');if(el){el.textContent=text;el.dataset.active=active?'true':'false';}const toggle=$('#wakeToggle');if(toggle)toggle.checked=wakeEnabled;}
@@ -217,7 +237,7 @@ area.onpointerdown=e=>{if(summoning||e.button!==0)return;area.setPointerCapture(
 area.onpointermove=e=>{const r=area.getBoundingClientRect();avatar.pointer={x:Math.max(-1,Math.min(1,(e.clientX-r.left)/r.width*2-1)),y:Math.max(-1,Math.min(1,(e.clientY-r.top)/r.height*2-1))};avatar.pointerActive=true;if(drag){if(Math.hypot(e.screenX-drag.x,e.screenY-drag.y)>4)drag.moved=true;if(drag.moved){if(desktop){desktop.move({dx:e.screenX-drag.lastX,dy:e.screenY-drag.lastY});}else{offset={x:Math.max(-innerWidth*.35,Math.min(innerWidth*.35,drag.ox+e.screenX-drag.x)),y:Math.max(-innerHeight*.35,Math.min(innerHeight*.35,drag.oy+e.screenY-drag.y))};area.style.translate=offset.x+'px '+offset.y+'px';}drag.lastX=e.screenX;drag.lastY=e.screenY;}}};
 area.onpointerup=e=>{if(drag&&!drag.moved)avatar.trigger('blink');drag=null;if(area.hasPointerCapture(e.pointerId))area.releasePointerCapture(e.pointerId);};area.onpointercancel=()=>drag=null;area.onpointerleave=()=>{if(!drag){avatar.pointerActive=false;avatar.pointer={x:0,y:0};}};area.oncontextmenu=e=>{e.preventDefault();showDialog('#controls');};area.ondblclick=()=>showDialog('#controls');
 $('#reveal').onclick=()=>showDialog('#controls');$('#chat').onclick=()=>showDialog('#chatDialog');document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>avatar.trigger(b.dataset.action));document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
-$('#avatarSize').oninput=e=>applyAvatarSize(e.target.value);$('#track').onchange=e=>avatar.track=e.target.checked;$('#animate').checked=avatar.animate;$('#animate').onchange=e=>avatar.animate=e.target.checked;$('#color').onchange=e=>avatar.color=e.target.value;$('#environment').onchange=e=>avatar.setEnvironment(e.target.value);$('#speakSetting').onchange=e=>{voice=e.target.checked;if(!voice)stopSpeech();};
+$('#avatarSize').oninput=e=>applyAvatarSize(e.target.value);$('#panelZoom').oninput=e=>applyPanelZoom(e.target.value);$('#panelOpacity').oninput=e=>applyPanelTransparency(e.target.value);$('#track').onchange=e=>avatar.track=e.target.checked;$('#animate').checked=avatar.animate;$('#animate').onchange=e=>avatar.animate=e.target.checked;$('#color').onchange=e=>avatar.color=e.target.value;$('#environment').onchange=e=>avatar.setEnvironment(e.target.value);$('#speakSetting').onchange=e=>{voice=e.target.checked;if(!voice)stopSpeech();};
 $('#mic').onclick=$('#chatMic').onclick=()=>toggleMic();$('#wakeToggle').onchange=e=>{wakeEnabled=e.target.checked;if(wakeEnabled){wakeRetryBlocked=false;wakeNetworkFailures=0;wakeHealthVerified=false;setWakeStatus('ALE · menyalakan wake mic…',false);startWakeListening();}else suspendWakeListening('ALE · wake mic nonaktif');};$('#camera').onclick=toggleCamera;$('#center').onclick=center;$('#refreshStatus').onclick=checkAI;$('#provider').onchange=e=>{aiProvider=apiProviders.includes(e.target.value)?e.target.value:'chatgpt';localStorage.setItem('dudidam-provider',aiProvider);history=[];stopCamera();checkAI();};$('#agentHub').onclick=async()=>{if(!desktop)return;showDialog('#agentDialog');await loadAgents();};$('#agentRefresh').onclick=loadAgents;$('#agentSelect').onchange=syncAgentMode;$('#agentForm').onsubmit=runDeveloperAgent;
 $('#audioMic').onclick=startMicrophoneVisual;$('#systemAudio').onclick=startSystemAudio;$('#stopAudio').onclick=stopReactiveAudio;$('#musicFile').onchange=e=>playMusic(e.target.files?.[0]);$('#musicPlayer').onended=stopReactiveAudio;
 $('#popup').onclick=()=>{const pop=window.open(location.origin+'/?popup=1','dudidam-presence','popup=yes,width=420,height=480,left='+Math.round((screen.width-420)/2)+',top='+Math.round((screen.height-480)/2));if(!pop)toast('Browser memblokir pop-up. Izinkan pop-up untuk situs ini.');else toast('Widget pop-up dibuka dengan permukaan transparan. Transparansi hingga menembus desktop tersedia di Dudidam Desktop.');};
