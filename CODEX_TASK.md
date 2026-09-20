@@ -77,10 +77,67 @@ Do not weaken:
 - no credential/token scraping
 - no arbitrary shell/tool access from renderer
 
+## New visual direction from user
+
+### 6. Remove black shadow and make visuals adapt to desktop
+- Remove the dark/black radial silhouette or any large black shadow behind the head.
+- Keep the window genuinely transparent.
+- Make binary/neural particles remain readable on both light and dark desktop backgrounds.
+- Prefer adaptive contrast based on sampled/estimated background luminance when practical; otherwise use subtle dual-tone glow/outline, additive blending, or luminance-aware palettes instead of a black backdrop.
+- Avoid opaque plates behind the face.
+
+### 7. Make avatar and panels even smaller
+- Reduce avatar size further while preserving face detail.
+- Reduce control/chat panel width, padding, text, and button footprint further.
+- Keep controls usable at 100%, 125%, and 150% Windows scaling.
+- Preserve viewport-safe scrolling.
+
+### 8. Magnetic binary particles
+- Strengthen the magnetic interaction when the mouse pointer passes near binary particles.
+- Binary glyphs should bend, orbit, scatter, or be gently attracted/repelled around the pointer, then smoothly settle back.
+- Keep movement fluid and not excessively jittery.
+- Do not break click-through behavior in transparent zones.
+
+### 9. Neural roots / data-flow behind the head
+- Add a visible network of root-like neural strands emerging from behind the neck/back of head toward the brain area.
+- Animate data/signal pulses traveling along these strands toward and through the brain.
+- Layer frequency-like waves, pulses, and packet/signal motion.
+- Keep the effect readable but not cluttered.
+- It should feel like live data, neural signals, and frequencies flowing into the brain.
+
+### 10. Speaking mouth animation
+- Improve mouth/lip motion while Dudidam speaks.
+- Lip movement should react to speech activity/energy rather than only a static open/close loop.
+- Keep animation subtle enough to preserve the face shape.
+
+### 11. Add neck and limited head rotation
+- Add a visible neck so the floating head feels anatomically anchored.
+- Allow head rotation/yaw up to about 30 degrees left/right.
+- Preserve face readability and avoid excessive distortion.
+- Neck and neural-root geometry should follow the head rotation naturally.
+- Keep mouse-following motion smooth and capped.
+
+### 12. Visual priority
+The desired appearance is:
+- transparent floating AI human head;
+- no black backdrop/shadow;
+- compact avatar;
+- compact control panels;
+- binary + neural effects that stay readable over the real desktop;
+- strong but smooth mouse magnetic response;
+- neural/data roots feeding the brain from behind the head;
+- visible signal/frequency flow;
+- lips moving during speech;
+- neck present;
+- head can rotate about 30 degrees.
+
+Implement this without weakening the existing security boundaries or mouse click-through behavior.
+
 ## Deliverable
 Commit fixes to `codex/entitasale170925` with concise commit messages.
 Before finishing, report:
 - files changed,
 - exact bugs fixed,
 - commands/tests run,
+- visual changes made,
 - any remaining known limitation.
