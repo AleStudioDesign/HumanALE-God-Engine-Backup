@@ -1,6 +1,6 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
- status:()=>ipcRenderer.invoke('dudidam:status'),
+ status:provider=>ipcRenderer.invoke('dudidam:status',provider),
  ask:payload=>ipcRenderer.invoke('dudidam:ask',payload),
  login:()=>ipcRenderer.invoke('dudidam:login'),
  center:()=>ipcRenderer.send('dudidam:center'),

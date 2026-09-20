@@ -3,7 +3,7 @@ const http=require('node:http');
 const {readFile,writeFile}=require('node:fs/promises');
 const path=require('node:path');
 
-let win,server,origin,bridge,tray,saveTimer;
+let win,server,origin,bridges,tray,saveTimer;
 let quitting=false;
 let passthrough=false;
 const ciSmoke=process.argv.includes('--ci-smoke');
@@ -40,8 +40,8 @@ if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',showAvatar);
  app.whenReady().then(async()=>{
-  const {ChatGPTBridge}=await import('./bridge.mjs');
-  bridge=new ChatGPTBridge();
+  const [{ChatGPTBridge},{GrokBridge}]=await Promise.all([import('./bridge.mjs'),import('./grok.mjs')]);
+  bridges={chatgpt:new ChatGPTBridge(),grok:new GrokBridge()};
   const root=path.resolve(__dirname,'../public');
   const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
   server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);}catch{res.writeHead(404);res.end();}});
@@ -54,9 +54,10 @@ else{
   win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   const trusted=e=>e.sender===win?.webContents&&e.senderFrame?.url?.startsWith(origin+'/');
 
-  ipcMain.handle('dudidam:status',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.status();}catch(error){return {configured:false,error:error.message};}});
-  ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.ask(value);}catch(error){return {error:error.message};}});
-  ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.login();}catch(error){return {error:error.message};}});
+  const pickProvider=value=>value==='grok'?'grok':'chatgpt';
+  ipcMain.handle('dudidam:status',async(e,provider)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges[pickProvider(provider)].status();}catch(error){return {configured:false,error:error.message};}});
+  ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{const provider=pickProvider(value?.provider);const payload={...value};delete payload.provider;return await bridges[provider].ask(payload);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges.chatgpt.login();}catch(error){return {error:error.message};}});
   ipcMain.on('dudidam:center',e=>{if(trusted(e)){win.center();savePositionSoon();}});
   ipcMain.on('dudidam:minimize',e=>{if(trusted(e))win.hide();});
   ipcMain.on('dudidam:close',e=>{if(trusted(e))win.hide();});
@@ -87,5 +88,5 @@ else{
   console.log('Dudidam desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
  }).catch(error=>{console.error('Dudidam startup failed:',error);app.exit(1);});
  app.on('window-all-closed',()=>{});
- app.on('before-quit',()=>{quitting=true;clearTimeout(saveTimer);bridge?.stop();server?.close();tray?.destroy();});
+ app.on('before-quit',()=>{quitting=true;clearTimeout(saveTimer);Object.values(bridges||{}).forEach(item=>item?.stop());server?.close();tray?.destroy();});
 }
