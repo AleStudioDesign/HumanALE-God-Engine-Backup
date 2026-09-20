@@ -1,11 +1,15 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
- status:()=>ipcRenderer.invoke('dudidam:status'),
+ status:provider=>ipcRenderer.invoke('dudidam:status',provider),
  ask:payload=>ipcRenderer.invoke('dudidam:ask',payload),
  login:()=>ipcRenderer.invoke('dudidam:login'),
+ agents:()=>ipcRenderer.invoke('dudidam:agents'),
+ runAgent:payload=>ipcRenderer.invoke('dudidam:agent-run',payload),
+ openAgent:id=>ipcRenderer.invoke('dudidam:agent-open',id),
  center:()=>ipcRenderer.send('dudidam:center'),
  move:delta=>ipcRenderer.send('dudidam:move',delta),
- mousePassthrough:ignore=>ipcRenderer.send('dudidam:mouse-passthrough',Boolean(ignore)),
+ passthrough:value=>ipcRenderer.send('dudidam:passthrough',value),
+ passthroughLock:value=>ipcRenderer.send('dudidam:passthrough-lock',value),
  minimize:()=>ipcRenderer.send('dudidam:minimize'),
  close:()=>ipcRenderer.send('dudidam:close')
 }));

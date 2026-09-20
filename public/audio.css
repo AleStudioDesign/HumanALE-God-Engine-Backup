@@ -1,0 +1,13 @@
+#avatar{filter:none}
+.modes button[aria-pressed=true],.audio-reactive button[aria-pressed=true]{background:#72ffa322;border-color:#adffc97a;color:#caffd7}
+.audio-reactive{margin-top:16px;padding:13px;border:1px solid #8eefff2b;border-radius:13px;background:linear-gradient(135deg,#72eaff0d,#b169ff0b 55%,#ffc76b0c)}
+.audio-heading{display:flex;align-items:center;justify-content:space-between}
+.audio-heading>span{font-size:12px;color:#d8fff0}
+.audio-heading>small{font:9px monospace;color:#83d9ce}
+.audio-reactive .actions{margin:10px 0}
+.audio-reactive audio{width:100%;height:32px;filter:hue-rotate(72deg) saturate(.7);margin-top:4px}
+.file-button{display:inline-flex;align-items:center;padding:10px 11px;font-size:11px;cursor:pointer;background:#98ffc009;border:1px solid var(--line);border-radius:10px}
+.file-button:hover{color:#caffcf;background:#8dffb61c}
+.file-button input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.file-button:focus-within{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:500px){.audio-reactive .actions{display:grid;grid-template-columns:1fr 1fr}.file-button{justify-content:center}}
