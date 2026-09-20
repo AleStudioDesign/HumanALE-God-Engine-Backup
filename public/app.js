@@ -182,6 +182,8 @@ document.addEventListener('keydown',e=>{
  const actions={b:'blink',n:'nod',g:'shake'};if(actions[key])avatar.trigger(actions[key]);else if(key==='h'){e.preventDefault();showDialog('#controls');}else if(key==='enter'){e.preventDefault();showDialog('#chatDialog');}else if(key==='m')toggleMic();else if(key==='r')center();else if(['1','2','3','4'].includes(key))setMode(['mixed','matrix','statistics','abstract'][Number(key)-1]);
 });
 document.addEventListener('keyup',e=>{if(e.key!=='5'||!hold5Timer&&!hold5Fired)return;clearTimeout(hold5Timer);hold5Timer=null;if(!hold5Fired&&!summoning)setMode('neural');hold5Fired=false;});
+function cancelHold5(){clearTimeout(hold5Timer);hold5Timer=null;hold5Fired=false;}
+window.addEventListener('blur',cancelHold5);
 document.querySelectorAll('dialog').forEach(enableDialogDrag);window.addEventListener('resize',()=>document.querySelectorAll('dialog[open]').forEach(clampDialog));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){setPassthrough(true);suspendWakeListening('ALE · wake mic dijeda');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();}else resumeWakeSoon(500);});
 window.addEventListener('pagehide',()=>{setPassthrough(true);wakeEnabled=false;suspendWakeListening('ALE · wake mic berhenti');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();});
