@@ -149,3 +149,45 @@ Before finishing, report:
 - commands/tests run,
 - visual changes made,
 - any remaining known limitation.
+
+
+## Wake / summon interaction
+
+### 13. Wake phrase "ALE"
+- Add an opt-in/visible continuous wake listener for the word "ALE" while Dudidam is running and the speech recognizer is available.
+- The UI must visibly indicate when wake listening is active. Do not hide microphone use.
+- Avoid self-triggering from Dudidam TTS: suspend wake recognition while Dudidam is speaking, then resume after speech ends.
+- When "ALE" is recognized, summon/awaken the avatar and then enter command dictation/listening.
+- If Electron SpeechRecognition is unavailable, report that limitation clearly and keep keyboard/text fallbacks.
+- Do not add credential capture, hidden recording, or a global keylogger.
+
+### 14. Hold key 5 to summon
+- A short press of 5 keeps its existing Neural mode behavior.
+- Holding key 5 for about 1.5 seconds summons ALE.
+- Implement this only from the app's own keyboard events; do not install a global keyboard hook/keylogger.
+- Holding 5 triggers the same summon sequence as the wake phrase.
+
+### 15. Uninterruptible assembly entrance
+- On summon, close/hide open panels and animate the avatar emerging from the exact center.
+- Build the head progressively from flowing binary glyphs, neural strands, data pulses, and electron-like orbital particles.
+- Use a slow smooth assembly/easing sequence (~2.5–3.5s).
+- During assembly, user pointer interaction must not interrupt the animation.
+- During assembly, the Electron window must be click-through so clicks reach the desktop/app behind.
+- Restore normal dynamic click-through behavior only after assembly completes.
+
+### 16. All effects activate on summon
+- Summoning ALE should automatically enable animation, magnetic tracking, evolving spectrum colors, neural roots, binary streams, abstract/statistical traces, signal/frequency pulses, speaking-ready mouth animation, neck/head motion, and electron/orbital effects together.
+- This is an actual combined "all effects" state, not merely selecting one existing style.
+- Manual style selection may leave the all-effects state afterward.
+
+### 17. Movable conversation/control panels
+- Make the conversation/typing panel draggable by its title/header.
+- Also make control/agent panels draggable where practical.
+- Keep panels constrained to the visible window bounds.
+- Buttons and form fields must remain clickable; dragging must not start when interacting with a close button, input, textarea, select, or other control.
+- Preserve click-through rules outside the panels.
+
+### 18. Wake lifecycle/privacy
+- Wake listening may remain active only with a visible on-screen status.
+- Stop/release recognition and media tracks on page unload/app exit.
+- If the app is hidden and the renderer cannot reliably keep speech recognition alive, report this as a known limitation rather than claiming background wake works.
