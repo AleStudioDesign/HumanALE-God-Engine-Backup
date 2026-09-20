@@ -31,7 +31,7 @@ test('neural roots, living dual-contrast glyphs, magnetic field, mouth, neck and
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
 test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pack,/Dudidam\.exe/);assert.match(pkg.scripts['package:desktop'],/install-electron --no/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(workflow,/npm run verify/);assert.match(workflow,/npm run package:desktop/);});
 test('desktop CI smoke mode verifies the packaged renderer',async()=>{const [desktop,workflow]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);assert.match(desktop,/--ci-smoke/);assert.match(desktop,/Dudidam CI smoke passed/);assert.match(desktop,/executeJavaScript/);assert.match(desktop,/app\.exit\(1\)/);assert.match(workflow,/Dudidam\.exe --ci-smoke/);});
-test('floating popup keeps only the avatar surface transparent while dialogs stay opaque',async()=>{const [css,surface]=await Promise.all([readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8')]);assert.match(css,/body\.desktop,body\.popup-widget\{background:transparent!important\}/);assert.match(css,/\.desktop dialog,\.popup-widget dialog\{background:#07130ef7/);assert.match(surface,/isDesktop \|\| isPopup/);});
+test('floating popup keeps only the avatar surface transparent while dialogs stay opaque',async()=>{const [css,surface]=await Promise.all([readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8')]);assert.match(css,/body\.desktop,body\.popup-widget\{background:transparent!important\}/);assert.match(css,/\.desktop dialog,\.popup-widget dialog\{background:rgba\(7,19,14,var\(--panel-alpha\)\)/);assert.match(surface,/isDesktop \|\| isPopup/);});
 test('Grok provider is wired through the xAI Responses API without renderer secrets',async()=>{const [grok,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/grok.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.equal(parseGrokResponse({output_text:' Halo '}),'Halo');assert.equal(parseGrokResponse({output:[{content:[{type:'output_text',text:'Hai'}]}]}),'Hai');assert.match(grok,/https:\/\/api\.x\.ai\/v1\/responses/);assert.match(grok,/XAI_API_KEY/);assert.match(grok,/Authorization':'Bearer '/);assert.match(desktop,/GrokBridge/);assert.match(preload,/dudidam:status/);assert.match(html,/value="grok"/);assert.match(app,/provider:aiProvider/);assert.doesNotMatch(html,/XAI_API_KEY\s*=/);});
 test('Gemini provider is wired securely with text and camera-image support',async()=>{const [gemini,desktop,html,app]=await Promise.all([readFile(new URL('../desktop/gemini.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.equal(parseGeminiResponse({candidates:[{content:{parts:[{text:' Halo '},{text:'Gemini'}]}}]}),'Halo \nGemini');assert.match(gemini,/generativelanguage\.googleapis\.com\/v1beta\/models/);assert.match(gemini,/x-goog-api-key/);assert.match(gemini,/GEMINI_API_KEY/);assert.match(gemini,/GOOGLE_API_KEY/);assert.match(gemini,/inline_data/);assert.match(gemini,/mime_type:'image\/jpeg'/);assert.match(desktop,/GeminiBridge/);assert.match(html,/value="gemini"/);assert.match(app,/gemini:\{label:'Gemini'/);assert.doesNotMatch(html,/GEMINI_API_KEY\s*=/);assert.doesNotMatch(html,/GOOGLE_API_KEY\s*=/);});
 test('AskCodi provider uses its official OpenAI-compatible gateway without renderer secrets',async()=>{const [askcodi,desktop,html,app]=await Promise.all([readFile(new URL('../desktop/askcodi.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.equal(parseAskCodiResponse({choices:[{message:{content:' Halo AskCodi '}}]}),'Halo AskCodi');assert.match(askcodi,/https:\/\/api\.askcodi\.com\/v1/);assert.match(askcodi,/ASKCODI_API_KEY/);assert.match(askcodi,/ASKCODI_MODEL/);assert.match(desktop,/AskCodiBridge/);assert.match(html,/value="askcodi"/);assert.match(app,/askcodi:\{label:'AskCodi'/);assert.doesNotMatch(html,/ASKCODI_API_KEY\s*=/);});
@@ -96,4 +96,25 @@ test('pointer magnet stays visually ring-free',async()=>{
  assert.doesNotMatch(block,/context\.arc/);
  assert.doesNotMatch(block,/drawAdaptiveGlyph/);
  assert.doesNotMatch(block,/radius=size/);
+});
+
+
+test('custom panel zoom and transparency persist',async()=>{
+ const [html,app,css]=await Promise.all([
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/style.css',import.meta.url),'utf8')
+ ]);
+ assert.match(html,/id="panelZoom"/);
+ assert.match(html,/id="panelOpacity"/);
+ assert.match(html,/max="145"/);
+ assert.match(html,/max="80"/);
+ assert.match(app,/dudidam-panel-zoom/);
+ assert.match(app,/dudidam-panel-transparency/);
+ assert.match(app,/applyPanelZoom/);
+ assert.match(app,/applyPanelTransparency/);
+ assert.match(css,/--panel-zoom:1/);
+ assert.match(css,/--panel-alpha:\.95/);
+ assert.match(css,/zoom:var\(--panel-zoom\)/);
+ assert.match(css,/background:rgba\(7,19,14,var\(--panel-alpha\)\)/);
 });
