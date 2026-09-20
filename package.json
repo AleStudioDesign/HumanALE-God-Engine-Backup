@@ -7,9 +7,12 @@
     "dev": "node server.mjs",
     "build": "node build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "desktop": "electron desktop/main.cjs"
+    "desktop": "electron desktop/main.cjs",
+    "verify": "npm test && npm run build",
+    "package:desktop": "install-electron --no && node package-desktop.mjs"
   },
   "devDependencies": {
     "electron": "44.4.3"
-  }
+  },
+  "main": "desktop/main.cjs"
 }

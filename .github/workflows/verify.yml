@@ -1,0 +1,38 @@
+name: Verify and package
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Verify
+        run: npm run verify
+      - name: Audit high severity
+        run: npm audit --audit-level=high
+      - name: Package desktop
+        run: npm run package:desktop
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dudidam-Desktop-Windows
+          path: Dudidam-Desktop
+          if-no-files-found: error
+          retention-days: 14

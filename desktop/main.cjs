@@ -10,7 +10,8 @@ let passthrough=false;
 function statePath(){return path.join(app.getPath('userData'),'window-state.json');}
 async function readWindowPosition(){try{const value=JSON.parse(await readFile(statePath(),'utf8'));return Number.isFinite(value?.x)&&Number.isFinite(value?.y)?value:null;}catch{return null;}}
 function safePosition(saved,width,height){
- const area=screen.getPrimaryDisplay().workArea;
+ const display=saved?screen.getDisplayNearestPoint({x:Math.round(saved.x+width/2),y:Math.round(saved.y+height/2)}):screen.getPrimaryDisplay();
+ const area=display.workArea;
  const fallback={x:Math.round(area.x+(area.width-width)/2),y:Math.round(area.y+(area.height-height)/2)};
  if(!saved)return fallback;
  return {x:Math.max(area.x-width+120,Math.min(area.x+area.width-120,Math.round(saved.x))),y:Math.max(area.y-height+120,Math.min(area.y+area.height-120,Math.round(saved.y)))};
