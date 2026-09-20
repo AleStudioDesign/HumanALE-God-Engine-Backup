@@ -294,7 +294,7 @@ export class BinaryAvatar {
    else if(kind===1){x=cx+Math.cos(phase)*size*particle.r*.51;y=cy+Math.sin(phase*2.1)*size*.25+Math.sin(phase*8)*size*.02;}
    else if(kind===2){x=cx+Math.cos(phase)*size*particle.r*.53;y=cy+Math.sin(phase*1.03)*size*particle.r*.48;}
    else{x=cx+Math.cos(phase*1.3+particle.seed)*size*(.23+particle.r*.26);y=cy+Math.sin(phase*1.9+particle.seed*.37)*size*(.16+particle.r*.2);}
-   const fluidStrength=(this.allEffects||this.mode==='abstract')?1:this.mode==='mixed'?.56:.22;
+   const fluidStrength=(this.allEffects||this.mode==='abstract')?1:this.mode==='mixed' ? .56 : .22;
    x+=Math.sin(clock*.00082+particle.seed*5.7+y*.011)*size*.034*fluidStrength;
    y+=Math.cos(clock*.00068+particle.seed*4.1+x*.009)*size*.026*fluidStrength;
    if(awakening){
@@ -311,7 +311,7 @@ export class BinaryAvatar {
    }
    const magnetic=this.magneticOffset(x,y,size,clock,particle.seed,1.45);x=magnetic.x;y=magnetic.y;
    if(!particle.x&&!particle.y){particle.x=x;particle.y=y;}
-   const spring=(this.allEffects||this.mode==='abstract'?.065:.085)+magnetic.force*.075;particle.x+=(x-particle.x)*spring;particle.y+=(y-particle.y)*spring;
+   const spring=(this.allEffects||this.mode==='abstract' ? .065 : .085)+magnetic.force*.075;particle.x+=(x-particle.x)*spring;particle.y+=(y-particle.y)*spring;
    const distance=Math.hypot((particle.x-cx)/(faceWidth*.57),(particle.y-cy)/(faceHeight*.59)),fade=distance<.9?(kind===3? .14:.08):.2+Math.sin(phase+particle.seed)*.13;
    const emergence=awakening?(.12+.88*assembly):1;
    const alpha=Math.min(.92,(Math.max(.045,fade)+magnetic.force*.42)*emergence);context.font=`${5.3+size*.0046+(index%3)}px monospace`;
