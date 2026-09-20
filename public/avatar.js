@@ -129,7 +129,7 @@ export class BinaryAvatar {
  }
 
  drawNeuralRoots(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
-  const active=this.allEffects?1:this.mode==='neural'?1:this.mode==='abstract'?.86:this.mode==='mixed'?.7:.42;
+  const active=this.allEffects?1:this.mode==='neural'?1:this.mode==='abstract'? .86:this.mode==='mixed'? .7:.42;
   const yawShift=Math.sin(yaw)*fw*.18;
   context.save();context.globalCompositeOperation='source-over';
   for(let index=0;index<this.rootStrands.length;index++){
@@ -179,7 +179,7 @@ export class BinaryAvatar {
  }
 
  drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment){
-  const active=this.allEffects?1:this.mode==='neural'?1:this.mode==='abstract'?.88:this.mode==='mixed'?.68:this.mode==='statistics'?.42:.2;
+  const active=this.allEffects?1:this.mode==='neural'?1:this.mode==='abstract'? .88:this.mode==='mixed'? .68:this.mode==='statistics'? .42:.2;
   const response=(this.speaking?1.24:this.thinking?1.13:1)*active;
   const nodes=this.neuralNodes.map((node,index)=>{
    const spin=node.angle+clock*.000055*node.speed,pulse=.9+.1*Math.sin(clock*.0018+node.phase);
@@ -192,7 +192,7 @@ export class BinaryAvatar {
    const a=nodes[i],b=nodes[j],distance=Math.hypot(a.x-b.x,a.y-b.y);
    if(distance>size*.145||Math.abs(a.depth-b.depth)>.42)continue;
    const midX=(a.x+b.x)/2,midY=(a.y+b.y)/2,inside=((midX-cx)/(size*.29))**2+((midY-cy)/(size*.36))**2<1;
-   const signal=.5+.5*Math.sin(clock*.003+i*.71+j*.37),alpha=(1-distance/(size*.145))*.16*response*(inside?.28:1)*(1+(a.magnetic+b.magnetic)*.7);
+   const signal=.5+.5*Math.sin(clock*.003+i*.71+j*.37),alpha=(1-distance/(size*.145))*.16*response*(inside? .28:1)*(1+(a.magnetic+b.magnetic)*.7);
    context.beginPath();context.moveTo(a.x,a.y);context.lineTo(b.x,b.y);this.strokeAdaptivePath(context,hue+(i+j)%3*17,alpha,lightEnvironment,.48);
   }
   for(const point of nodes){
@@ -239,7 +239,7 @@ export class BinaryAvatar {
  }
 
  drawMouthSignal(context,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock){
-  const energy=this.speaking?clamp(this.speechEnergy,0,1):0,viseme=this.speaking?.35+.65*Math.abs(Math.sin(clock*.011)):0;
+  const energy=this.speaking?clamp(this.speechEnergy,0,1):0,viseme=this.speaking? .35+.65*Math.abs(Math.sin(clock*.011)):0;
   const open=fh*(.005+energy*viseme*.026),width=fw*.18*Math.cos(yaw),centerX=cx+Math.sin(yaw)*fw*.12,centerY=cy+fh*.262;
   context.save();context.globalCompositeOperation='source-over';
   for(const side of [-1,1]){context.beginPath();context.moveTo(centerX-width,centerY);context.quadraticCurveTo(centerX,centerY+side*open*1.35,centerX+width,centerY);this.strokeAdaptivePath(context,hue+side*14,.4+energy*.35,lightEnvironment,.75+energy*.45);}
@@ -258,8 +258,8 @@ export class BinaryAvatar {
   const hue=spectral?(clock*.012)%360:this.color==='cyan'?175:this.color==='violet'?272:this.color==='gold'?43:132,lightEnvironment=this.isLightEnvironment();
   const faceHeight=size*.62,faceWidth=faceHeight*.79,floatX=auto?Math.sin(time/3700)*4:0,floatY=auto?Math.sin(time/2500)*6:0;
   const cx=width/2+floatX,cy=height/2-size*.045+floatY;
-  const quietTarget=this.speaking?.34:0;if(time-this.speechBeat>170)this.speechTarget=quietTarget;
-  this.speechEnergy+=(this.speechTarget-this.speechEnergy)*(this.reducedMotion?.08:.2);
+  const quietTarget=this.speaking? .34:0;if(time-this.speechBeat>170)this.speechTarget=quietTarget;
+  this.speechEnergy+=(this.speechTarget-this.speechEnergy)*(this.reducedMotion? .08:.2);
   this.rotation.x+=((this.track?this.pointer.x:0)-this.rotation.x)*.072;this.rotation.y+=((this.track?this.pointer.y:0)-this.rotation.y)*.072;
   const maxYaw=Math.PI/6;
   let rx=this.rotation.x*maxYaw,ry=this.rotation.y*.13;
@@ -297,7 +297,7 @@ export class BinaryAvatar {
    const magnetic=this.magneticOffset(x,y,size,clock,particle.seed,1.45);x=magnetic.x;y=magnetic.y;
    if(!particle.x&&!particle.y){particle.x=x;particle.y=y;}
    const spring=.1+magnetic.force*.09;particle.x+=(x-particle.x)*spring;particle.y+=(y-particle.y)*spring;
-   const distance=Math.hypot((particle.x-cx)/(faceWidth*.57),(particle.y-cy)/(faceHeight*.59)),fade=distance<.9?(kind===3?.14:.08):.2+Math.sin(phase+particle.seed)*.13;
+   const distance=Math.hypot((particle.x-cx)/(faceWidth*.57),(particle.y-cy)/(faceHeight*.59)),fade=distance<.9?(kind===3? .14:.08):.2+Math.sin(phase+particle.seed)*.13;
    const alpha=Math.min(.92,Math.max(.045,fade)+magnetic.force*.42);context.font=`${5.3+size*.0046+(index%3)}px monospace`;
    const value=kind===1&&index%9===0?((Math.sin(phase)+1)*.5).toFixed(2):particle.glyph;
    const livingHue=hue+magnetic.force*54+Math.sin(clock*.00035+particle.seed)*26;
@@ -308,7 +308,7 @@ export class BinaryAvatar {
    for(let ring=0;ring<3;ring++){
     context.beginPath();
     for(let index=0;index<=100;index++){const angle=index/100*TAU,radius=size*(.3+ring*.036),noise=Math.sin(angle*(ring+3)+clock*.0004)*size*.012,x=cx+Math.cos(angle)*(radius+noise),y=cy+Math.sin(angle)*(radius*.94+noise);index?context.lineTo(x,y):context.moveTo(x,y);}
-    this.strokeAdaptivePath(context,hue+ring*9,ring===0?.095:.055,lightEnvironment,.48);
+    this.strokeAdaptivePath(context,hue+ring*9,ring===0? .095:.055,lightEnvironment,.48);
    }
    if(this.allEffects||this.mode==='statistics'||this.mode==='mixed')for(const sign of [-1,1]){
     context.beginPath();
@@ -318,20 +318,20 @@ export class BinaryAvatar {
   }
 
   context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
-  const abstractStrength=this.allEffects?.62:this.mode==='abstract'?1:this.mode==='neural'?.58:this.mode==='mixed'?.28:0;
+  const abstractStrength=this.allEffects? .62:this.mode==='abstract'?1:this.mode==='neural'? .58:this.mode==='mixed'? .28:0;
   for(const point of this.samples){
    let px=point.x,py=point.y,lum=point.lum;
    if(abstractStrength&&Math.sin(point.seed*91+clock*.0017+py*18)>.93-abstractStrength*.08)continue;
    const leftEye=((px+.196)/.113)**2+((py+.06)/.038)**2,rightEye=((px-.19)/.12)**2+((py+.06)/.038)**2;
    if(leftEye<1||rightEye<1){if(close>.15){py=-.06+(py+.06)*(1-close);lum*=1-close*.42;}else{px+=rx*.012;lum*=1.22;}}
    const mouthCenter=.265;
-   if(this.speaking&&Math.abs(px)<.205&&Math.abs(py-mouthCenter)<.068){const viseme=.22+.78*Math.abs(Math.sin(time/(60+Math.abs(px)*105)+point.seed*2.4)),open=viseme*(.34+this.speechEnergy*.88)*(1-Math.abs(px)/.205);py+=Math.sign(py-mouthCenter||1)*open*(py>mouthCenter?.034:.016);px*=1-open*.035;lum*=.8+open*.2;}
+   if(this.speaking&&Math.abs(px)<.205&&Math.abs(py-mouthCenter)<.068){const viseme=.22+.78*Math.abs(Math.sin(time/(60+Math.abs(px)*105)+point.seed*2.4)),open=viseme*(.34+this.speechEnergy*.88)*(1-Math.abs(px)/.205);py+=Math.sign(py-mouthCenter||1)*open*(py>mouthCenter? .034:.016);px*=1-open*.035;lum*=.8+open*.2;}
    const depth=Math.sqrt(Math.max(0,1-(px*1.95)**2-(py*1.65)**2));
    let x=cx+px*faceWidth*Math.cos(rx)+depth*faceWidth*Math.sin(rx)*.38,y=cy+py*faceHeight*Math.cos(ry)+depth*faceHeight*ry*.4;
    const fracture=Math.sin(py*31+clock*.0012+point.seed*7)*abstractStrength;x+=fracture*size*.01*(.35+Math.abs(px)*1.4);y+=Math.sin(px*24-clock*.001+point.seed*11)*size*.004*abstractStrength;
    const magnetic=this.magneticOffset(x,y,size,clock,point.seed,.48);x=magnetic.x;y=magnetic.y;
    const edge=Math.sqrt((px*2)**2+(py*2)**2),wave=Math.max(0,Math.sin(clock*.0007+point.seed*20)-.65);if(auto&&edge>.78){x+=px*wave*24;y+=py*wave*21;}
-   const intensity=Math.min(1,lum*1.7),scan=auto?.9+.1*Math.sin(py*7-clock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*(this.thinking?1.13:1));
+   const intensity=Math.min(1,lum*1.7),scan=auto? .9+.1*Math.sin(py*7-clock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*(this.thinking?1.13:1));
    const spectralShift=Math.sin(point.seed*25+clock*.00023)*(spectral?72:18),glyph=auto&&Math.sin(clock/700+point.seed*90)>.988?(point.glyph==='0'?'1':'0'):point.glyph;
    this.drawAdaptiveGlyph(context,glyph,x,y,hue+spectralShift+abstractStrength*Math.sin(point.seed*19)*24,alpha,lightEnvironment);
    if(abstractStrength>.5&&Math.abs(fracture)>.72)this.drawAdaptiveGlyph(context,glyph,x+fracture*size*.018,y-fracture*size*.006,hue+spectralShift+28,alpha*.18*abstractStrength,lightEnvironment);
