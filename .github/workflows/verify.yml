@@ -29,6 +29,8 @@ jobs:
         run: npm audit --audit-level=high
       - name: Package desktop
         run: npm run package:desktop
+      - name: Smoke packaged desktop
+        run: .\Dudidam-Desktop\Dudidam.exe --ci-smoke
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:

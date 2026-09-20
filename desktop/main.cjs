@@ -6,6 +6,7 @@ const path=require('node:path');
 let win,server,origin,bridge,tray,saveTimer;
 let quitting=false;
 let passthrough=false;
+const ciSmoke=process.argv.includes('--ci-smoke');
 
 function statePath(){return path.join(app.getPath('userData'),'window-state.json');}
 async function readWindowPosition(){try{const value=JSON.parse(await readFile(statePath(),'utf8'));return Number.isFinite(value?.x)&&Number.isFinite(value?.y)?value:null;}catch{return null;}}
@@ -77,8 +78,14 @@ else{
   win.on('close',event=>{if(!quitting){event.preventDefault();win.hide();}});
   win.once('ready-to-show',()=>win.show());
   await win.loadURL(origin+'/');
+  if(ciSmoke){
+   const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && Boolean(window.dudidamDesktop) && document.title.includes('Dudidam')");
+   if(!rendererReady)throw new Error('Renderer Dudidam tidak siap.');
+   console.log('Dudidam CI smoke passed: packaged runtime and renderer loaded.');
+   quitting=true;app.quit();return;
+  }
   console.log('Dudidam desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
- });
+ }).catch(error=>{console.error('Dudidam startup failed:',error);app.exit(1);});
  app.on('window-all-closed',()=>{});
  app.on('before-quit',()=>{quitting=true;clearTimeout(saveTimer);bridge?.stop();server?.close();tray?.destroy();});
 }
