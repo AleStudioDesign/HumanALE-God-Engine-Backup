@@ -40,8 +40,8 @@ if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',showAvatar);
  app.whenReady().then(async()=>{
-  const [{ChatGPTBridge},{GrokBridge}]=await Promise.all([import('./bridge.mjs'),import('./grok.mjs')]);
-  bridges={chatgpt:new ChatGPTBridge(),grok:new GrokBridge()};
+  const [{ChatGPTBridge},{GrokBridge},{GeminiBridge}]=await Promise.all([import('./bridge.mjs'),import('./grok.mjs'),import('./gemini.mjs')]);
+  bridges={chatgpt:new ChatGPTBridge(),grok:new GrokBridge(),gemini:new GeminiBridge()};
   const root=path.resolve(__dirname,'../public');
   const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
   server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);}catch{res.writeHead(404);res.end();}});
@@ -54,7 +54,7 @@ else{
   win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   const trusted=e=>e.sender===win?.webContents&&e.senderFrame?.url?.startsWith(origin+'/');
 
-  const pickProvider=value=>value==='grok'?'grok':'chatgpt';
+  const pickProvider=value=>['grok','gemini'].includes(value)?value:'chatgpt';
   ipcMain.handle('dudidam:status',async(e,provider)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges[pickProvider(provider)].status();}catch(error){return {configured:false,error:error.message};}});
   ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{const provider=pickProvider(value?.provider);const payload={...value};delete payload.provider;return await bridges[provider].ask(payload);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges.chatgpt.login();}catch(error){return {error:error.message};}});

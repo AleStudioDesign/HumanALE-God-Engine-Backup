@@ -18,6 +18,11 @@ Dudidam Desktop juga dapat memakai Grok sebagai provider tambahan. Pilih **AI pr
 
 Atur environment variable Windows `XAI_API_KEY` sebelum membuka Dudidam. Untuk sesi development PowerShell dapat memakai `$env:XAI_API_KEY="..."` lalu `npm run desktop`. Model default adalah `grok-4.6`; `XAI_MODEL` dapat dipakai untuk mengganti model yang tersedia pada akun xAI. Percakapan teks sudah didukung. Foto/kamera tetap diarahkan ke ChatGPT sampai dukungan vision Grok diaktifkan dan diuji terpisah.
 
+## Gemini / Google AI
+Dudidam Desktop dapat memakai Gemini sebagai provider ketiga. Pilih **AI provider → Gemini / Google**. Request berjalan dari proses Electron langsung ke Gemini API dengan header autentikasi Google; key tidak pernah dikirim ke renderer, HTML, localStorage, artifact, atau GitHub.
+
+Atur environment variable Windows `GEMINI_API_KEY` atau `GOOGLE_API_KEY` sebelum membuka Dudidam. Jika keduanya ada, `GOOGLE_API_KEY` diprioritaskan. Untuk development PowerShell dapat memakai `$env:GEMINI_API_KEY="..."` lalu `npm run desktop`. Model default adalah `gemini-3.6-flash`; `GEMINI_MODEL` dapat dipakai untuk mengganti model. Gemini mendukung percakapan teks dan satu foto JPEG dari kamera Dudidam melalui input inline.
+
 ## Suara, musik, dan kamera
 Panel **Gerak dari audio** menggerakkan bibir serta kepala dari energi mikrofon, file musik yang dipilih, atau audio perangkat Windows. Audio perangkat memakai loopback Electron dan hanya dimulai setelah tombol ditekan. File musik tetap lokal di perangkat. Suara balasan Dudidam memakai batas kata TTS agar viseme tetap bergerak selama jawaban dibacakan.
 
