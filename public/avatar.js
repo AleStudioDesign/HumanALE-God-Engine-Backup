@@ -115,15 +115,10 @@ export class BinaryAvatar {
   if(!this.track||!this.pointerActive)return;
   const x=this.w/2+this.pointer.x*this.w/2,y=this.h/2+this.pointer.y*this.h/2;
   context.save();context.globalCompositeOperation='source-over';
-  for(let ring=0;ring<3;ring++){
-   const radius=size*(.055+ring*.045)+Math.sin(clock*.004+ring)*3;
-   context.beginPath();context.arc(x,y,radius,clock*.0007+ring*.8,clock*.0007+ring*.8+Math.PI*1.3);
-   this.strokeAdaptivePath(context,hue+ring*18,.16-ring*.025,lightEnvironment,.55);
-  }
   context.font=`${Math.max(6,size*.017)}px monospace`;
   for(let i=0;i<8;i++){
    const angle=i/8*TAU-clock*.0015,radius=size*(.065+(i%3)*.032);
-   this.drawAdaptiveGlyph(context,i%2?'1':'0',x+Math.cos(angle)*radius,y+Math.sin(angle)*radius,hue+i*8,.33,lightEnvironment);
+   this.drawAdaptiveGlyph(context,i%2?'1':'0',x+Math.cos(angle)*radius,y+Math.sin(angle)*radius,hue+i*8,.22,lightEnvironment);
   }
   context.restore();
  }
