@@ -26,7 +26,7 @@ test('real audio energy is normalized for mouth and head motion',()=>{assert.equ
 test('microphone, music and Windows loopback controls remain wired',async()=>{const [html,app,audio,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/audio-reactor.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/id="audioMic"/);assert.match(html,/id="musicFile"/);assert.match(app,/getDisplayMedia/);assert.match(audio,/createAnalyser/);assert.match(desktop,/audio:'loopback'/);});
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
 test('desktop popup is recoverable and preserves position without overwriting the repository',async()=>{const [desktop,preload]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(desktop,/new Tray/);assert.match(desktop,/window-state\.json/);assert.match(desktop,/skipTaskbar:true/);assert.match(desktop,/setIgnoreMouseEvents/);assert.match(desktop,/getDisplayNearestPoint/);assert.match(preload,/passthrough/);});
-test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/#avatarArea\{width:min\(380px/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
+test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/--avatar-size:380px/);assert.match(css,/#avatarArea\{width:min\(var\(--avatar-size\)/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
 test('neural roots, living dual-contrast glyphs, magnetic field, mouth, neck and 30 degree yaw are rendered',async()=>{const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');for(const feature of ['drawNeuralRoots','drawNeck','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors'])assert.match(avatar,new RegExp(feature));assert.match(avatar,/strokeText/);assert.match(avatar,/const maxYaw=Math\.PI\/6/);assert.match(avatar,/rx=clamp\(rx,-maxYaw,maxYaw\)/);assert.match(avatar,/quadraticCurveTo/);assert.match(avatar,/bezierCurveTo/);});
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
 test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pack,/Dudidam\.exe/);assert.match(pkg.scripts['package:desktop'],/install-electron --no/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(workflow,/npm run verify/);assert.match(workflow,/npm run package:desktop/);});
@@ -61,3 +61,27 @@ test('developer agent hub registers requested tools and exposes read-only CLI ad
 
 
 test('global ALE summon shortcut works without a keylogger',async()=>{const [desktop,preload,app]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(desktop,/globalShortcut/);assert.match(desktop,/CommandOrControl\+Alt\+5/);assert.match(desktop,/dudidam:summon/);assert.match(desktop,/unregisterAll/);assert.match(preload,/onSummon/);assert.match(app,/global-hotkey/);});
+
+
+test('custom avatar size, soft summon and bounded project work mode stay wired',async()=>{
+ const [html,app,avatar,css,hub]=await Promise.all([
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/style.css',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8')
+ ]);
+ assert.match(html,/id="avatarSize"/);
+ assert.match(html,/id="agentMode"/);
+ assert.match(app,/dudidam-avatar-size/);
+ assert.match(app,/SUMMON_DURATION_MS=4200/);
+ assert.match(css,/--avatar-size:380px/);
+ assert.match(avatar,/awaken\(duration=4200\)/);
+ assert.match(avatar,/fluidStrength/);
+ assert.match(avatar,/rawAssembly-delay/);
+ assert.match(hub,/workspace-write/);
+ assert.match(hub,/available-tools=view,grep,glob,edit,create,apply_patch/);
+ assert.match(hub,/--allow-tool=write/);
+ assert.match(hub,/Jangan git push/);
+ assert.doesNotMatch(hub,/--allow-all/);
+});
