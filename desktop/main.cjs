@@ -40,8 +40,8 @@ if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',showAvatar);
  app.whenReady().then(async()=>{
-  const [{ChatGPTBridge},{GrokBridge},{GeminiBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions}]=await Promise.all([import('./bridge.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs')]);
-  bridges={chatgpt:new ChatGPTBridge(),grok:new GrokBridge(),gemini:new GeminiBridge(),askcodi:new AskCodiBridge()};
+  const [{ChatGPTBridge},{OpenAIBridge},{GrokBridge},{GeminiBridge},{ClaudeBridge},{DeepSeekBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions}]=await Promise.all([import('./bridge.mjs'),import('./openai-api.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./claude.mjs'),import('./deepseek.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs')]);
+  bridges={chatgpt:new ChatGPTBridge(),openai:new OpenAIBridge(),grok:new GrokBridge(),gemini:new GeminiBridge(),claude:new ClaudeBridge(),deepseek:new DeepSeekBridge(),askcodi:new AskCodiBridge()};
   agentHub=new DeveloperAgentHub();
   const agentLinks=Object.fromEntries(agentDefinitions().map(item=>[item.id,item.url]));
   const root=path.resolve(__dirname,'../public');
@@ -56,7 +56,7 @@ else{
   win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   const trusted=e=>e.sender===win?.webContents&&e.senderFrame?.url?.startsWith(origin+'/');
 
-  const pickProvider=value=>['grok','gemini','askcodi'].includes(value)?value:'chatgpt';
+  const pickProvider=value=>['openai','grok','gemini','claude','deepseek','askcodi'].includes(value)?value:'chatgpt';
   ipcMain.handle('dudidam:status',async(e,provider)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges[pickProvider(provider)].status();}catch(error){return {configured:false,error:error.message};}});
   ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{const provider=pickProvider(value?.provider);const payload={...value};delete payload.provider;return await bridges[provider].ask(payload);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges.chatgpt.login();}catch(error){return {error:error.message};}});

@@ -13,6 +13,19 @@ Percakapan dipanggil melalui IPC lokal terbatas; tidak ada endpoint HTTP untuk m
 
 Codex CLI ditemukan dari instalasi Codex Windows atau PATH. Untuk lokasi khusus gunakan environment DUDIDAM_CODEX_PATH pada launcher; jangan memasukkan kredensial.
 
+
+## OpenAI API
+Selain login ChatGPT melalui Codex CLI, Dudidam dapat memakai OpenAI API secara langsung. Pilih **AI provider → OpenAI API**. Atur `OPENAI_API_KEY` pada environment Windows; model default `gpt-5.4-mini` dan dapat diganti dengan `OPENAI_MODEL`. Request dikirim dari proses Electron ke Responses API. Key tidak dikirim ke renderer, HTML, localStorage, artifact, atau GitHub. Provider ini mendukung teks dan satu foto JPEG dari kamera.
+
+## Claude / Anthropic
+Pilih **AI provider → Claude / Anthropic** dan atur `ANTHROPIC_API_KEY`. Model default `claude-sonnet-4-6` dan dapat diganti dengan `ANTHROPIC_MODEL`. Dudidam menggunakan Anthropic Messages API dari proses Electron. Foto belum diteruskan melalui adapter ini.
+
+## DeepSeek
+Pilih **AI provider → DeepSeek** dan atur `DEEPSEEK_API_KEY`. Model default `deepseek-flash` dan dapat diganti dengan `DEEPSEEK_MODEL`. Dudidam memakai DeepSeek Responses API dari proses Electron. Foto belum diteruskan melalui adapter ini.
+
+## Secret setup
+`.env.example` hanya berisi nama variabel dan nilai model default, tanpa secret. Untuk Windows, set key sebagai environment variable atau lewat secret manager lokal sebelum membuka Dudidam. Jangan commit file `.env`, token, atau API key. GitHub Copilot CLI dapat memakai OAuth lokal; untuk non-interaktif Dudidam juga mengenali `COPILOT_GITHUB_TOKEN` bila Anda memang memilih autentikasi token.
+
 ## Grok / xAI
 Dudidam Desktop juga dapat memakai Grok sebagai provider tambahan. Pilih **AI provider → Grok / xAI** pada panel kontrol. Koneksi berjalan dari proses Electron ke xAI Responses API; API key tidak dikirim ke renderer, tidak disimpan di source, dan tidak dimasukkan ke paket atau GitHub.
 
@@ -27,7 +40,7 @@ Atur environment variable Windows `GEMINI_API_KEY` atau `GOOGLE_API_KEY` sebelum
 AskCodi tersedia sebagai provider API langsung melalui gateway OpenAI-compatible `https://api.askcodi.com/v1`. Atur `ASKCODI_API_KEY` dan `ASKCODI_MODEL`, lalu pilih **AI provider → AskCodi**. Dudidam tidak menaruh key atau model secret ke renderer, HTML, localStorage, GitHub, atau artifact. Foto belum dikirim melalui adapter AskCodi ini.
 
 ## Developer Agent Hub
-Tombol **Developer agents** pada kontrol desktop menampilkan Continue, Sourcegraph Cody, Pieces for Developers, AskCodi, Phind, Amazon Q Developer, Windsurf/Codeium, Tabnine, Replit Agent, dan Cursor. Hub mendeteksi CLI lokal atau environment konfigurasi tanpa menyalin token ke UI.
+Tombol **Developer agents** pada kontrol desktop menampilkan Continue, Sourcegraph Cody, Pieces for Developers, AskCodi, Phind, Amazon Q Developer, Windsurf/Codeium, Tabnine, Replit Agent, Cursor, GitHub Copilot, OpenAI Codex, Claude, DeepSeek, dan konektor lain yang terdaftar. Hub mendeteksi CLI lokal atau environment konfigurasi tanpa menyalin token ke UI.
 
 Pemanggilan langsung dari Dudidam sengaja dibatasi ke mode baca/analisis: Continue memakai `cn -p ... --readonly`, Cody memakai `cody chat`, dan Cursor memakai `agent -p ... --mode=ask`. Hub tidak memakai Cursor `--force` dan tidak mengaktifkan mode tulis otomatis. Set `DUDIDAM_PROJECT_ROOT` ke folder checkout repo agar agent membaca proyek yang benar.
 
