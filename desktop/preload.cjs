@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  login:()=>ipcRenderer.invoke('dudidam:login'),
  center:()=>ipcRenderer.send('dudidam:center'),
  move:delta=>ipcRenderer.send('dudidam:move',delta),
+ passthrough:value=>ipcRenderer.send('dudidam:passthrough',value),
  minimize:()=>ipcRenderer.send('dudidam:minimize'),
  close:()=>ipcRenderer.send('dudidam:close')
 }));

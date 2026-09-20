@@ -2,7 +2,7 @@
 Avatar wajah biner mengambang di tengah layar. Panel tersembunyi. Matrix, statistik generatif, abstrak, dan campuran; partikel bereaksi terhadap kursor sebagai medan magnet.
 
 ## Versi desktop Windows
-Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela transparan, tanpa bingkai, selalu di atas, dapat diseret. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
+Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela transparan, tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Dudidam tetap dapat dipulihkan dari ikon tray saat disembunyikan. Mode **Tembus klik** membuat area transparan tidak menghalangi aplikasi di bawahnya; matikan kembali melalui menu tray. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
 
 Klik kanan/dobel klik wajah atau H: kontrol. Enter: percakapan. B/N/G: kedip/angguk/geleng. 1–4: gaya partikel. M: mikrofon. R: tengahkan. Esc: tutup panel dan hentikan suara. Alt+F4 menutup aplikasi. Tombol minimalkan/tutup juga ada di kontrol.
 
@@ -13,7 +13,9 @@ Percakapan dipanggil melalui IPC lokal terbatas; tidak ada endpoint HTTP untuk m
 
 Codex CLI ditemukan dari instalasi Codex Windows atau PATH. Untuk lokasi khusus gunakan environment DUDIDAM_CODEX_PATH pada launcher; jangan memasukkan kredensial.
 
-## Suara dan kamera
+## Suara, musik, dan kamera
+Panel **Gerak dari audio** menggerakkan bibir serta kepala dari energi mikrofon, file musik yang dipilih, atau audio perangkat Windows. Audio perangkat memakai loopback Electron dan hanya dimulai setelah tombol ditekan. File musik tetap lokal di perangkat. Suara balasan Dudidam memakai batas kata TTS agar viseme tetap bergerak selama jawaban dibacakan.
+
 Kamera menggunakan izin pengguna dan hanya mengirim satu foto ketika tombol Kirim satu foto & jelaskan ditekan. Tidak merekam video. Kamera berhenti saat panel chat ditutup atau aplikasi tersembunyi.
 Pengenalan suara menggunakan SpeechRecognition browser. Chromium/Electron bisa tidak menyediakan layanan ini; ketika gagal aplikasi memberi pesan yang jelas. Gunakan teks atau dikte OS (Win+H secara manual). TTS memakai suara yang tersedia di Windows. Mikrofon dan kamera bukan layanan yang selalu merekam.
 

@@ -1,25 +1,83 @@
-const {app,BrowserWindow,ipcMain,shell,dialog,screen}=require('electron');
-const http=require('node:http');const {readFile}=require('node:fs/promises');const path=require('node:path');
-let win,server,origin,bridge;
-if(!app.requestSingleInstanceLock()){app.quit();}else{
-app.on('second-instance',()=>{if(win){win.show();win.focus();}});
-app.whenReady().then(async()=>{
- const {ChatGPTBridge}=await import('./bridge.mjs');bridge=new ChatGPTBridge();const root=path.resolve(__dirname,'../public');
- const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
- server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);}catch{res.writeHead(404);res.end();}});
- await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));origin='http://127.0.0.1:'+server.address().port;
- const bounds=screen.getPrimaryDisplay().workAreaSize,width=Math.min(620,bounds.width),height=Math.min(680,bounds.height);
- win=new BrowserWindow({width,height,center:true,frame:false,transparent:true,backgroundColor:'#00000000',hasShadow:false,resizable:false,alwaysOnTop:true,title:'Dudidam — Avatar Transparan',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:true,spellcheck:false}});
- win.setAlwaysOnTop(true,'floating');
- win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
- const trusted=e=>e.sender===win?.webContents&&e.senderFrame?.url?.startsWith(origin+'/');
- ipcMain.handle('dudidam:status',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.status();}catch(e){return {configured:false,error:e.message};}});
- ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.ask(value);}catch(e){return {error:e.message};}});
- ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.login();}catch(e){return {error:e.message};}});
- ipcMain.on('dudidam:center',e=>{if(trusted(e))win.center();});ipcMain.on('dudidam:minimize',e=>{if(trusted(e))win.minimize();});ipcMain.on('dudidam:close',e=>{if(trusted(e))win.close();});
- ipcMain.on('dudidam:move',(e,d)=>{if(!trusted(e)||!Number.isFinite(d?.dx)||!Number.isFinite(d?.dy))return;const [x,y]=win.getPosition();win.setPosition(x+Math.round(Math.max(-100,Math.min(100,d.dx))),y+Math.round(Math.max(-100,Math.min(100,d.dy))));});
- win.webContents.setWindowOpenHandler(({url})=>{try{if(new URL(url).origin==='https://chatgpt.com')shell.openExternal(url);}catch{}return {action:'deny'};});win.webContents.on('will-navigate',(e,url)=>{if(!url.startsWith(origin+'/'))e.preventDefault();});win.webContents.on('will-attach-webview',e=>e.preventDefault());
- win.webContents.session.setPermissionRequestHandler(async(contents,permission,callback,details)=>{if(contents!==win.webContents||!contents.getURL().startsWith(origin+'/')||permission!=='media'){callback(false);return;}const types=details.mediaTypes||[];const result=await dialog.showMessageBox(win,{type:'question',title:'Izin perangkat Dudidam',message:'Izinkan '+(types.includes('video')?'kamera':'mikrofon')+' untuk sesi ini?',detail:'Kamera hanya mengirim satu foto ketika tombol Kirim foto ditekan.',buttons:['Izinkan','Batal'],defaultId:1,cancelId:1});callback(result.response===0);});
- win.once('ready-to-show',()=>win.show());win.on('closed',()=>{bridge.stop();server.close();win=null;});await win.loadURL(origin+'/');
- console.log('Dudidam desktop ready: transparent=true; frame=false; centered=true; chatgpt=local-login');
-});app.on('window-all-closed',()=>app.quit());app.on('before-quit',()=>{bridge?.stop();server?.close();});}
+const {app,BrowserWindow,ipcMain,shell,dialog,screen,desktopCapturer,Tray,Menu,nativeImage}=require('electron');
+const http=require('node:http');
+const {readFile,writeFile}=require('node:fs/promises');
+const path=require('node:path');
+
+let win,server,origin,bridge,tray,saveTimer;
+let quitting=false;
+let passthrough=false;
+
+function statePath(){return path.join(app.getPath('userData'),'window-state.json');}
+async function readWindowPosition(){try{const value=JSON.parse(await readFile(statePath(),'utf8'));return Number.isFinite(value?.x)&&Number.isFinite(value?.y)?value:null;}catch{return null;}}
+function safePosition(saved,width,height){
+ const area=screen.getPrimaryDisplay().workArea;
+ const fallback={x:Math.round(area.x+(area.width-width)/2),y:Math.round(area.y+(area.height-height)/2)};
+ if(!saved)return fallback;
+ return {x:Math.max(area.x-width+120,Math.min(area.x+area.width-120,Math.round(saved.x))),y:Math.max(area.y-height+120,Math.min(area.y+area.height-120,Math.round(saved.y)))};
+}
+function savePositionSoon(){
+ clearTimeout(saveTimer);
+ saveTimer=setTimeout(async()=>{if(!win||win.isDestroyed())return;const [x,y]=win.getPosition();try{await writeFile(statePath(),JSON.stringify({x,y}),'utf8');}catch{}},250);
+}
+function showAvatar(){if(!win||win.isDestroyed())return;win.show();win.setAlwaysOnTop(true,'floating');win.moveTop();win.focus();}
+function rebuildTrayMenu(){
+ if(!tray||tray.isDestroyed())return;
+ tray.setContextMenu(Menu.buildFromTemplate([
+  {label:'Tampilkan Dudidam',click:showAvatar},
+  {label:'Sembunyikan',click:()=>win?.hide()},
+  {type:'separator'},
+  {label:'Selalu di atas',type:'checkbox',checked:win?.isAlwaysOnTop()??true,click:item=>win?.setAlwaysOnTop(item.checked,'floating')},
+  {label:'Tembus klik',type:'checkbox',checked:passthrough,click:item=>setPassthrough(item.checked)},
+  {type:'separator'},
+  {label:'Keluar',click:()=>{quitting=true;app.quit();}}
+ ]));
+}
+function setPassthrough(value){passthrough=Boolean(value);win?.setIgnoreMouseEvents(passthrough,{forward:true});rebuildTrayMenu();}
+
+if(!app.requestSingleInstanceLock())app.quit();
+else{
+ app.on('second-instance',showAvatar);
+ app.whenReady().then(async()=>{
+  const {ChatGPTBridge}=await import('./bridge.mjs');
+  bridge=new ChatGPTBridge();
+  const root=path.resolve(__dirname,'../public');
+  const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
+  server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);}catch{res.writeHead(404);res.end();}});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  origin='http://127.0.0.1:'+server.address().port;
+  const workArea=screen.getPrimaryDisplay().workAreaSize,width=Math.min(620,workArea.width),height=Math.min(680,workArea.height);
+  const position=safePosition(await readWindowPosition(),width,height);
+  win=new BrowserWindow({width,height,x:position.x,y:position.y,frame:false,transparent:true,backgroundColor:'#00000000',hasShadow:false,resizable:false,alwaysOnTop:true,skipTaskbar:true,title:'Dudidam — Avatar Transparan',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,spellcheck:false}});
+  win.setAlwaysOnTop(true,'floating');
+  win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+  const trusted=e=>e.sender===win?.webContents&&e.senderFrame?.url?.startsWith(origin+'/');
+
+  ipcMain.handle('dudidam:status',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.status();}catch(error){return {configured:false,error:error.message};}});
+  ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.ask(value);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridge.login();}catch(error){return {error:error.message};}});
+  ipcMain.on('dudidam:center',e=>{if(trusted(e)){win.center();savePositionSoon();}});
+  ipcMain.on('dudidam:minimize',e=>{if(trusted(e))win.hide();});
+  ipcMain.on('dudidam:close',e=>{if(trusted(e))win.hide();});
+  ipcMain.on('dudidam:passthrough',(e,value)=>{if(trusted(e))setPassthrough(value);});
+  ipcMain.on('dudidam:move',(e,d)=>{if(!trusted(e)||passthrough||!Number.isFinite(d?.dx)||!Number.isFinite(d?.dy))return;const [x,y]=win.getPosition();const next=safePosition({x:x+Math.max(-100,Math.min(100,d.dx)),y:y+Math.max(-100,Math.min(100,d.dy))},width,height);win.setPosition(next.x,next.y);});
+
+  win.webContents.setWindowOpenHandler(({url})=>{try{if(new URL(url).origin==='https://chatgpt.com')shell.openExternal(url);}catch{}return {action:'deny'};});
+  win.webContents.on('will-navigate',(e,url)=>{if(!url.startsWith(origin+'/'))e.preventDefault();});
+  win.webContents.on('will-attach-webview',e=>e.preventDefault());
+  win.webContents.session.setDisplayMediaRequestHandler(async(request,callback)=>{if(request.securityOrigin!==origin||!request.userGesture||!request.audioRequested){callback({});return;}try{const sources=await desktopCapturer.getSources({types:['screen']});if(!sources.length){callback({});return;}callback({video:sources[0],audio:'loopback'});}catch{callback({});}});
+  win.webContents.session.setPermissionRequestHandler(async(contents,permission,callback,details)=>{if(contents!==win.webContents||!contents.getURL().startsWith(origin+'/')||permission!=='media'){callback(false);return;}const mediaTypes=details.mediaTypes||[];const result=await dialog.showMessageBox(win,{type:'question',title:'Izin perangkat Dudidam',message:'Izinkan '+(mediaTypes.includes('video')?'kamera':'mikrofon')+' untuk sesi ini?',detail:'Audio dipakai hanya saat kontrol reaksi suara aktif. Kamera hanya mengirim satu foto setelah tombol kirim foto ditekan.',buttons:['Izinkan','Batal'],defaultId:1,cancelId:1});callback(result.response===0);});
+
+  const trayIcon=nativeImage.createFromPath(path.join(root,'reference.png')).resize({width:20,height:20,quality:'best'});
+  tray=new Tray(trayIcon);
+  tray.setToolTip('Dudidam — asisten mengambang');
+  tray.on('click',()=>win?.isVisible()?win.hide():showAvatar());
+  rebuildTrayMenu();
+  win.on('move',savePositionSoon);
+  win.on('close',event=>{if(!quitting){event.preventDefault();win.hide();}});
+  win.once('ready-to-show',()=>win.show());
+  await win.loadURL(origin+'/');
+  console.log('Dudidam desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
+ });
+ app.on('window-all-closed',()=>{});
+ app.on('before-quit',()=>{quitting=true;clearTimeout(saveTimer);bridge?.stop();server?.close();tray?.destroy();});
+}
