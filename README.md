@@ -1,10 +1,10 @@
 # Dudidam 2 — Floating Binary Human
-Avatar wajah biner mengambang di tengah layar. Panel tersembunyi. Matrix, statistik generatif, abstrak, dan campuran; partikel bereaksi terhadap kursor sebagai medan magnet.
+Avatar wajah biner mengambang di tengah layar. Panel tersembunyi. Matrix, statistik generatif, abstrak, neural, dan campuran; partikel bereaksi terhadap kursor sebagai medan magnet. Wajah tanpa bayang hitam dan kontras kode menyesuaikan tema terang atau gelap perangkat, dengan pilihan manual di kontrol.
 
 ## Versi desktop Windows
 Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela transparan, tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Dudidam tetap dapat dipulihkan dari ikon tray saat disembunyikan. Mode **Tembus klik** membuat area transparan tidak menghalangi aplikasi di bawahnya; matikan kembali melalui menu tray. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
 
-Klik kanan/dobel klik wajah atau H: kontrol. Enter: percakapan. B/N/G: kedip/angguk/geleng. 1–4: gaya partikel. M: mikrofon. R: tengahkan. Esc: tutup panel dan hentikan suara. Alt+F4 menutup aplikasi. Tombol minimalkan/tutup juga ada di kontrol.
+Klik kanan/dobel klik wajah atau H: kontrol. Enter: percakapan. B/N/G: kedip/angguk/geleng. 1–5: gaya partikel. M: mikrofon. R: tengahkan. Esc: tutup panel dan hentikan suara. Alt+F4 menutup aplikasi. Tombol minimalkan/tutup juga ada di kontrol.
 
 ## ChatGPT tanpa API key
 Versi desktop menggunakan Codex CLI resmi yang sudah login dengan ChatGPT. Pemeriksaan memakai codex login status. Tombol Login ChatGPT menjalankan alur resmi codex login melalui browser. Tidak ada pembacaan/copy auth.json, cookie, password, atau token login. Tidak menggunakan API key. Mengikuti batas penggunaan akun ChatGPT/Codex. Ini bukan sinkronisasi riwayat chatgpt.com.
@@ -21,7 +21,7 @@ Pengenalan suara menggunakan SpeechRecognition browser. Chromium/Electron bisa t
 
 ## Sites
 https://binary-human-assistant.sitihasnah109.chatgpt.site
-Proyek yang sama dipertahankan pada .openai/hosting.json; akses privat. Sites menampilkan wajah biner saja dan login identitas resmi. Browser tidak dapat membuat latar tembus sampai desktop. Tombol pop-up membuka jendela browser kecil; transparansi OS dan model via login tersedia pada desktop lokal. Tidak ada API key yang diminta di versi 2.
+Proyek yang sama dipertahankan pada .openai/hosting.json dan tetap memakai kebijakan akses publik yang sudah ada. Sites menampilkan wajah biner saja dan login identitas resmi. Browser tidak dapat membuat latar tembus sampai desktop. Tombol pop-up membuka jendela browser kecil; transparansi OS, mode tembus klik, dan model via login tersedia pada desktop lokal. Tidak ada API key yang diminta di versi 2.
 
 ## Develop / verify
 node server.mjs — http://127.0.0.1:4177
