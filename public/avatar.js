@@ -73,7 +73,7 @@ export class BinaryAvatar {
  trigger(action){this.action=action;this.actionStart=performance.now();if(action==='blink')this.blinkStart=this.actionStart;}
  setSpeechEnergy(value=.62){this.speechTarget=clamp(value,0,1);this.speechBeat=performance.now();}
  activateAllEffects(value=true){this.allEffects=Boolean(value);if(this.allEffects){this.mode='mixed';this.color='spectrum';this.animate=true;this.track=true;}}
- awaken(duration=3000){this.activateAllEffects(true);this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1200,Number(duration)||3000);}
+ awaken(duration=4200){this.activateAllEffects(true);this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1800,Number(duration)||4200);}
  isAwakening(now=performance.now()){return this.awakeningDuration>0&&now-this.awakeningStart>=0&&now-this.awakeningStart<this.awakeningDuration;}
  setEnvironment(value='auto'){this.environment=['auto','light','dark'].includes(value)?value:'auto';}
  isLightEnvironment(){return this.environment==='light'||(this.environment==='auto'&&this.environmentQuery.matches);}
@@ -272,14 +272,14 @@ export class BinaryAvatar {
   context.textAlign='center';
   const awakening=this.isAwakening(time);
   const rawAssembly=awakening?clamp((time-this.awakeningStart)/this.awakeningDuration,0,1):1;
-  const assembly=1-Math.pow(1-rawAssembly,3);
+  const assembly=rawAssembly*rawAssembly*(3-2*rawAssembly);
   context.save();
   if(awakening){
-   context.globalAlpha=.08+.92*assembly;
+   context.globalAlpha=.035+.965*assembly;
    context.translate(cx,cy);
-   const scale=.12+.88*assembly;
+   const scale=.16+.84*assembly+Math.sin(assembly*Math.PI)*.045;
    context.scale(scale,scale);
-   context.rotate((1-assembly)*Math.sin(time*.004)*.075);
+   context.rotate((1-assembly)*Math.sin(time*.0028)*.055);
    context.translate(-cx,-cy);
   }
   this.drawNeuralRoots(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
@@ -294,11 +294,27 @@ export class BinaryAvatar {
    else if(kind===1){x=cx+Math.cos(phase)*size*particle.r*.51;y=cy+Math.sin(phase*2.1)*size*.25+Math.sin(phase*8)*size*.02;}
    else if(kind===2){x=cx+Math.cos(phase)*size*particle.r*.53;y=cy+Math.sin(phase*1.03)*size*particle.r*.48;}
    else{x=cx+Math.cos(phase*1.3+particle.seed)*size*(.23+particle.r*.26);y=cy+Math.sin(phase*1.9+particle.seed*.37)*size*(.16+particle.r*.2);}
+   const fluidStrength=(this.allEffects||this.mode==='abstract')?1:this.mode==='mixed'?.56:.22;
+   x+=Math.sin(clock*.00082+particle.seed*5.7+y*.011)*size*.034*fluidStrength;
+   y+=Math.cos(clock*.00068+particle.seed*4.1+x*.009)*size*.026*fluidStrength;
+   if(awakening){
+    const delay=(index%37)/37*.34;
+    const local=clamp((rawAssembly-delay)/Math.max(.01,1-delay),0,1);
+    const soft=local*local*(3-2*local);
+    const spiral=particle.angle+(1-soft)*TAU*1.65+particle.seed*.08;
+    const radius=size*(.045+(1-soft)*(.36+particle.r*.2));
+    const sourceX=cx+Math.cos(spiral)*radius;
+    const sourceY=cy+Math.sin(spiral*1.14)*radius*.7;
+    const flow=Math.sin(clock*.0017+particle.seed*7)*(1-soft)*size*.032;
+    x=sourceX+(x-sourceX)*soft+Math.cos(spiral+Math.PI/2)*flow;
+    y=sourceY+(y-sourceY)*soft+Math.sin(spiral+Math.PI/2)*flow;
+   }
    const magnetic=this.magneticOffset(x,y,size,clock,particle.seed,1.45);x=magnetic.x;y=magnetic.y;
    if(!particle.x&&!particle.y){particle.x=x;particle.y=y;}
-   const spring=.1+magnetic.force*.09;particle.x+=(x-particle.x)*spring;particle.y+=(y-particle.y)*spring;
+   const spring=(this.allEffects||this.mode==='abstract'?.065:.085)+magnetic.force*.075;particle.x+=(x-particle.x)*spring;particle.y+=(y-particle.y)*spring;
    const distance=Math.hypot((particle.x-cx)/(faceWidth*.57),(particle.y-cy)/(faceHeight*.59)),fade=distance<.9?(kind===3? .14:.08):.2+Math.sin(phase+particle.seed)*.13;
-   const alpha=Math.min(.92,Math.max(.045,fade)+magnetic.force*.42);context.font=`${5.3+size*.0046+(index%3)}px monospace`;
+   const emergence=awakening?(.12+.88*assembly):1;
+   const alpha=Math.min(.92,(Math.max(.045,fade)+magnetic.force*.42)*emergence);context.font=`${5.3+size*.0046+(index%3)}px monospace`;
    const value=kind===1&&index%9===0?((Math.sin(phase)+1)*.5).toFixed(2):particle.glyph;
    const livingHue=hue+magnetic.force*54+Math.sin(clock*.00035+particle.seed)*26;
    this.drawAdaptiveGlyph(context,value,particle.x,particle.y,livingHue,alpha,lightEnvironment);
