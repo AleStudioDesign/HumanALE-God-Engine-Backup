@@ -4,7 +4,7 @@ import {AudioReactor} from './audio-reactor.js';
 import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,popup=new URLSearchParams(location.search).get('popup')==='1',avatar=new BinaryAvatar($('#avatar'));
 const apiProviders=['openai','grok','gemini','claude','deepseek','askcodi'];
-let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=true,wakeRestartTimer,wakeHealthVerified=false,summoning=false,hold5Timer,hold5Fired=false;
+let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=true,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,hold5Timer,hold5Fired=false;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();});
 if(desktop){document.body.classList.add('desktop');$('.desktop-actions').hidden=false;$('#providerRow').hidden=false;$('#provider').value=aiProvider;$('#popup').hidden=true;}else $('#systemAudio').hidden=true;
@@ -109,17 +109,46 @@ function suspendWakeListening(status='ALE · wake mic dijeda'){
 }
 function resumeWakeSoon(delay=900){
  clearTimeout(wakeRestartTimer);
- if(!wakeEnabled||summoning||listening||ttsActive||document.hidden)return;
+ if(!wakeEnabled||wakeRetryBlocked||summoning||listening||ttsActive||document.hidden)return;
  wakeRestartTimer=setTimeout(()=>startWakeListening(),delay);
 }
 async function startWakeListening(){
- if(!wakeEnabled||!desktop||!SR||wakeRecognition||wakeListening||summoning||listening||ttsActive||document.hidden)return;
+ if(!wakeEnabled||wakeRetryBlocked||!desktop||!SR||wakeRecognition||wakeListening||summoning||listening||ttsActive||document.hidden)return;
  if(!wakeHealthVerified){const health=await checkMicrophoneHealth();if(!health.ok){setWakeStatus(wakeReasonText(health.reason),false);return;}wakeHealthVerified=true;}
  const current=new SR();wakeRecognition=current;current.lang='id-ID';current.interimResults=true;current.continuous=true;
  current.onstart=()=>{if(wakeRecognition!==current)return;wakeListening=true;setWakeStatus('ALE · wake mic aktif',true);};
- current.onresult=event=>{let heard='';for(let i=event.resultIndex;i<event.results.length;i++)heard+=' '+event.results[i][0].transcript;if(containsAleWakeWord(heard))summonAle('voice');};
- current.onerror=event=>{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;const error=event.error;if(error==='aborted')return;const permanent=error==='not-allowed'||error==='service-not-allowed';setWakeStatus(permanent?'ALE · izin wake mic ditolak':'ALE · wake mic mengulang…',false);if(!permanent)resumeWakeSoon(1400);};
- current.onend=()=>{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;if(wakeEnabled&&!summoning&&!listening&&!ttsActive)resumeWakeSoon(900);};
+ current.onresult=event=>{wakeNetworkFailures=0;let heard='';for(let i=event.resultIndex;i<event.results.length;i++)heard+=' '+event.results[i][0].transcript;if(containsAleWakeWord(heard))summonAle('voice');};
+ current.onerror=event=>{
+  if(wakeRecognition===current)wakeRecognition=null;
+  wakeListening=false;
+  const error=event.error;
+  if(error==='aborted')return;
+  if(error==='not-allowed'||error==='service-not-allowed'){
+   wakeRetryBlocked=true;
+   setWakeStatus('ALE · izin wake mic ditolak',false);
+   return;
+  }
+  if(error==='network'){
+   wakeNetworkFailures++;
+   if(wakeNetworkFailures>=2){
+    wakeRetryBlocked=true;
+    setWakeStatus('ALE · layanan wake tidak tersedia · tahan tombol 5',false);
+    setMicStatus('Mikrofon terdeteksi, tetapi layanan SpeechRecognition Electron gagal terhubung. Wake ALE dijeda; tahan tombol 5 untuk memanggil ALE.');
+    return;
+   }
+   setWakeStatus('ALE · layanan wake gagal · mencoba sekali lagi…',false);
+   resumeWakeSoon(5000);
+   return;
+  }
+  if(error==='audio-capture'){
+   wakeRetryBlocked=true;
+   setWakeStatus('ALE · pengenal suara tidak dapat menangkap mikrofon',false);
+   return;
+  }
+  setWakeStatus('ALE · wake mic mengulang…',false);
+  resumeWakeSoon(error==='no-speech'?1800:5000);
+ };
+ current.onend=()=>{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;if(wakeEnabled&&!wakeRetryBlocked&&!summoning&&!listening&&!ttsActive)resumeWakeSoon(1200);};
  try{current.start();}catch{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;setWakeStatus('ALE · wake mic gagal dimulai',false);resumeWakeSoon(1800);}
 }
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -162,7 +191,7 @@ area.onpointermove=e=>{const r=area.getBoundingClientRect();avatar.pointer={x:Ma
 area.onpointerup=e=>{if(drag&&!drag.moved)avatar.trigger('blink');drag=null;if(area.hasPointerCapture(e.pointerId))area.releasePointerCapture(e.pointerId);};area.onpointercancel=()=>drag=null;area.onpointerleave=()=>{if(!drag){avatar.pointerActive=false;avatar.pointer={x:0,y:0};}};area.oncontextmenu=e=>{e.preventDefault();showDialog('#controls');};area.ondblclick=()=>showDialog('#controls');
 $('#reveal').onclick=()=>showDialog('#controls');$('#chat').onclick=()=>showDialog('#chatDialog');document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>avatar.trigger(b.dataset.action));document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 $('#track').onchange=e=>avatar.track=e.target.checked;$('#animate').checked=avatar.animate;$('#animate').onchange=e=>avatar.animate=e.target.checked;$('#color').onchange=e=>avatar.color=e.target.value;$('#environment').onchange=e=>avatar.setEnvironment(e.target.value);$('#speakSetting').onchange=e=>{voice=e.target.checked;if(!voice)stopSpeech();};
-$('#mic').onclick=$('#chatMic').onclick=()=>toggleMic();$('#wakeToggle').onchange=e=>{wakeEnabled=e.target.checked;if(wakeEnabled){setWakeStatus('ALE · menyalakan wake mic…',false);startWakeListening();}else suspendWakeListening('ALE · wake mic nonaktif');};$('#camera').onclick=toggleCamera;$('#center').onclick=center;$('#refreshStatus').onclick=checkAI;$('#provider').onchange=e=>{aiProvider=apiProviders.includes(e.target.value)?e.target.value:'chatgpt';localStorage.setItem('dudidam-provider',aiProvider);history=[];stopCamera();checkAI();};$('#agentHub').onclick=async()=>{if(!desktop)return;showDialog('#agentDialog');await loadAgents();};$('#agentRefresh').onclick=loadAgents;$('#agentForm').onsubmit=runDeveloperAgent;
+$('#mic').onclick=$('#chatMic').onclick=()=>toggleMic();$('#wakeToggle').onchange=e=>{wakeEnabled=e.target.checked;if(wakeEnabled){wakeRetryBlocked=false;wakeNetworkFailures=0;wakeHealthVerified=false;setWakeStatus('ALE · menyalakan wake mic…',false);startWakeListening();}else suspendWakeListening('ALE · wake mic nonaktif');};$('#camera').onclick=toggleCamera;$('#center').onclick=center;$('#refreshStatus').onclick=checkAI;$('#provider').onchange=e=>{aiProvider=apiProviders.includes(e.target.value)?e.target.value:'chatgpt';localStorage.setItem('dudidam-provider',aiProvider);history=[];stopCamera();checkAI();};$('#agentHub').onclick=async()=>{if(!desktop)return;showDialog('#agentDialog');await loadAgents();};$('#agentRefresh').onclick=loadAgents;$('#agentForm').onsubmit=runDeveloperAgent;
 $('#audioMic').onclick=startMicrophoneVisual;$('#systemAudio').onclick=startSystemAudio;$('#stopAudio').onclick=stopReactiveAudio;$('#musicFile').onchange=e=>playMusic(e.target.files?.[0]);$('#musicPlayer').onended=stopReactiveAudio;
 $('#popup').onclick=()=>{const pop=window.open(location.origin+'/?popup=1','dudidam-presence','popup=yes,width=420,height=480,left='+Math.round((screen.width-420)/2)+',top='+Math.round((screen.height-480)/2));if(!pop)toast('Browser memblokir pop-up. Izinkan pop-up untuk situs ini.');else toast('Widget pop-up dibuka dengan permukaan transparan. Transparansi hingga menembus desktop tersedia di Dudidam Desktop.');};
 $('#login').onclick=async()=>{if(!desktop){location.href='/signin-with-chatgpt?return_to=%2F';return;}$('#login').disabled=true;try{const r=await desktop.login();if(r.error)toast(r.error);else toast('Login selesai.');await checkAI();}catch{toast('Login belum selesai. Coba lagi.');}finally{$('#login').disabled=false;}};
