@@ -6,12 +6,27 @@ const agents=[
  {id:'cody',name:'Sourcegraph Cody',method:'CLI + Sourcegraph MCP',commands:['cody'],envPath:'CODY_CLI_PATH',canRun:true,url:'https://sourcegraph.com/docs/cody/clients/install-cli'},
  {id:'pieces',name:'Pieces for Developers',method:'PiecesOS MCP',commands:['pieces-os','pieces'],envPath:'PIECES_CLI_PATH',configEnv:'PIECES_MCP_URL',url:'https://docs.pieces.app/'},
  {id:'askcodi',name:'AskCodi',method:'API Gateway',configEnv:'ASKCODI_API_KEY',secondaryEnv:'ASKCODI_MODEL',url:'https://www.askcodi.com/gateway'},
- {id:'phind',name:'Phind',method:'External',url:'https://www.phind.com/'},
+ {id:'phind',name:'Phind',method:'External',external:true,url:'https://www.phind.com/'},
  {id:'amazonq',name:'Amazon Q Developer',method:'CLI + MCP',commands:['qchat','q'],envPath:'AMAZON_Q_CLI_PATH',url:'https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/qdev-mcp.html'},
  {id:'windsurf',name:'Windsurf / Codeium',method:'IDE + MCP',commands:['windsurf'],envPath:'WINDSURF_CLI_PATH',url:'https://docs.windsurf.com/'},
  {id:'tabnine',name:'Tabnine',method:'IDE + MCP',commands:['tabnine','TabNine'],envPath:'TABNINE_CLI_PATH',url:'https://docs.tabnine.com/'},
  {id:'replit',name:'Replit AI / Agent',method:'Cloud Agent + MCP',url:'https://docs.replit.com/references/mcp/overview'},
- {id:'cursor',name:'Cursor',method:'CLI + MCP',commands:['agent','cursor-agent'],envPath:'CURSOR_AGENT_PATH',canRun:true,url:'https://prod.cursor.com/docs/cli/overview'}
+ {id:'cursor',name:'Cursor',method:'CLI + MCP',commands:['agent','cursor-agent'],envPath:'CURSOR_AGENT_PATH',canRun:true,url:'https://prod.cursor.com/docs/cli/overview'},
+ {id:'github-copilot',name:'GitHub Copilot',method:'CLI + custom agents',commands:['copilot'],envPath:'GITHUB_COPILOT_CLI_PATH',canRun:true,url:'https://docs.github.com/en/copilot/how-tos/copilot-cli'},
+ {id:'agent-copilot',name:'Agent / Copilot',method:'GitHub Copilot custom agent',commands:['copilot'],envPath:'GITHUB_COPILOT_CLI_PATH',url:'https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-custom-agents'},
+ {id:'codex',name:'OpenAI Codex',method:'CLI + MCP',commands:['codex'],envPath:'CODEX_CLI_PATH',canRun:true,url:'https://developers.openai.com/codex/cli'},
+ {id:'visual-copilot',name:'Visual Copilot',method:'Design-to-code external',external:true,url:'https://www.builder.io/c/docs/visual-copilot'},
+ {id:'qodo',name:'Qodo',method:'IDE / review agent',commands:['qodo'],envPath:'QODO_CLI_PATH',url:'https://docs.qodo.ai/'},
+ {id:'blackbox',name:'Blackbox AI',method:'IDE / external agent',external:true,url:'https://www.blackbox.ai/'},
+ {id:'claude',name:'Claude / Claude Code',method:'CLI / coding agent',commands:['claude'],envPath:'CLAUDE_CLI_PATH',url:'https://docs.anthropic.com/en/docs/claude-code/overview'},
+ {id:'microsoft-copilot',name:'Microsoft Copilot',method:'External / IDE',external:true,url:'https://learn.microsoft.com/en-us/copilot/'},
+ {id:'deepseek-coder',name:'DeepSeek Coder',method:'Model / API endpoint',external:true,url:'https://api-docs.deepseek.com/'},
+ {id:'devin',name:'Devin AI',method:'Cloud software agent',external:true,url:'https://docs.devin.ai/'},
+ {id:'codegeex',name:'CodeGeeX',method:'IDE coding assistant',external:true,url:'https://codegeex.cn/'},
+ {id:'starcoder',name:'StarCoder',method:'Model / self-hosted endpoint',external:true,url:'https://huggingface.co/bigcode'},
+ {id:'tabbyml',name:'TabbyML',method:'Self-hosted coding assistant',commands:['tabby'],envPath:'TABBY_CLI_PATH',url:'https://tabby.tabbyml.com/docs/'},
+ {id:'grok',name:'Grok / xAI',method:'Dudidam runtime API provider',runtime:true,configEnvs:['XAI_API_KEY'],url:'https://docs.x.ai/'},
+ {id:'gemini',name:'Gemini / Google AI',method:'Dudidam runtime API + CLI',runtime:true,commands:['gemini'],envPath:'GEMINI_CLI_PATH',configEnvs:['GEMINI_API_KEY','GOOGLE_API_KEY'],url:'https://github.com/google-gemini/gemini-cli'}
 ];
 
 async function exists(path){try{await access(path);return true;}catch{return false;}}
@@ -30,16 +45,18 @@ async function locate(agent){
  for(const command of agent.commands||[]){const found=await locateCommand(command);if(found)return found;}
  return null;
 }
-export function agentDefinitions(){return agents.map(({commands,envPath,...agent})=>({...agent}));}
+export function agentDefinitions(){return agents.map(({commands,envPath,configEnv,configEnvs,secondaryEnv,...agent})=>({...agent}));}
 export class DeveloperAgentHub{
  constructor(){this.child=null;this.pending=false;}
  async status(){
   const projectRoot=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
   const rows=await Promise.all(agents.map(async agent=>{
    const executable=await locate(agent);
-   const configured=agent.configEnv?Boolean((process.env[agent.configEnv]||'').trim()&&(!agent.secondaryEnv||(process.env[agent.secondaryEnv]||'').trim())):false;
+   const configNames=[agent.configEnv,...(agent.configEnvs||[])].filter(Boolean);
+   const configured=configNames.length?Boolean(configNames.some(name=>(process.env[name]||'').trim())&&(!agent.secondaryEnv||(process.env[agent.secondaryEnv]||'').trim())):false;
    let state='available',detail='';
-   if(agent.id==='phind'){state='external';detail='Belum ada API/MCP publik resmi yang dipakai Dudidam; dibuka sebagai layanan eksternal.';}
+   if(agent.external){state='external';detail='Terdaftar di Agent Hub sebagai konektor eksternal; Dudidam tidak menjalankannya langsung.';}
+   else if(agent.runtime){state=configured?'configured':executable?'installed':'setup';detail=configured?'Kredensial provider runtime terdeteksi dari environment.':executable?'CLI lokal terdeteksi; provider runtime masih memerlukan kredensial environment.':'Provider tersedia di Dudidam tetapi belum dikonfigurasi di environment.';}
    else if(agent.id==='replit'){state='mcp-client';detail='Replit Agent menerima remote MCP dari halaman Integrations.';}
    else if(agent.id==='pieces'){state=configured?'configured':executable?'installed':'setup';detail=configured?'PIECES_MCP_URL terdeteksi.':executable?'PiecesOS terdeteksi; salin URL MCP ke PIECES_MCP_URL bila ingin dipakai lintas agent.':'Install PiecesOS lalu ambil URL MCP lokal.';}
    else if(agent.id==='askcodi'){state=configured?'configured':'setup';detail=configured?'AskCodi API siap dipakai dari provider Dudidam.':'Atur ASKCODI_API_KEY dan ASKCODI_MODEL.';}
@@ -57,7 +74,7 @@ export class DeveloperAgentHub{
   if(!agent)throw new Error('Agent ini belum mendukung pemanggilan langsung dari Dudidam.');
   const executable=await locate(agent);
   if(!executable)throw new Error(agent.name+' belum ditemukan di PATH atau environment path khusus.');
-  const args=id==='continue'?['-p',prompt,'--readonly']:id==='cody'?['chat','-m',prompt]:['-p',prompt,'--mode=ask','--output-format','text'];
+  const args=id==='continue'?['-p',prompt,'--readonly']:id==='cody'?['chat','-m',prompt]:id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user']:id==='codex'?['exec','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]:['-p',prompt,'--mode=ask','--output-format','text'];
   const cwd=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
   this.pending=true;
   try{
