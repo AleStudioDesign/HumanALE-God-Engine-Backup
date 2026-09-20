@@ -23,6 +23,16 @@ Dudidam Desktop dapat memakai Gemini sebagai provider ketiga. Pilih **AI provide
 
 Atur environment variable Windows `GEMINI_API_KEY` atau `GOOGLE_API_KEY` sebelum membuka Dudidam. Jika keduanya ada, `GOOGLE_API_KEY` diprioritaskan. Untuk development PowerShell dapat memakai `$env:GEMINI_API_KEY="..."` lalu `npm run desktop`. Model default adalah `gemini-3.6-flash`; `GEMINI_MODEL` dapat dipakai untuk mengganti model. Gemini mendukung percakapan teks dan satu foto JPEG dari kamera Dudidam melalui input inline.
 
+## AskCodi
+AskCodi tersedia sebagai provider API langsung melalui gateway OpenAI-compatible `https://api.askcodi.com/v1`. Atur `ASKCODI_API_KEY` dan `ASKCODI_MODEL`, lalu pilih **AI provider → AskCodi**. Dudidam tidak menaruh key atau model secret ke renderer, HTML, localStorage, GitHub, atau artifact. Foto belum dikirim melalui adapter AskCodi ini.
+
+## Developer Agent Hub
+Tombol **Developer agents** pada kontrol desktop menampilkan Continue, Sourcegraph Cody, Pieces for Developers, AskCodi, Phind, Amazon Q Developer, Windsurf/Codeium, Tabnine, Replit Agent, dan Cursor. Hub mendeteksi CLI lokal atau environment konfigurasi tanpa menyalin token ke UI.
+
+Pemanggilan langsung dari Dudidam sengaja dibatasi ke mode baca/analisis: Continue memakai `cn -p ... --readonly`, Cody memakai `cody chat`, dan Cursor memakai `agent -p ... --mode=ask`. Hub tidak memakai Cursor `--force` dan tidak mengaktifkan mode tulis otomatis. Set `DUDIDAM_PROJECT_ROOT` ke folder checkout repo agar agent membaca proyek yang benar.
+
+Koneksi lain mengikuti kemampuan resmi produknya: Pieces melalui URL MCP lokal (`PIECES_MCP_URL`), Sourcegraph/Cody dapat memakai Sourcegraph MCP atau Cody CLI, Amazon Q/Tabnine/Windsurf/Replit berperan sebagai MCP-capable agent/client di lingkungan masing-masing. Phind ditampilkan sebagai layanan eksternal karena adapter API/MCP publik resmi belum dipakai dalam Dudidam.
+
 ## Suara, musik, dan kamera
 Panel **Gerak dari audio** menggerakkan bibir serta kepala dari energi mikrofon, file musik yang dipilih, atau audio perangkat Windows. Audio perangkat memakai loopback Electron dan hanya dimulai setelah tombol ditekan. File musik tetap lokal di perangkat. Suara balasan Dudidam memakai batas kata TTS agar viseme tetap bergerak selama jawaban dibacakan.
 
