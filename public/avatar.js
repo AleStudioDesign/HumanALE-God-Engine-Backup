@@ -1,68 +1,297 @@
+const TAU=Math.PI*2;
+const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+
+function cubicPoint(a,b,c,d,t){
+ const u=1-t;
+ return u*u*u*a+3*u*u*t*b+3*u*t*t*c+t*t*t*d;
+}
+
 export class BinaryAvatar {
  constructor(canvas,referenceSrc='/reference.png'){
-  this.canvas=canvas;this.ctx=canvas.getContext('2d');this.pointer={x:0,y:0};this.pointerActive=false;this.rotation={x:0,y:0};this.track=true;this.reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;this.environmentQuery=matchMedia('(prefers-color-scheme: light)');this.environment='auto';this.animate=true;this.color='spectrum';this.mode='mixed';this.speaking=false;this.thinking=false;this.speechEnergy=0;this.speechTarget=0;this.speechBeat=0;this.action='';this.actionStart=0;this.blinkStart=-10000;this.nextBlink=performance.now()+3000;this.samples=[];this.last=0;
-  this.particles=Array.from({length:220},(_,i)=>({angle:i*2.39996,r:.53+Math.random()*.39,speed:.08+Math.random()*.12,seed:Math.random()*100,x:0,y:0,glyph:Math.random()>.5?'1':'0'}));
-  this.neuralNodes=Array.from({length:64},(_,i)=>({angle:i*2.39996,orbit:.28+Math.random()*.34,lift:(Math.random()-.5)*.72,phase:Math.random()*Math.PI*2,speed:.18+Math.random()*.34,glyph:Math.random()>.5?'1':'0'}));
-  this.dataFlows=Array.from({length:9},(_,i)=>({phase:i/9*Math.PI*2,tilt:(i%3-1)*.24,speed:.42+Math.random()*.32,glyph:i%2?'1':'0'}));
+  this.canvas=canvas;
+  this.ctx=canvas.getContext('2d');
+  this.pointer={x:0,y:0};
+  this.pointerActive=false;
+  this.rotation={x:0,y:0};
+  this.track=true;
+  this.reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  this.environmentQuery=matchMedia('(prefers-color-scheme: light)');
+  this.environment='auto';
+  this.animate=true;
+  this.color='spectrum';
+  this.mode='mixed';
+  this.speaking=false;
+  this.thinking=false;
+  this.speechEnergy=0;
+  this.speechTarget=0;
+  this.speechBeat=0;
+  this.action='';
+  this.actionStart=0;
+  this.blinkStart=-10000;
+  this.nextBlink=performance.now()+3000;
+  this.samples=[];
+  this.last=0;
+  this.particles=Array.from({length:250},(_,i)=>({angle:i*2.39996,r:.5+Math.random()*.42,speed:.08+Math.random()*.14,seed:Math.random()*100,x:0,y:0,glyph:Math.random()>.5?'1':'0'}));
+  this.neuralNodes=Array.from({length:72},(_,i)=>({angle:i*2.39996,orbit:.27+Math.random()*.35,lift:(Math.random()-.5)*.72,phase:Math.random()*TAU,speed:.18+Math.random()*.36,glyph:Math.random()>.5?'1':'0'}));
+  this.dataFlows=Array.from({length:12},(_,i)=>({phase:i/12*TAU,tilt:(i%4-1.5)*.16,speed:.42+Math.random()*.36,glyph:i%2?'1':'0'}));
+  this.rootStrands=Array.from({length:15},(_,i)=>({side:i%2?-1:1,spread:.22+(i%5)*.075,phase:i/15,speed:.11+(i%4)*.025,bend:(Math.random()-.5)*.18,targetY:-.1-(i%5)*.065,glyph:i%2?'1':'0'}));
+  this.neckGlyphs=Array.from({length:96},(_,i)=>({x:(Math.random()-.5)*2,y:(i+Math.random())/96,phase:Math.random()*TAU,glyph:Math.random()>.5?'1':'0'}));
   new ResizeObserver(()=>this.resize()).observe(canvas);
-  const img=new Image();img.onload=()=>{const s=document.createElement('canvas');s.width=110;s.height=142;const c=s.getContext('2d',{willReadFrequently:true});c.drawImage(img,120,0,322,393,0,0,110,142);const data=c.getImageData(0,0,110,142).data;
-   for(let y=0;y<142;y+=1.35)for(let x=0;x<110;x+=1.2){const dx=(x-55)/55,dy=(y-69)/70;if(dx*dx+dy*dy>1)continue;const i=(Math.floor(y)*110+Math.floor(x))*4;const lum=(data[i]*.21+data[i+1]*.72+data[i+2]*.07)/255;if(lum>.035)this.samples.push({x:x/110-.5,y:y/142-.5,lum,seed:Math.random(),glyph:Math.random()>.5?'1':'0'});}this.ready=true;};
-  img.src=referenceSrc;img.onerror=()=>document.dispatchEvent(new CustomEvent('avatar-error'));requestAnimationFrame(t=>this.frame(t));
+  const img=new Image();
+  img.onload=()=>{
+   const sampleCanvas=document.createElement('canvas');
+   sampleCanvas.width=110;sampleCanvas.height=142;
+   const sampleContext=sampleCanvas.getContext('2d',{willReadFrequently:true});
+   sampleContext.drawImage(img,120,0,322,393,0,0,110,142);
+   const data=sampleContext.getImageData(0,0,110,142).data;
+   for(let y=0;y<142;y+=1.35)for(let x=0;x<110;x+=1.2){
+    const dx=(x-55)/55,dy=(y-69)/70;
+    if(dx*dx+dy*dy>1)continue;
+    const index=(Math.floor(y)*110+Math.floor(x))*4;
+    const lum=(data[index]*.21+data[index+1]*.72+data[index+2]*.07)/255;
+    if(lum>.035)this.samples.push({x:x/110-.5,y:y/142-.5,lum,seed:Math.random(),glyph:Math.random()>.5?'1':'0'});
+   }
+   this.ready=true;
+  };
+  img.src=referenceSrc;
+  img.onerror=()=>document.dispatchEvent(new CustomEvent('avatar-error'));
+  requestAnimationFrame(time=>this.frame(time));
  }
- resize(){const r=this.canvas.getBoundingClientRect();this.w=r.width;this.h=r.height;const d=Math.min(devicePixelRatio||1,2);this.canvas.width=this.w*d;this.canvas.height=this.h*d;this.ctx.setTransform(d,0,0,d,0,0);}
+
+ resize(){
+  const rect=this.canvas.getBoundingClientRect();
+  this.w=rect.width;this.h=rect.height;
+  const density=Math.min(devicePixelRatio||1,2);
+  this.canvas.width=this.w*density;this.canvas.height=this.h*density;
+  this.ctx.setTransform(density,0,0,density,0,0);
+ }
+
  trigger(action){this.action=action;this.actionStart=performance.now();if(action==='blink')this.blinkStart=this.actionStart;}
- setSpeechEnergy(value=.62){this.speechTarget=Math.max(0,Math.min(1,value));this.speechBeat=performance.now();}
+ setSpeechEnergy(value=.62){this.speechTarget=clamp(value,0,1);this.speechBeat=performance.now();}
  setEnvironment(value='auto'){this.environment=['auto','light','dark'].includes(value)?value:'auto';}
  isLightEnvironment(){return this.environment==='light'||(this.environment==='auto'&&this.environmentQuery.matches);}
- drawNeuralField(c,s,cx,cy,hue,clock,lightEnvironment){
+
+ adaptiveColors(hue,alpha,_lightEnvironment,saturation=92){
+  const evolution=.5+.5*Math.sin(hue*Math.PI/96);
+  return {
+   edge:`hsla(${hue+10},${Math.max(72,saturation-10)}%,${8+evolution*9}%,${clamp(alpha*1.35+.015,0,1)})`,
+   main:`hsla(${hue-8},${saturation}%,${79+evolution*15}%,${clamp(alpha*1.04,0,1)})`
+  };
+ }
+
+ drawAdaptiveGlyph(context,text,x,y,hue,alpha,lightEnvironment,font){
+  if(alpha<=.01)return;
+  if(font)context.font=font;
+  const colors=this.adaptiveColors(hue,alpha,lightEnvironment);
+  context.lineWidth=.9;context.lineJoin='round';context.strokeStyle=colors.edge;context.strokeText(text,x,y);
+  context.fillStyle=colors.main;context.fillText(text,x,y);
+ }
+
+ strokeAdaptivePath(context,hue,alpha,lightEnvironment,width=.7){
+  const colors=this.adaptiveColors(hue,alpha,lightEnvironment,86);
+  context.lineWidth=width+1.55;context.strokeStyle=colors.edge;context.stroke();
+  context.lineWidth=width;context.strokeStyle=colors.main;context.stroke();
+ }
+
+ magneticOffset(x,y,size,clock,seed,strength=1){
+  if(!this.track||!this.pointerActive)return {x,y,force:0};
+  const pointerX=this.w/2+this.pointer.x*this.w/2,pointerY=this.h/2+this.pointer.y*this.h/2;
+  const dx=pointerX-x,dy=pointerY-y,distance=Math.max(1,Math.hypot(dx,dy)),radius=size*.39;
+  const force=Math.max(0,1-distance/radius);
+  if(!force)return {x,y,force:0};
+  const eased=force*force*strength,direction=Math.sin(clock*.004+seed*9)>.1?1:-1;
+  const attraction=size*.055*eased,orbit=size*.072*eased*direction;
+  return {x:x+dx/distance*attraction-dy/distance*orbit,y:y+dy/distance*attraction+dx/distance*orbit,force};
+ }
+
+ drawMagneticField(context,size,hue,clock,lightEnvironment){
+  if(!this.track||!this.pointerActive)return;
+  const x=this.w/2+this.pointer.x*this.w/2,y=this.h/2+this.pointer.y*this.h/2;
+  context.save();context.globalCompositeOperation='source-over';
+  for(let ring=0;ring<3;ring++){
+   const radius=size*(.055+ring*.045)+Math.sin(clock*.004+ring)*3;
+   context.beginPath();context.arc(x,y,radius,clock*.0007+ring*.8,clock*.0007+ring*.8+Math.PI*1.3);
+   this.strokeAdaptivePath(context,hue+ring*18,.16-ring*.025,lightEnvironment,.55);
+  }
+  context.font=`${Math.max(6,size*.017)}px monospace`;
+  for(let i=0;i<8;i++){
+   const angle=i/8*TAU-clock*.0015,radius=size*(.065+(i%3)*.032);
+   this.drawAdaptiveGlyph(context,i%2?'1':'0',x+Math.cos(angle)*radius,y+Math.sin(angle)*radius,hue+i*8,.33,lightEnvironment);
+  }
+  context.restore();
+ }
+
+ drawNeuralRoots(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
+  const active=this.mode==='neural'?1:this.mode==='abstract'?.86:this.mode==='mixed'?.7:.42;
+  const yawShift=Math.sin(yaw)*fw*.18;
+  context.save();context.globalCompositeOperation='source-over';
+  for(let index=0;index<this.rootStrands.length;index++){
+   const root=this.rootStrands[index];
+   const baseX=cx+yawShift*.3+root.side*fw*(.1+root.spread*.14),baseY=cy+fh*.64;
+   const endX=cx+yawShift+root.side*fw*root.spread,endY=cy+fh*root.targetY;
+   const control1X=baseX+root.side*fw*(.1+root.bend),control1Y=cy+fh*.35;
+   const control2X=endX-root.side*fw*(.08-root.bend*.4),control2Y=cy+fh*(root.targetY+.18);
+   const wave=Math.sin(clock*.0014+root.phase*TAU)*fw*.012;
+   context.beginPath();context.moveTo(baseX,baseY);context.bezierCurveTo(control1X+wave,control1Y,control2X-wave,endY+fh*.12,endX,endY);
+   this.strokeAdaptivePath(context,hue+index%4*15,(.19+(index%3)*.045)*active,lightEnvironment,.55+(index%3)*.14);
+   for(let pulseIndex=0;pulseIndex<2;pulseIndex++){
+    const progress=(clock*.00018*(1+root.speed)+root.phase+pulseIndex*.5)%1;
+    const px=cubicPoint(baseX,control1X+wave,control2X-wave,endX,progress),py=cubicPoint(baseY,control1Y,endY+fh*.12,endY,progress);
+    const pulse=.45+.55*Math.sin(progress*Math.PI);
+    context.font=`${Math.max(5.5,size*.018+pulse*1.5)}px monospace`;
+    this.drawAdaptiveGlyph(context,pulseIndex?root.glyph:(root.glyph==='1'?'0':'1'),px,py,hue+32+index%3*18,.48*pulse*active,lightEnvironment);
+   }
+  }
+  for(let lane=-2;lane<=2;lane++){
+   context.beginPath();
+   for(let step=0;step<=42;step++){
+    const progress=step/42,y=cy+fh*.54-progress*fh*.79,envelope=Math.sin(progress*Math.PI);
+    const x=cx+yawShift*progress+lane*fw*.038+Math.sin(progress*TAU*(2.4+Math.abs(lane)*.25)-clock*.003+lane)*fw*.028*envelope;
+    step?context.lineTo(x,y):context.moveTo(x,y);
+   }
+   this.strokeAdaptivePath(context,hue+58+lane*8,.2*active,lightEnvironment,.54);
+  }
+  context.restore();
+ }
+
+ drawNeck(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
+  const top=cy+fh*.37,bottom=cy+fh*.66,yawShift=Math.sin(yaw)*fw*.15;
+  context.save();context.globalCompositeOperation='source-over';
+  for(const point of this.neckGlyphs){
+   const taper=.19+point.y*.075,x=cx+yawShift*(1-point.y*.28)+point.x*fw*taper+Math.sin(clock*.0018+point.phase)*size*.0025,y=top+(bottom-top)*point.y;
+   const alpha=.18+.42*(1-Math.abs(point.x))*(.65+.35*Math.sin(clock*.002+point.phase));
+   context.font=`${Math.max(5.5,size*.018)}px monospace`;
+   this.drawAdaptiveGlyph(context,point.glyph,x,y,hue+point.y*34,alpha,lightEnvironment);
+  }
+  for(const side of [-1,1]){
+   context.beginPath();context.moveTo(cx+yawShift+side*fw*.18,top);
+   context.bezierCurveTo(cx+yawShift*.75+side*fw*.2,cy+fh*.46,cx+yawShift*.35+side*fw*.27,cy+fh*.58,cx+yawShift*.2+side*fw*.27,bottom);
+   this.strokeAdaptivePath(context,hue+24,.28,lightEnvironment,.72);
+  }
+  context.restore();
+ }
+
+ drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment){
   const active=this.mode==='neural'?1:this.mode==='abstract'?.88:this.mode==='mixed'?.68:this.mode==='statistics'?.42:.2;
   const response=(this.speaking?1.24:this.thinking?1.13:1)*active;
-  const nodes=this.neuralNodes.map((n,i)=>{const spin=n.angle+clock*.000055*n.speed,pulse=.9+.1*Math.sin(clock*.0018+n.phase);let x=cx+Math.cos(spin)*s*n.orbit*pulse,y=cy+(n.lift+Math.sin(spin*1.7+n.phase)*.22)*s*.62;const depth=.62+.38*Math.sin(spin+n.phase);if(this.track&&this.pointerActive){const dx=this.pointer.x*s*.34-(x-cx),dy=this.pointer.y*s*.34-(y-cy),force=Math.max(0,1-Math.hypot(dx,dy)/(s*.42));x+=dx*force*.12;y+=dy*force*.12;}return{x,y,depth,n,i};});
-  const neuralLight=lightEnvironment?32:74,alphaBoost=lightEnvironment?1.65:1;
-  c.save();c.globalCompositeOperation=lightEnvironment?'source-over':'lighter';c.lineWidth=lightEnvironment?.72:.55;
-  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j],d=Math.hypot(a.x-b.x,a.y-b.y);if(d>s*.145||Math.abs(a.depth-b.depth)>.42)continue;const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,inside=((mx-cx)/(s*.29))**2+((my-cy)/(s*.36))**2<1,signal=.5+.5*Math.sin(clock*.003+i*.71+j*.37),alpha=(1-d/(s*.145))*.16*response*(inside?.28:1);c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.strokeStyle='hsla('+(hue+(i+j)%3*17)+',88%,'+neuralLight+'%,'+Math.min(.8,alpha*(.62+signal*.38)*alphaBoost)+')';c.stroke();}
-  for(const p of nodes){const wave=.5+.5*Math.sin(clock*.0035+p.i*.83),radius=1.1+wave*2.1*response;c.beginPath();c.arc(p.x,p.y,radius,0,Math.PI*2);c.fillStyle='hsla('+(hue+p.i%4*13)+',94%,'+neuralLight+'%,'+Math.min(.76,(.08+.2*wave*response)*alphaBoost)+')';c.fill();if(p.i%5===0){c.font=(5.5+s*.0026)+'px monospace';c.fillStyle='hsla('+(hue+18)+',94%,'+(lightEnvironment?26:82)+'%,'+Math.min(.82,(.14+.22*wave*response)*alphaBoost)+')';c.fillText(p.n.glyph,p.x,p.y-4);}}
-  for(let f=0;f<this.dataFlows.length;f++){const flow=this.dataFlows[f],head=(clock*.00008*flow.speed+flow.phase)%(Math.PI*2);for(let step=0;step<20;step++){const t=head-step*.055,fade=(1-step/20)*response,rad=s*(.32+.055*Math.sin(t*2.3+flow.phase)),x=cx+Math.cos(t)*rad,y=cy+Math.sin(t*1.55+flow.tilt)*s*.29;c.font=(5.2+s*.0024+(step%3))+'px monospace';c.fillStyle='hsla('+(hue+f%3*18)+',92%,'+(lightEnvironment?30:74)+'%,'+Math.min(.7,(.015+fade*.105)*alphaBoost)+')';c.fillText((step+f)%2?'1':'0',x,y);}}
-  c.restore();
+  const nodes=this.neuralNodes.map((node,index)=>{
+   const spin=node.angle+clock*.000055*node.speed,pulse=.9+.1*Math.sin(clock*.0018+node.phase);
+   let x=cx+Math.cos(spin)*size*node.orbit*pulse,y=cy+(node.lift+Math.sin(spin*1.7+node.phase)*.22)*size*.62;
+   const depth=.62+.38*Math.sin(spin+node.phase),magnetic=this.magneticOffset(x,y,size,clock,node.phase,1.18);
+   x=magnetic.x;y=magnetic.y;return {x,y,depth,node,index,magnetic:magnetic.force};
+  });
+  context.save();context.globalCompositeOperation='source-over';
+  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+   const a=nodes[i],b=nodes[j],distance=Math.hypot(a.x-b.x,a.y-b.y);
+   if(distance>size*.145||Math.abs(a.depth-b.depth)>.42)continue;
+   const midX=(a.x+b.x)/2,midY=(a.y+b.y)/2,inside=((midX-cx)/(size*.29))**2+((midY-cy)/(size*.36))**2<1;
+   const signal=.5+.5*Math.sin(clock*.003+i*.71+j*.37),alpha=(1-distance/(size*.145))*.16*response*(inside?.28:1)*(1+(a.magnetic+b.magnetic)*.7);
+   context.beginPath();context.moveTo(a.x,a.y);context.lineTo(b.x,b.y);this.strokeAdaptivePath(context,hue+(i+j)%3*17,alpha,lightEnvironment,.48);
+  }
+  for(const point of nodes){
+   const wave=.5+.5*Math.sin(clock*.0035+point.index*.83),radius=1.1+wave*2.1*response+point.magnetic*2.4;
+   context.beginPath();context.arc(point.x,point.y,radius,0,TAU);
+   const colors=this.adaptiveColors(hue+point.index%4*13,Math.min(.72,.08+.2*wave*response+point.magnetic*.22),lightEnvironment);
+   context.fillStyle=colors.main;context.fill();
+   if(point.index%5===0){context.font=`${5.5+size*.0026}px monospace`;this.drawAdaptiveGlyph(context,point.node.glyph,point.x,point.y-4,hue+18,.22+.25*wave*response,lightEnvironment);}
+  }
+  for(let flowIndex=0;flowIndex<this.dataFlows.length;flowIndex++){
+   const flow=this.dataFlows[flowIndex],head=(clock*.00008*flow.speed+flow.phase)%TAU;
+   for(let step=0;step<20;step++){
+    const angle=head-step*.055,fade=(1-step/20)*response,radius=size*(.32+.055*Math.sin(angle*2.3+flow.phase));
+    const x=cx+Math.cos(angle)*radius,y=cy+Math.sin(angle*1.55+flow.tilt)*size*.29;
+    context.font=`${5.2+size*.0024+(step%3)}px monospace`;this.drawAdaptiveGlyph(context,(step+flowIndex)%2?'1':'0',x,y,hue+flowIndex%3*18,.025+fade*.11,lightEnvironment);
+   }
+  }
+  context.restore();
  }
- frame(t){requestAnimationFrame(v=>this.frame(v));if(document.hidden||t-this.last<32)return;this.last=t;const c=this.ctx,w=this.w,h=this.h;if(!w||!h)return;c.clearRect(0,0,w,h);
-  const auto=this.animate,clock=auto?t:0,s=Math.min(w,h),spectral=this.color==='spectrum',hue=spectral?(clock*.012)%360:this.color==='cyan'?175:this.color==='violet'?272:this.color==='gold'?43:132,lightEnvironment=this.isLightEnvironment(),fh=s*.67,fw=fh*.8;
-  const floatX=auto?Math.sin(t/3700)*5:0,floatY=auto?Math.sin(t/2500)*8:0,cx=w/2+floatX,cy=h/2+floatY;
-  const quietTarget=this.speaking?.34:0;if(t-this.speechBeat>170)this.speechTarget=quietTarget;this.speechEnergy+=(this.speechTarget-this.speechEnergy)*(this.reducedMotion?.08:.2);
-  this.rotation.x+=((this.track?this.pointer.x:0)-this.rotation.x)*.075;this.rotation.y+=((this.track?this.pointer.y:0)-this.rotation.y)*.075;
-  let rx=this.rotation.x*.20,ry=this.rotation.y*.08;if(this.speaking){rx+=Math.sin(t/420)*(.018+this.speechEnergy*.018);ry+=Math.sin(t/235)*(.012+this.speechEnergy*.035);}else if(this.thinking){rx+=Math.sin(t/1250)*.018;ry+=Math.sin(t/920)*.012;}const since=t-this.actionStart;if(since<1500){const env=Math.sin(since/1500*Math.PI);if(this.action==='shake')rx+=Math.sin(since/110)*.29*env;if(this.action==='nod')ry+=Math.sin(since/140)*.18*env;}
-  if(auto&&t>this.nextBlink){this.blinkStart=t;this.nextBlink=t+3200+Math.random()*3800;}const bt=t-this.blinkStart,close=bt>=0&&bt<230?Math.sin(bt/230*Math.PI):0;
-  const magnet=this.track&&this.pointerActive, mx=w/2+this.pointer.x*w/2,my=h/2+this.pointer.y*h/2;
-  c.textAlign='center';
-  this.drawNeuralField(c,s,cx,cy,hue,clock,lightEnvironment);
-  // Free binary particles: matrix streams, orbital noise, or statistical curves.
-  for(let i=0;i<this.particles.length;i++){const p=this.particles[i],phase=clock*.0001*p.speed*7+p.angle;let x,y;let kind=this.mode==='mixed'?i%4:this.mode==='matrix'?0:this.mode==='statistics'?1:this.mode==='neural'?3:2;
-   if(kind===0){x=cx+Math.sin(p.angle)*s*.46;y=((clock*.018*(.5+p.speed*5)+p.seed*40)%(s*.9))+cy-s*.45;if(Math.abs(x-cx)<fw*.47&&Math.abs(y-cy)<fh*.44)x+=Math.sign(x-cx||1)*fw*.48;}
-   else if(kind===1){x=cx+Math.cos(phase)*s*p.r*.51;y=cy+Math.sin(phase*2.1)*s*.25+Math.sin(phase*8)*s*.02;}
-   else if(kind===2){x=cx+Math.cos(phase)*s*p.r*.53;y=cy+Math.sin(phase*1.03)*s*p.r*.48;}
-   else{x=cx+Math.cos(phase*1.3+p.seed)*s*(.23+p.r*.26);y=cy+Math.sin(phase*1.9+p.seed*.37)*s*(.16+p.r*.2);}
-   if(magnet){const dx=mx-x,dy=my-y,dist=Math.hypot(dx,dy);const force=Math.max(0,1-dist/(s*.5));x+=dx*force*.45;y+=dy*force*.45;}
-   if(!p.x&&!p.y){p.x=x;p.y=y;}p.x+=(x-p.x)*.12;p.y+=(y-p.y)*.12;
-   const distance=Math.hypot((p.x-cx)/(fw*.57),(p.y-cy)/(fh*.59)),fade=distance<.9?(kind===3?.14:.08):.18+Math.sin(phase+p.seed)*.13;
-   const particleLight=lightEnvironment?30:72,particleAlpha=Math.min(.82,Math.max(.04,fade)*(lightEnvironment?1.6:1));c.font=(5.5+s*.005+(i%3))+'px monospace';c.fillStyle='hsla('+hue+',88%,'+particleLight+'%,'+particleAlpha+')';const value=kind===1&&i%9===0?((Math.sin(phase)+1)*.5).toFixed(2):p.glyph;c.fillText(value,p.x,p.y);
+
+ drawMouthSignal(context,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock){
+  const energy=this.speaking?clamp(this.speechEnergy,0,1):0,viseme=this.speaking?.35+.65*Math.abs(Math.sin(clock*.011)):0;
+  const open=fh*(.005+energy*viseme*.026),width=fw*.18*Math.cos(yaw),centerX=cx+Math.sin(yaw)*fw*.12,centerY=cy+fh*.262;
+  context.save();context.globalCompositeOperation='source-over';
+  for(const side of [-1,1]){context.beginPath();context.moveTo(centerX-width,centerY);context.quadraticCurveTo(centerX,centerY+side*open*1.35,centerX+width,centerY);this.strokeAdaptivePath(context,hue+side*14,.4+energy*.35,lightEnvironment,.75+energy*.45);}
+  context.font=`${Math.max(5.5,fw*.018)}px monospace`;
+  for(let i=0;i<9;i++){const progress=i/8,x=centerX-width+progress*width*2,arch=Math.sin(progress*Math.PI),y=centerY+(i%2?-1:1)*open*arch;this.drawAdaptiveGlyph(context,i%2?'1':'0',x,y,hue+i*5,.24+energy*.34,lightEnvironment);}
+  context.restore();
+ }
+
+ frame(time){
+  requestAnimationFrame(next=>this.frame(next));
+  if(document.hidden||time-this.last<32)return;
+  this.last=time;
+  const context=this.ctx,width=this.w,height=this.h;if(!width||!height)return;
+  context.clearRect(0,0,width,height);
+  const auto=this.animate,clock=auto?time:0,size=Math.min(width,height),spectral=this.color==='spectrum';
+  const hue=spectral?(clock*.012)%360:this.color==='cyan'?175:this.color==='violet'?272:this.color==='gold'?43:132,lightEnvironment=this.isLightEnvironment();
+  const faceHeight=size*.62,faceWidth=faceHeight*.79,floatX=auto?Math.sin(time/3700)*4:0,floatY=auto?Math.sin(time/2500)*6:0;
+  const cx=width/2+floatX,cy=height/2-size*.045+floatY;
+  const quietTarget=this.speaking?.34:0;if(time-this.speechBeat>170)this.speechTarget=quietTarget;
+  this.speechEnergy+=(this.speechTarget-this.speechEnergy)*(this.reducedMotion?.08:.2);
+  this.rotation.x+=((this.track?this.pointer.x:0)-this.rotation.x)*.072;this.rotation.y+=((this.track?this.pointer.y:0)-this.rotation.y)*.072;
+  const maxYaw=Math.PI/6;
+  let rx=this.rotation.x*maxYaw,ry=this.rotation.y*.13;
+  if(this.speaking){rx+=Math.sin(time/420)*(.012+this.speechEnergy*.016);ry+=Math.sin(time/235)*(.01+this.speechEnergy*.024);}else if(this.thinking){rx+=Math.sin(time/1250)*.016;ry+=Math.sin(time/920)*.01;}
+  const since=time-this.actionStart;
+  if(since<1500){const envelope=Math.sin(since/1500*Math.PI);if(this.action==='shake')rx+=Math.sin(since/110)*.24*envelope;if(this.action==='nod')ry+=Math.sin(since/140)*.16*envelope;}
+  rx=clamp(rx,-maxYaw,maxYaw);ry=clamp(ry,-.18,.18);
+  if(auto&&time>this.nextBlink){this.blinkStart=time;this.nextBlink=time+3200+Math.random()*3800;}
+  const blinkTime=time-this.blinkStart,close=blinkTime>=0&&blinkTime<230?Math.sin(blinkTime/230*Math.PI):0;
+  context.textAlign='center';
+  this.drawNeuralRoots(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
+  this.drawNeck(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
+  this.drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment);
+
+  for(let index=0;index<this.particles.length;index++){
+   const particle=this.particles[index],phase=clock*.0001*particle.speed*7+particle.angle;
+   let x,y;const kind=this.mode==='mixed'?index%4:this.mode==='matrix'?0:this.mode==='statistics'?1:this.mode==='neural'?3:2;
+   if(kind===0){x=cx+Math.sin(particle.angle)*size*.46;y=((clock*.018*(.5+particle.speed*5)+particle.seed*40)%(size*.9))+cy-size*.45;if(Math.abs(x-cx)<faceWidth*.47&&Math.abs(y-cy)<faceHeight*.44)x+=Math.sign(x-cx||1)*faceWidth*.48;}
+   else if(kind===1){x=cx+Math.cos(phase)*size*particle.r*.51;y=cy+Math.sin(phase*2.1)*size*.25+Math.sin(phase*8)*size*.02;}
+   else if(kind===2){x=cx+Math.cos(phase)*size*particle.r*.53;y=cy+Math.sin(phase*1.03)*size*particle.r*.48;}
+   else{x=cx+Math.cos(phase*1.3+particle.seed)*size*(.23+particle.r*.26);y=cy+Math.sin(phase*1.9+particle.seed*.37)*size*(.16+particle.r*.2);}
+   const magnetic=this.magneticOffset(x,y,size,clock,particle.seed,1.45);x=magnetic.x;y=magnetic.y;
+   if(!particle.x&&!particle.y){particle.x=x;particle.y=y;}
+   const spring=.1+magnetic.force*.09;particle.x+=(x-particle.x)*spring;particle.y+=(y-particle.y)*spring;
+   const distance=Math.hypot((particle.x-cx)/(faceWidth*.57),(particle.y-cy)/(faceHeight*.59)),fade=distance<.9?(kind===3?.14:.08):.2+Math.sin(phase+particle.seed)*.13;
+   const alpha=Math.min(.92,Math.max(.045,fade)+magnetic.force*.42);context.font=`${5.3+size*.0046+(index%3)}px monospace`;
+   const value=kind===1&&index%9===0?((Math.sin(phase)+1)*.5).toFixed(2):particle.glyph;
+   const livingHue=hue+magnetic.force*54+Math.sin(clock*.00035+particle.seed)*26;
+   this.drawAdaptiveGlyph(context,value,particle.x,particle.y,livingHue,alpha,lightEnvironment);
   }
-  // Thin, generative statistical signals and magnetic field lines.
-  c.lineWidth=.6;
-  if(this.mode!=='matrix'){for(let ring=0;ring<3;ring++){c.beginPath();for(let i=0;i<=100;i++){const a=i/100*Math.PI*2,r=s*(.31+ring*.037),noise=Math.sin(a*(ring+3)+clock*.0004)*s*.012;const x=cx+Math.cos(a)*(r+noise),y=cy+Math.sin(a)*(r*.94+noise);i?c.lineTo(x,y):c.moveTo(x,y);}c.strokeStyle='hsla('+(hue+ring*9)+',78%,'+(lightEnvironment?34:65)+'%,'+(ring===0?(lightEnvironment?.15:.085):(lightEnvironment?.075:.04))+')';c.stroke();}
-   if(this.mode==='statistics'||this.mode==='mixed'){for(const sign of [-1,1]){c.beginPath();for(let i=0;i<32;i++){const x=cx+sign*s*.36+i*s*.003,y=cy+s*.08+Math.sin(i*.57+clock*.002)*s*.026*Math.sin(i/32*Math.PI);i?c.lineTo(x,y):c.moveTo(x,y);}c.strokeStyle='hsla('+hue+',88%,'+(lightEnvironment?28:75)+'%,'+(lightEnvironment?.38:.25)+')';c.stroke();}}
+
+  if(this.mode!=='matrix'){
+   for(let ring=0;ring<3;ring++){
+    context.beginPath();
+    for(let index=0;index<=100;index++){const angle=index/100*TAU,radius=size*(.3+ring*.036),noise=Math.sin(angle*(ring+3)+clock*.0004)*size*.012,x=cx+Math.cos(angle)*(radius+noise),y=cy+Math.sin(angle)*(radius*.94+noise);index?context.lineTo(x,y):context.moveTo(x,y);}
+    this.strokeAdaptivePath(context,hue+ring*9,ring===0?.095:.055,lightEnvironment,.48);
+   }
+   if(this.mode==='statistics'||this.mode==='mixed')for(const sign of [-1,1]){
+    context.beginPath();
+    for(let index=0;index<32;index++){const x=cx+sign*size*.36+index*size*.003,y=cy+size*.08+Math.sin(index*.57+clock*.002)*size*.026*Math.sin(index/32*Math.PI);index?context.lineTo(x,y):context.moveTo(x,y);}
+    this.strokeAdaptivePath(context,hue,.28,lightEnvironment,.55);
+   }
   }
-  c.font=Math.max(4,fw/110*1.32)+'px monospace';
+
+  context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
   const abstractStrength=this.mode==='abstract'?1:this.mode==='neural'?.58:this.mode==='mixed'?.28:0;
-  for(const p of this.samples){let px=p.x,py=p.y,lum=p.lum;if(abstractStrength&&Math.sin(p.seed*91+clock*.0017+py*18)>.93-abstractStrength*.08)continue;
-   const eyeL=((px+.196)/.113)**2+((py+.06)/.038)**2,eyeR=((px-.19)/.12)**2+((py+.06)/.038)**2;
-   if(eyeL<1||eyeR<1){if(close>.15){py=-.06+(py+.06)*(1-close);lum*=1-close*.42;}else{px+=rx*.015;lum*=1.22;}}
-   if(this.speaking&&Math.abs(px)<.2&&py>.245&&py<.32){const viseme=.2+.8*Math.abs(Math.sin(t/(58+Math.abs(px)*120)+p.seed*2.4));const open=viseme*(.42+this.speechEnergy*.78);py+=(py-.245)*open*.28+open*.018;px*=1-open*.045;lum*=.78+open*.16;}
-   const depth=Math.sqrt(Math.max(0,1-(px*1.95)**2-(py*1.65)**2));let x=cx+px*fw*Math.cos(rx)+depth*fw*rx*.48,y=cy+py*fh*Math.cos(ry)+depth*fh*ry*.42;const fracture=Math.sin(py*31+clock*.0012+p.seed*7)*abstractStrength;x+=fracture*s*.011*(.35+Math.abs(px)*1.4);y+=Math.sin(px*24-clock*.001+p.seed*11)*s*.004*abstractStrength;
-   if(magnet){const dx=mx-x,dy=my-y,dist=Math.hypot(dx,dy),force=Math.max(0,1-dist/(s*.21));x+=dx*force*.07;y+=dy*force*.07;}
-   // Dissolving edge fragments float out and settle back into the face.
-   const edge=Math.sqrt((px*2)**2+(py*2)**2),wave=Math.max(0,Math.sin(clock*.0007+p.seed*20)-.65);if(auto&&edge>.78){x+=px*wave*32;y+=py*wave*28;}
-   const intensity=Math.min(1,lum*1.7),scan=auto?.9+.1*Math.sin(py*7-clock*.0014):1;const glow=this.thinking?1.13:1;
-   const alpha=Math.min(.99,intensity*(lightEnvironment?2.15:1.85)*scan*glow),spectralShift=spectral?Math.sin(p.seed*25+clock*.00023)*72:0,faceLight=lightEnvironment?Math.max(18,48-intensity*24):24+intensity*68,faceSaturation=lightEnvironment?88:48+intensity*34;c.fillStyle='hsla('+(hue+spectralShift+abstractStrength*Math.sin(p.seed*19)*24)+','+faceSaturation+'%,'+faceLight+'%,'+alpha+')';const glyph=auto&&Math.sin(clock/700+p.seed*90)>.988?(p.glyph==='0'?'1':'0'):p.glyph;c.fillText(glyph,x,y);if(abstractStrength>.5&&Math.abs(fracture)>.72){c.fillStyle='hsla('+(hue+spectralShift+28)+',88%,'+(lightEnvironment?30:74)+'%,'+(alpha*.18*abstractStrength)+')';c.fillText(glyph,x+fracture*s*.018,y-fracture*s*.006);}
+  for(const point of this.samples){
+   let px=point.x,py=point.y,lum=point.lum;
+   if(abstractStrength&&Math.sin(point.seed*91+clock*.0017+py*18)>.93-abstractStrength*.08)continue;
+   const leftEye=((px+.196)/.113)**2+((py+.06)/.038)**2,rightEye=((px-.19)/.12)**2+((py+.06)/.038)**2;
+   if(leftEye<1||rightEye<1){if(close>.15){py=-.06+(py+.06)*(1-close);lum*=1-close*.42;}else{px+=rx*.012;lum*=1.22;}}
+   const mouthCenter=.265;
+   if(this.speaking&&Math.abs(px)<.205&&Math.abs(py-mouthCenter)<.068){const viseme=.22+.78*Math.abs(Math.sin(time/(60+Math.abs(px)*105)+point.seed*2.4)),open=viseme*(.34+this.speechEnergy*.88)*(1-Math.abs(px)/.205);py+=Math.sign(py-mouthCenter||1)*open*(py>mouthCenter?.034:.016);px*=1-open*.035;lum*=.8+open*.2;}
+   const depth=Math.sqrt(Math.max(0,1-(px*1.95)**2-(py*1.65)**2));
+   let x=cx+px*faceWidth*Math.cos(rx)+depth*faceWidth*Math.sin(rx)*.38,y=cy+py*faceHeight*Math.cos(ry)+depth*faceHeight*ry*.4;
+   const fracture=Math.sin(py*31+clock*.0012+point.seed*7)*abstractStrength;x+=fracture*size*.01*(.35+Math.abs(px)*1.4);y+=Math.sin(px*24-clock*.001+point.seed*11)*size*.004*abstractStrength;
+   const magnetic=this.magneticOffset(x,y,size,clock,point.seed,.48);x=magnetic.x;y=magnetic.y;
+   const edge=Math.sqrt((px*2)**2+(py*2)**2),wave=Math.max(0,Math.sin(clock*.0007+point.seed*20)-.65);if(auto&&edge>.78){x+=px*wave*24;y+=py*wave*21;}
+   const intensity=Math.min(1,lum*1.7),scan=auto?.9+.1*Math.sin(py*7-clock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*(this.thinking?1.13:1));
+   const spectralShift=Math.sin(point.seed*25+clock*.00023)*(spectral?72:18),glyph=auto&&Math.sin(clock/700+point.seed*90)>.988?(point.glyph==='0'?'1':'0'):point.glyph;
+   this.drawAdaptiveGlyph(context,glyph,x,y,hue+spectralShift+abstractStrength*Math.sin(point.seed*19)*24,alpha,lightEnvironment);
+   if(abstractStrength>.5&&Math.abs(fracture)>.72)this.drawAdaptiveGlyph(context,glyph,x+fracture*size*.018,y-fracture*size*.006,hue+spectralShift+28,alpha*.18*abstractStrength,lightEnvironment);
   }
+  this.drawMouthSignal(context,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,clock);
+  this.drawMagneticField(context,size,hue,clock,lightEnvironment);
  }
 }
