@@ -1,6 +1,7 @@
 import {BinaryAvatar} from './avatar.js';
 import {parseCommand} from './commands.js';
 import {AudioReactor} from './audio-reactor.js';
+import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,popup=new URLSearchParams(location.search).get('popup')==='1',avatar=new BinaryAvatar($('#avatar'));
 const apiProviders=['openai','grok','gemini','claude','deepseek','askcodi'];
 let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=true,wakeRestartTimer,wakeHealthVerified=false,summoning=false,hold5Timer,hold5Fired=false;
@@ -116,7 +117,7 @@ async function startWakeListening(){
  if(!wakeHealthVerified){const health=await checkMicrophoneHealth();if(!health.ok){setWakeStatus(wakeReasonText(health.reason),false);return;}wakeHealthVerified=true;}
  const current=new SR();wakeRecognition=current;current.lang='id-ID';current.interimResults=true;current.continuous=true;
  current.onstart=()=>{if(wakeRecognition!==current)return;wakeListening=true;setWakeStatus('ALE · wake mic aktif',true);};
- current.onresult=event=>{let heard='';for(let i=event.resultIndex;i<event.results.length;i++)heard+=' '+event.results[i][0].transcript;if(/(^|\s)ale([\s,.!?]|$)/i.test(heard))summonAle('voice');};
+ current.onresult=event=>{let heard='';for(let i=event.resultIndex;i<event.results.length;i++)heard+=' '+event.results[i][0].transcript;if(containsAleWakeWord(heard))summonAle('voice');};
  current.onerror=event=>{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;const error=event.error;if(error==='aborted')return;const permanent=error==='not-allowed'||error==='service-not-allowed';setWakeStatus(permanent?'ALE · izin wake mic ditolak':'ALE · wake mic mengulang…',false);if(!permanent)resumeWakeSoon(1400);};
  current.onend=()=>{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;if(wakeEnabled&&!summoning&&!listening&&!ttsActive)resumeWakeSoon(900);};
  try{current.start();}catch{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;setWakeStatus('ALE · wake mic gagal dimulai',false);resumeWakeSoon(1800);}
@@ -176,7 +177,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){stopSpeech();stopListening();$('#bubble').hidden=true;return;}
  if(e.target.matches('input,textarea,select')||e.ctrlKey||e.metaKey||e.altKey)return;
  const key=e.key.toLowerCase();
- if(key==='5'){e.preventDefault();if(e.repeat||hold5Timer||summoning)return;hold5Fired=false;hold5Timer=setTimeout(()=>{hold5Timer=null;hold5Fired=true;summonAle('keyboard');},1500);return;}
+ if(key==='5'){e.preventDefault();if(e.repeat||hold5Timer||summoning)return;hold5Fired=false;hold5Timer=setTimeout(()=>{hold5Timer=null;hold5Fired=true;summonAle('keyboard');},HOLD_TO_SUMMON_MS);return;}
  if(e.repeat||document.querySelector('dialog[open]')||summoning)return;
  const actions={b:'blink',n:'nod',g:'shake'};if(actions[key])avatar.trigger(actions[key]);else if(key==='h'){e.preventDefault();showDialog('#controls');}else if(key==='enter'){e.preventDefault();showDialog('#chatDialog');}else if(key==='m')toggleMic();else if(key==='r')center();else if(['1','2','3','4'].includes(key))setMode(['mixed','matrix','statistics','abstract'][Number(key)-1]);
 });
