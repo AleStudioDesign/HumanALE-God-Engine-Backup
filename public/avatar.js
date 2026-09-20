@@ -20,6 +20,9 @@ export class BinaryAvatar {
   this.animate=true;
   this.color='spectrum';
   this.mode='mixed';
+  this.allEffects=false;
+  this.awakeningStart=0;
+  this.awakeningDuration=0;
   this.speaking=false;
   this.thinking=false;
   this.speechEnergy=0;
@@ -34,6 +37,7 @@ export class BinaryAvatar {
   this.particles=Array.from({length:250},(_,i)=>({angle:i*2.39996,r:.5+Math.random()*.42,speed:.08+Math.random()*.14,seed:Math.random()*100,x:0,y:0,glyph:Math.random()>.5?'1':'0'}));
   this.neuralNodes=Array.from({length:72},(_,i)=>({angle:i*2.39996,orbit:.27+Math.random()*.35,lift:(Math.random()-.5)*.72,phase:Math.random()*TAU,speed:.18+Math.random()*.36,glyph:Math.random()>.5?'1':'0'}));
   this.dataFlows=Array.from({length:12},(_,i)=>({phase:i/12*TAU,tilt:(i%4-1.5)*.16,speed:.42+Math.random()*.36,glyph:i%2?'1':'0'}));
+  this.electrons=Array.from({length:18},(_,i)=>({phase:i/18*TAU,speed:.34+Math.random()*.55,orbit:.24+(i%6)*.038,tilt:(i%5-2)*.055,seed:Math.random()*100}));
   this.rootStrands=Array.from({length:15},(_,i)=>({side:i%2?-1:1,spread:.22+(i%5)*.075,phase:i/15,speed:.11+(i%4)*.025,bend:(Math.random()-.5)*.18,targetY:-.1-(i%5)*.065,glyph:i%2?'1':'0'}));
   this.neckGlyphs=Array.from({length:96},(_,i)=>({x:(Math.random()-.5)*2,y:(i+Math.random())/96,phase:Math.random()*TAU,glyph:Math.random()>.5?'1':'0'}));
   new ResizeObserver(()=>this.resize()).observe(canvas);
@@ -68,6 +72,9 @@ export class BinaryAvatar {
 
  trigger(action){this.action=action;this.actionStart=performance.now();if(action==='blink')this.blinkStart=this.actionStart;}
  setSpeechEnergy(value=.62){this.speechTarget=clamp(value,0,1);this.speechBeat=performance.now();}
+ activateAllEffects(value=true){this.allEffects=Boolean(value);if(this.allEffects){this.mode='mixed';this.color='spectrum';this.animate=true;this.track=true;}}
+ awaken(duration=3000){this.activateAllEffects(true);this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1200,Number(duration)||3000);}
+ isAwakening(now=performance.now()){return this.awakeningDuration>0&&now-this.awakeningStart>=0&&now-this.awakeningStart<this.awakeningDuration;}
  setEnvironment(value='auto'){this.environment=['auto','light','dark'].includes(value)?value:'auto';}
  isLightEnvironment(){return this.environment==='light'||(this.environment==='auto'&&this.environmentQuery.matches);}
 
@@ -94,7 +101,7 @@ export class BinaryAvatar {
  }
 
  magneticOffset(x,y,size,clock,seed,strength=1){
-  if(!this.track||!this.pointerActive)return {x,y,force:0};
+  if(!this.track||!this.pointerActive||this.isAwakening(clock))return {x,y,force:0};
   const pointerX=this.w/2+this.pointer.x*this.w/2,pointerY=this.h/2+this.pointer.y*this.h/2;
   const dx=pointerX-x,dy=pointerY-y,distance=Math.max(1,Math.hypot(dx,dy)),radius=size*.39;
   const force=Math.max(0,1-distance/radius);
@@ -122,7 +129,7 @@ export class BinaryAvatar {
  }
 
  drawNeuralRoots(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
-  const active=this.mode==='neural'?1:this.mode==='abstract'?.86:this.mode==='mixed'?.7:.42;
+  const active=this.allEffects?1:this.mode==='neural'?1:this.mode==='abstract'?.86:this.mode==='mixed'?.7:.42;
   const yawShift=Math.sin(yaw)*fw*.18;
   context.save();context.globalCompositeOperation='source-over';
   for(let index=0;index<this.rootStrands.length;index++){
@@ -172,7 +179,7 @@ export class BinaryAvatar {
  }
 
  drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment){
-  const active=this.mode==='neural'?1:this.mode==='abstract'?.88:this.mode==='mixed'?.68:this.mode==='statistics'?.42:.2;
+  const active=this.allEffects?1:this.mode==='neural'?1:this.mode==='abstract'?.88:this.mode==='mixed'?.68:this.mode==='statistics'?.42:.2;
   const response=(this.speaking?1.24:this.thinking?1.13:1)*active;
   const nodes=this.neuralNodes.map((node,index)=>{
    const spin=node.angle+clock*.000055*node.speed,pulse=.9+.1*Math.sin(clock*.0018+node.phase);
@@ -202,6 +209,31 @@ export class BinaryAvatar {
     const x=cx+Math.cos(angle)*radius,y=cy+Math.sin(angle*1.55+flow.tilt)*size*.29;
     context.font=`${5.2+size*.0024+(step%3)}px monospace`;this.drawAdaptiveGlyph(context,(step+flowIndex)%2?'1':'0',x,y,hue+flowIndex%3*18,.025+fade*.11,lightEnvironment);
    }
+  }
+  context.restore();
+ }
+
+ drawElectronOrbits(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
+  const active=this.allEffects?1:(this.mode==='neural'||this.mode==='mixed'?.72:.34);
+  const yawShift=Math.sin(yaw)*fw*.2;
+  context.save();context.globalCompositeOperation='source-over';
+  for(let ring=0;ring<4;ring++){
+   const rx=fw*(.42+ring*.07),ry=fh*(.28+ring*.045);
+   context.beginPath();
+   context.ellipse(cx+yawShift*.35,cy-fh*.08,rx,ry,yaw*.28,clock*.00018+ring*.36,clock*.00018+ring*.36+TAU*.78);
+   this.strokeAdaptivePath(context,hue+88+ring*17,.045*active,lightEnvironment,.42);
+  }
+  for(let index=0;index<this.electrons.length;index++){
+   const electron=this.electrons[index],angle=electron.phase+clock*.0011*electron.speed;
+   const radiusX=fw*(electron.orbit+.17),radiusY=fh*(electron.orbit*.58+.055);
+   const x=cx+yawShift*.55+Math.cos(angle)*radiusX;
+   const y=cy-fh*.08+Math.sin(angle+electron.tilt)*radiusY;
+   const pulse=.45+.55*Math.sin(clock*.004+electron.seed);
+   context.beginPath();context.arc(x,y,1.1+pulse*1.7,0,TAU);
+   const colors=this.adaptiveColors(hue+105+index*9,.24+.34*pulse,lightEnvironment);
+   context.fillStyle=colors.main;context.fill();
+   context.font=`${Math.max(5.2,size*.015)}px monospace`;
+   this.drawAdaptiveGlyph(context,index%2?'1':'0',x+Math.cos(angle)*4,y+Math.sin(angle)*4,hue+120+index*11,.18+.3*pulse,lightEnvironment);
   }
   context.restore();
  }
@@ -238,13 +270,26 @@ export class BinaryAvatar {
   if(auto&&time>this.nextBlink){this.blinkStart=time;this.nextBlink=time+3200+Math.random()*3800;}
   const blinkTime=time-this.blinkStart,close=blinkTime>=0&&blinkTime<230?Math.sin(blinkTime/230*Math.PI):0;
   context.textAlign='center';
+  const awakening=this.isAwakening(time);
+  const rawAssembly=awakening?clamp((time-this.awakeningStart)/this.awakeningDuration,0,1):1;
+  const assembly=1-Math.pow(1-rawAssembly,3);
+  context.save();
+  if(awakening){
+   context.globalAlpha=.08+.92*assembly;
+   context.translate(cx,cy);
+   const scale=.12+.88*assembly;
+   context.scale(scale,scale);
+   context.rotate((1-assembly)*Math.sin(time*.004)*.075);
+   context.translate(-cx,-cy);
+  }
   this.drawNeuralRoots(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
   this.drawNeck(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
   this.drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment);
+  if(this.allEffects||this.mode==='neural'||this.mode==='mixed')this.drawElectronOrbits(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
 
   for(let index=0;index<this.particles.length;index++){
    const particle=this.particles[index],phase=clock*.0001*particle.speed*7+particle.angle;
-   let x,y;const kind=this.mode==='mixed'?index%4:this.mode==='matrix'?0:this.mode==='statistics'?1:this.mode==='neural'?3:2;
+   let x,y;const kind=(this.allEffects||this.mode==='mixed')?index%4:this.mode==='matrix'?0:this.mode==='statistics'?1:this.mode==='neural'?3:2;
    if(kind===0){x=cx+Math.sin(particle.angle)*size*.46;y=((clock*.018*(.5+particle.speed*5)+particle.seed*40)%(size*.9))+cy-size*.45;if(Math.abs(x-cx)<faceWidth*.47&&Math.abs(y-cy)<faceHeight*.44)x+=Math.sign(x-cx||1)*faceWidth*.48;}
    else if(kind===1){x=cx+Math.cos(phase)*size*particle.r*.51;y=cy+Math.sin(phase*2.1)*size*.25+Math.sin(phase*8)*size*.02;}
    else if(kind===2){x=cx+Math.cos(phase)*size*particle.r*.53;y=cy+Math.sin(phase*1.03)*size*particle.r*.48;}
@@ -259,13 +304,13 @@ export class BinaryAvatar {
    this.drawAdaptiveGlyph(context,value,particle.x,particle.y,livingHue,alpha,lightEnvironment);
   }
 
-  if(this.mode!=='matrix'){
+  if(this.allEffects||this.mode!=='matrix'){
    for(let ring=0;ring<3;ring++){
     context.beginPath();
     for(let index=0;index<=100;index++){const angle=index/100*TAU,radius=size*(.3+ring*.036),noise=Math.sin(angle*(ring+3)+clock*.0004)*size*.012,x=cx+Math.cos(angle)*(radius+noise),y=cy+Math.sin(angle)*(radius*.94+noise);index?context.lineTo(x,y):context.moveTo(x,y);}
     this.strokeAdaptivePath(context,hue+ring*9,ring===0?.095:.055,lightEnvironment,.48);
    }
-   if(this.mode==='statistics'||this.mode==='mixed')for(const sign of [-1,1]){
+   if(this.allEffects||this.mode==='statistics'||this.mode==='mixed')for(const sign of [-1,1]){
     context.beginPath();
     for(let index=0;index<32;index++){const x=cx+sign*size*.36+index*size*.003,y=cy+size*.08+Math.sin(index*.57+clock*.002)*size*.026*Math.sin(index/32*Math.PI);index?context.lineTo(x,y):context.moveTo(x,y);}
     this.strokeAdaptivePath(context,hue,.28,lightEnvironment,.55);
@@ -273,7 +318,7 @@ export class BinaryAvatar {
   }
 
   context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
-  const abstractStrength=this.mode==='abstract'?1:this.mode==='neural'?.58:this.mode==='mixed'?.28:0;
+  const abstractStrength=this.allEffects?.62:this.mode==='abstract'?1:this.mode==='neural'?.58:this.mode==='mixed'?.28:0;
   for(const point of this.samples){
    let px=point.x,py=point.y,lum=point.lum;
    if(abstractStrength&&Math.sin(point.seed*91+clock*.0017+py*18)>.93-abstractStrength*.08)continue;
@@ -293,5 +338,6 @@ export class BinaryAvatar {
   }
   this.drawMouthSignal(context,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,clock);
   this.drawMagneticField(context,size,hue,clock,lightEnvironment);
+  context.restore();
  }
 }
