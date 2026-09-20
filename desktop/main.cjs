@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,shell,dialog,screen,desktopCapturer,Tray,Menu,nativeImage}=require('electron');
+const {app,BrowserWindow,ipcMain,shell,dialog,screen,desktopCapturer,Tray,Menu,nativeImage,globalShortcut}=require('electron');
 const http=require('node:http');
 const {readFile,writeFile}=require('node:fs/promises');
 const path=require('node:path');
@@ -7,6 +7,7 @@ let win,server,origin,bridges,agentHub,tray,saveTimer;
 let quitting=false;
 let passthrough=false;
 let passthroughLocked=false;
+const summonShortcut='CommandOrControl+Alt+5';
 const ciSmoke=process.argv.includes('--ci-smoke');
 
 function statePath(){return path.join(app.getPath('userData'),'window-state.json');}
@@ -23,10 +24,16 @@ function savePositionSoon(){
  saveTimer=setTimeout(async()=>{if(!win||win.isDestroyed())return;const [x,y]=win.getPosition();try{await writeFile(statePath(),JSON.stringify({x,y}),'utf8');}catch{}},250);
 }
 function showAvatar(){if(!win||win.isDestroyed())return;win.show();win.setAlwaysOnTop(true,'floating');win.moveTop();win.focus();}
+function summonAvatar(){
+ if(!win||win.isDestroyed())return;
+ win.show();win.center();win.setAlwaysOnTop(true,'floating');win.moveTop();
+ if(!win.webContents.isLoading())win.webContents.send('dudidam:summon');
+}
 function rebuildTrayMenu(){
  if(!tray||tray.isDestroyed())return;
  tray.setContextMenu(Menu.buildFromTemplate([
   {label:'Tampilkan Dudidam',click:showAvatar},
+  {label:'Panggil ALE (Ctrl+Alt+5)',click:summonAvatar},
   {label:'Sembunyikan',click:()=>win?.hide()},
   {type:'separator'},
   {label:'Selalu di atas',type:'checkbox',checked:win?.isAlwaysOnTop()??true,click:item=>win?.setAlwaysOnTop(item.checked,'floating')},
@@ -90,6 +97,8 @@ else{
   tray.setToolTip('Dudidam — asisten mengambang');
   tray.on('click',()=>win?.isVisible()?win.hide():showAvatar());
   rebuildTrayMenu();
+  const shortcutRegistered=globalShortcut.register(summonShortcut,summonAvatar);
+  if(!shortcutRegistered)console.warn('Dudidam global summon shortcut unavailable:',summonShortcut);
   win.on('move',savePositionSoon);
   win.on('close',event=>{if(!quitting){event.preventDefault();win.hide();}});
   win.once('ready-to-show',()=>win.show());
@@ -103,5 +112,5 @@ else{
   console.log('Dudidam desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
  }).catch(error=>{console.error('Dudidam startup failed:',error);app.exit(1);});
  app.on('window-all-closed',()=>{});
- app.on('before-quit',()=>{quitting=true;clearTimeout(saveTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();server?.close();tray?.destroy();});
+ app.on('before-quit',()=>{quitting=true;globalShortcut.unregisterAll();clearTimeout(saveTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();server?.close();tray?.destroy();});
 }
