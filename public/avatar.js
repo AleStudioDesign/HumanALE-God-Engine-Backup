@@ -214,7 +214,7 @@ export class BinaryAvatar {
  }
 
  drawElectronOrbits(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
-  const active=this.allEffects?1:(this.mode==='neural'||this.mode==='mixed'?.72:.34);
+  const active=this.allEffects?1:((this.mode==='neural'||this.mode==='mixed') ? .72 : .34);
   const yawShift=Math.sin(yaw)*fw*.2;
   context.save();context.globalCompositeOperation='source-over';
   for(let ring=0;ring<4;ring++){
