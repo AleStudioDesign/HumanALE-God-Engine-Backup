@@ -69,13 +69,21 @@ export class DeveloperAgentHub{
  }
  async run(value){
   if(this.pending)throw new Error('Tunggu agent sebelumnya selesai.');
-  const id=String(value?.id||''),prompt=String(value?.prompt||'').trim();
+  const id=String(value?.id||''),prompt=String(value?.prompt||'').trim(),mode=value?.mode==='work'?'work':'analyze';
   if(!prompt||prompt.length>4000)throw new Error('Prompt agent harus berisi 1–4000 karakter.');
   const agent=agents.find(item=>item.id===id&&item.canRun);
   if(!agent)throw new Error('Agent ini belum mendukung pemanggilan langsung dari Dudidam.');
+  if(mode==='work'&&!['github-copilot','codex'].includes(id))throw new Error('Mode Kerja hanya tersedia untuk GitHub Copilot atau OpenAI Codex.');
   const executable=await locate(agent);
   if(!executable)throw new Error(agent.name+' belum ditemukan di PATH atau environment path khusus.');
-  const args=id==='continue'?['-p',prompt,'--readonly']:id==='cody'?['chat','-m',prompt]:id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user']:id==='codex'?['exec','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]:['-p',prompt,'--mode=ask','--output-format','text'];
+  const safeWorkPrompt='Kerjakan hanya di folder proyek ini. Jangan git push, publish, mengubah kredensial, atau mengakses data di luar proyek. Buat perubahan sekecil yang diperlukan dan jelaskan file yang diubah. Tugas: '+prompt;
+  const args=id==='continue'?['-p',prompt,'--readonly']
+   :id==='cody'?['chat','-m',prompt]
+   :id==='github-copilot'&&mode==='work'?['-p',safeWorkPrompt,'-s','--available-tools=view,grep,glob,edit,create,apply_patch','--allow-tool=write','--disable-builtin-mcps','--no-ask-user']
+   :id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user']
+   :id==='codex'&&mode==='work'?['exec','--sandbox','workspace-write','--ephemeral','--ignore-user-config',safeWorkPrompt]
+   :id==='codex'?['exec','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]
+   :['-p',prompt,'--mode=ask','--output-format','text'];
   const cwd=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
   this.pending=true;
   try{
@@ -87,7 +95,7 @@ export class DeveloperAgentHub{
     child.stdout.on('data',data=>{stdout+=data;if(stdout.length>400000){child.kill();finish(new Error('Output agent terlalu besar.'));}});
     child.stderr.on('data',data=>{stderr=(stderr+data).slice(-16000);});
     child.on('error',()=>finish(new Error(agent.name+' tidak dapat dijalankan.')));
-    child.on('close',code=>code===0?finish(null,{id,name:agent.name,text:stdout.trim()||'Agent selesai tanpa output teks.'}):finish(new Error((stderr||stdout||agent.name+' gagal dijalankan.').trim())));
+    child.on('close',code=>code===0?finish(null,{id,name:agent.name,mode,text:stdout.trim()||'Agent selesai tanpa output teks.'}):finish(new Error((stderr||stdout||agent.name+' gagal dijalankan.').trim())));
    });
   }finally{this.pending=false;}
  }
