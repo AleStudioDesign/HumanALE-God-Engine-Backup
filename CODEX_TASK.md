@@ -79,12 +79,18 @@ Do not weaken:
 
 ## New visual direction from user
 
-### 6. Remove black shadow and make visuals adapt to desktop
+### 6. Remove black shadow and make the binary itself adaptive
 - Remove the dark/black radial silhouette or any large black shadow behind the head.
 - Keep the window genuinely transparent.
-- Make binary/neural particles remain readable on both light and dark desktop backgrounds.
-- Prefer adaptive contrast based on sampled/estimated background luminance when practical; otherwise use subtle dual-tone glow/outline, additive blending, or luminance-aware palettes instead of a black backdrop.
-- Avoid opaque plates behind the face.
+- Do NOT implement a simple "light desktop" vs "dark desktop" mode.
+- Instead, make the binary glyph system itself adapt continuously to whatever is behind it.
+- Each glyph/particle can evolve its hue, brightness, saturation, opacity, glow, and local contrast over time and in response to the visual context.
+- Let nearby binary glyphs shift through related color families rather than snapping the whole avatar to one palette.
+- Use smooth color evolution: gradients, hue drift, pulse energy, signal intensity, and local contrast adaptation.
+- Keep the face readable over both bright and dark areas without adding a black plate or opaque backdrop.
+- Prefer the binary itself to become the contrast mechanism.
+- The adaptive behavior should feel alive: color should evolve organically instead of switching between preset themes.
+- Avoid rapid flashing or harsh strobing.
 
 ### 7. Make avatar and panels even smaller
 - Reduce avatar size further while preserving face detail.
@@ -123,7 +129,9 @@ The desired appearance is:
 - no black backdrop/shadow;
 - compact avatar;
 - compact control panels;
-- binary + neural effects that stay readable over the real desktop;
+- binary glyphs that continuously adapt and evolve their own color/contrast over the real desktop;
+- no fixed light/dark theme switch;
+- smooth living color evolution across glyphs and neural signals;
 - strong but smooth mouse magnetic response;
 - neural/data roots feeding the brain from behind the head;
 - visible signal/frequency flow;
