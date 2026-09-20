@@ -103,24 +103,23 @@ export class BinaryAvatar {
  magneticOffset(x,y,size,clock,seed,strength=1){
   if(!this.track||!this.pointerActive||this.isAwakening(clock))return {x,y,force:0};
   const pointerX=this.w/2+this.pointer.x*this.w/2,pointerY=this.h/2+this.pointer.y*this.h/2;
-  const dx=pointerX-x,dy=pointerY-y,distance=Math.max(1,Math.hypot(dx,dy)),radius=size*.39;
-  const force=Math.max(0,1-distance/radius);
-  if(!force)return {x,y,force:0};
-  const eased=force*force*strength,direction=Math.sin(clock*.004+seed*9)>.1?1:-1;
-  const attraction=size*.055*eased,orbit=size*.072*eased*direction;
-  return {x:x+dx/distance*attraction-dy/distance*orbit,y:y+dy/distance*attraction+dx/distance*orbit,force};
+  const dx=pointerX-x,dy=pointerY-y,distance=Math.max(1,Math.hypot(dx,dy));
+  const sigma=size*.24;
+  const force=Math.exp(-(distance*distance)/(2*sigma*sigma));
+  if(force<.008)return {x,y,force:0};
+  const eased=force*force*strength;
+  const drift=size*.018*eased;
+  const phase=clock*.0014+seed*11.7;
+  const flowX=Math.sin(phase+dy*.012)*drift;
+  const flowY=Math.cos(phase*.83+dx*.011)*drift;
+  const follow=size*.008*eased;
+  return {x:x+flowX+dx/distance*follow,y:y+flowY+dy/distance*follow,force};
  }
 
- drawMagneticField(context,size,hue,clock,lightEnvironment){
-  if(!this.track||!this.pointerActive)return;
-  const x=this.w/2+this.pointer.x*this.w/2,y=this.h/2+this.pointer.y*this.h/2;
-  context.save();context.globalCompositeOperation='source-over';
-  context.font=`${Math.max(6,size*.017)}px monospace`;
-  for(let i=0;i<8;i++){
-   const angle=i/8*TAU-clock*.0015,radius=size*(.065+(i%3)*.032);
-   this.drawAdaptiveGlyph(context,i%2?'1':'0',x+Math.cos(angle)*radius,y+Math.sin(angle)*radius,hue+i*8,.22,lightEnvironment);
-  }
-  context.restore();
+ drawMagneticField(){
+  // Pointer interaction is intentionally invisible.
+  // Nearby particles deform softly through magneticOffset() without rings,
+  // halos, cursor circles, or orbiting pointer glyphs.
  }
 
  drawNeuralRoots(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw){
