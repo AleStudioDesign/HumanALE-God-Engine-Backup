@@ -2,7 +2,7 @@
 Avatar wajah biner mengambang di tengah layar. Panel tersembunyi. Matrix, statistik generatif, abstrak, neural, dan campuran; partikel bereaksi terhadap kursor sebagai medan magnet. Wajah tanpa bayang hitam dan kontras kode menyesuaikan tema terang atau gelap perangkat, dengan pilihan manual di kontrol.
 
 ## Versi desktop Windows
-Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela transparan, tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Dudidam tetap dapat dipulihkan dari ikon tray saat disembunyikan. Mode **Tembus klik** membuat area transparan tidak menghalangi aplikasi di bawahnya; matikan kembali melalui menu tray. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
+Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela pop-up avatar transparan, tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Transparansi hanya dipakai pada permukaan pop-up/avatar yang mengambang; panel kontrol dan percakapan tetap memakai latar panel yang jelas. Dudidam tetap dapat dipulihkan dari ikon tray saat disembunyikan. Mode **Tembus klik** membuat area transparan tidak menghalangi aplikasi di bawahnya; matikan kembali melalui menu tray. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
 
 Klik kanan/dobel klik wajah atau H: kontrol. Enter: percakapan. B/N/G: kedip/angguk/geleng. 1–5: gaya partikel. M: mikrofon. R: tengahkan. Esc: tutup panel dan hentikan suara. Alt+F4 menutup aplikasi. Tombol minimalkan/tutup juga ada di kontrol.
 
