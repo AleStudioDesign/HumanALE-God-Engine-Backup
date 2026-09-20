@@ -85,3 +85,15 @@ test('custom avatar size, soft summon and bounded project work mode stay wired',
  assert.match(hub,/Jangan git push/);
  assert.doesNotMatch(hub,/--allow-all/);
 });
+
+
+test('pointer magnet stays visually ring-free',async()=>{
+ const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
+ const start=avatar.indexOf('drawMagneticField');
+ const end=avatar.indexOf('drawNeuralRoots',start);
+ const block=avatar.slice(start,end);
+ assert.match(avatar,/Math\.exp\(\-\(distance\*distance\)/);
+ assert.doesNotMatch(block,/context\.arc/);
+ assert.doesNotMatch(block,/drawAdaptiveGlyph/);
+ assert.doesNotMatch(block,/radius=size/);
+});
