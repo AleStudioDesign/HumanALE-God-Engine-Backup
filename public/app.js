@@ -58,7 +58,8 @@ applyPanelZoom(desktop?localStorage.getItem('dudidam-panel-zoom')||100:100);
 applyPanelTransparency(desktop?localStorage.getItem('dudidam-panel-transparency')||5:5);
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,6000);}
 function state(text=''){$('#state').textContent=text;$('#state').hidden=!text;avatar.thinking=busy;}
-function setWakeStatus(text,active=false){const el=$('#wakeIndicator');if(el){el.textContent=text;el.dataset.active=active?'true':'false';}const toggle=$('#wakeToggle');if(toggle)toggle.checked=wakeEnabled;if(!panelOnly)panelChannel?.postMessage({type:'wake-status',text,active,enabled:wakeEnabled});}
+function syncListeningVisual(){avatar.setListening?.(Boolean(listening||wakeListening||micChecking));}
+function setWakeStatus(text,active=false){const el=$('#wakeIndicator');if(el){el.textContent=text;el.dataset.active=active?'true':'false';}const toggle=$('#wakeToggle');if(toggle)toggle.checked=wakeEnabled;syncListeningVisual();if(!panelOnly)panelChannel?.postMessage({type:'wake-status',text,active,enabled:wakeEnabled});}
 let passthroughRequested, passthroughSentAt=0;
 function setPassthrough(ignore){if(!desktop||panelOnly)return;const now=performance.now();if(passthroughRequested===ignore&&now-passthroughSentAt<500)return;passthroughRequested=ignore;passthroughSentAt=now;desktop.passthrough(ignore);}
 function pointInElement(element,x,y){if(!element||element.hidden)return false;const rect=element.getBoundingClientRect();return x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom;}
@@ -384,7 +385,7 @@ async function dismissAle(reason='hide'){
  document.body.classList.remove('dismissing');dismissing=false;state('');
  desktop?.finishDismiss?.(reason);
 }
-function stopListening(resumeWake=true){micProbeGeneration++;localCaptureGeneration++;micChecking=false;listening=false;const current=recognition;recognition=null;if(current){try{current.abort();}catch{}}if(localRecorder?.state==='recording'){try{localRecorder.stop();}catch{}}localRecorder=null;localStream?.getTracks().forEach(track=>track.stop());localStream=null;clearTimeout(localTimer);localChunks=[];$('#mic').setAttribute('aria-pressed','false');$('#chatMic').textContent='Dikte suara';$('#liveText').textContent='';if(!busy&&!avatar.speaking)state();if(resumeWake)resumeWakeSoon();}
+function stopListening(resumeWake=true){micProbeGeneration++;localCaptureGeneration++;micChecking=false;listening=false;syncListeningVisual();const current=recognition;recognition=null;if(current){try{current.abort();}catch{}}if(localRecorder?.state==='recording'){try{localRecorder.stop();}catch{}}localRecorder=null;localStream?.getTracks().forEach(track=>track.stop());localStream=null;clearTimeout(localTimer);localChunks=[];$('#mic').setAttribute('aria-pressed','false');$('#chatMic').textContent='Dikte suara';$('#liveText').textContent='';if(!busy&&!avatar.speaking)state();if(resumeWake)resumeWakeSoon();}
 async function startLocalDictation(){
  localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
  const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(type=>MediaRecorder.isTypeSupported(type));
@@ -392,11 +393,11 @@ async function startLocalDictation(){
  const current=new MediaRecorder(localStream,{mimeType:mime}),generation=++localCaptureGeneration;
  localRecorder=current;localChunks=[];
  current.ondataavailable=event=>{if(generation===localCaptureGeneration&&event.data?.size)localChunks.push(event.data);};
- current.onstart=()=>{if(generation!==localCaptureGeneration)return;listening=true;$('#mic').setAttribute('aria-pressed','true');$('#chatMic').textContent='Hentikan & kirim';setMicStatus('Mendengarkan Bahasa Indonesia secara lokal. Bicara hingga 12 detik.');state('Mendengarkan…');};
+ current.onstart=()=>{if(generation!==localCaptureGeneration)return;listening=true;syncListeningVisual();$('#mic').setAttribute('aria-pressed','true');$('#chatMic').textContent='Hentikan & kirim';setMicStatus('Mendengarkan Bahasa Indonesia secara lokal. Bicara hingga 12 detik.');state('Mendengarkan…');};
  current.onstop=async()=>{
   clearTimeout(localTimer);localStream?.getTracks().forEach(track=>track.stop());localStream=null;
   if(generation!==localCaptureGeneration)return;
-  localRecorder=null;listening=false;$('#mic').setAttribute('aria-pressed','false');$('#chatMic').textContent='Dikte suara';state('Mengenali ucapan Indonesia…');
+  localRecorder=null;listening=false;syncListeningVisual();$('#mic').setAttribute('aria-pressed','false');$('#chatMic').textContent='Dikte suara';state('Mengenali ucapan Indonesia…');
   try{
    const blob=new Blob(localChunks,{type:mime});localChunks=[];
    if(!blob.size||blob.size>2600000)throw new Error('Rekaman kosong atau terlalu besar.');
@@ -416,10 +417,10 @@ async function toggleMic(options={}){
  if(localRecorder?.state==='recording'){localRecorder.stop();return;}
  if(listening||micChecking||recognition){stopListening();return;}
  suspendWakeListening(options.fromWake?'ALE · perintah suara aktif':'ALE · wake mic dijeda untuk dikte');stopSpeech(false);state('Memeriksa mikrofon…');setMicStatus('Memeriksa perangkat dan izin mikrofon…');
- micChecking=true;const generation=++micProbeGeneration;
+ micChecking=true;syncListeningVisual();const generation=++micProbeGeneration;
  const health=await checkMicrophoneHealth();
  if(generation!==micProbeGeneration)return;
- micChecking=false;
+ micChecking=false;syncListeningVisual();
  if(document.hidden){stopListening(false);return;}
  if(!health.ok){
   const message={denied:'Izin mikrofon ditolak. Izinkan Dudidam di pengaturan privasi Windows.',missing:'Perangkat mikrofon tidak ditemukan.',unsupported:'Akses mikrofon tidak didukung oleh runtime ini.',unavailable:'Mikrofon ada tetapi sedang dipakai atau tidak dapat dibuka.'}[health.reason];
@@ -436,7 +437,7 @@ async function toggleMic(options={}){
  if(!SR){const message='Mikrofon tersedia, tetapi pengenal ucapan belum siap. Pasang runtime dikte lokal atau gunakan teks.';setMicStatus(message);state();toast(message);resumeWakeSoon();return;}
  setMicStatus('Mikrofon siap · pengenal ucapan Indonesia dimulai.');
  const current=new SR();recognition=current;current.lang='id-ID';current.interimResults=true;current.continuous=false;
- current.onstart=()=>{if(recognition!==current)return;listening=true;$('#mic').setAttribute('aria-pressed','true');$('#chatMic').textContent='Hentikan dikte';state('Mendengarkan…');};
+ current.onstart=()=>{if(recognition!==current)return;listening=true;syncListeningVisual();$('#mic').setAttribute('aria-pressed','true');$('#chatMic').textContent='Hentikan dikte';state('Mendengarkan…');};
  current.onresult=e=>{if(recognition!==current)return;let interim='';for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal){const text=e.results[i][0].transcript;setMicStatus('Ucapan dikenali.');stopListening();submit(text);return;}interim+=e.results[i][0].transcript;}$('#liveText').textContent=interim;};
  current.onerror=e=>{if(recognition!==current)return;const error=e.error;stopListening();if(error==='aborted')return;const message=error==='not-allowed'?'Izin pengenal ucapan ditolak.':error==='network'?'Mikrofon sehat, tetapi layanan pengenal ucapan tidak dapat dijangkau. Gunakan runtime dikte lokal atau teks.':error==='audio-capture'?'Pengenal ucapan tidak dapat mengambil audio dari mikrofon.':'Suara belum dapat dikenali. Coba lagi.';setMicStatus(message);toast(message);};
  current.onend=()=>{if(recognition===current)stopListening();};
