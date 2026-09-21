@@ -32,7 +32,7 @@ jobs:
       - name: Smoke packaged desktop
         run: .\Dudidam-Desktop\Dudidam.exe --ci-smoke
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Dudidam-Desktop-Windows
           path: Dudidam-Desktop
