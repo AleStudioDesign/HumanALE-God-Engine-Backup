@@ -98,9 +98,15 @@ function looksLikeCopilotTrustPrompt(text=''){
   value.includes('confirm that you trust');
 }
 export class DeveloperAgentHub{
- constructor(){this.child=null;this.pending=false;}
+ constructor(){this.child=null;this.pending=false;this.projectRoot='';}
+ setProjectRoot(value=''){this.projectRoot=String(value||'').trim();}
+ getProjectRoot(){return (this.projectRoot||process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();}
+ async projectRootReady(){
+  const root=this.getProjectRoot();
+  try{await access(root);await access(join(root,'.git'));return true;}catch{return false;}
+ }
  async status(){
-  const projectRoot=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
+  const projectRoot=this.getProjectRoot(),projectRootReady=await this.projectRootReady();
   const rows=await Promise.all(agents.map(async agent=>{
    const executable=await locate(agent);
    const configNames=[agent.configEnv,...(agent.configEnvs||[])].filter(Boolean);
@@ -117,7 +123,7 @@ export class DeveloperAgentHub{
    else{state='setup';detail=agent.method.includes('MCP')?'Belum terdeteksi lokal; integrasi MCP tetap didukung oleh produknya.':'Belum dikonfigurasi.';}
    return {id:agent.id,name:agent.name,method:agent.method,state,detail,canRun:Boolean(agent.canRun&&executable&&(agent.id!=='codex'||codexAuth?.ready)),url:agent.url,executable:executable?true:false};
   }));
-  return {projectRoot,agents:rows};
+  return {projectRoot,projectRootReady,agents:rows};
  }
  async run(value){
   if(this.pending)throw new Error('Tunggu agent sebelumnya selesai.');
@@ -128,7 +134,8 @@ export class DeveloperAgentHub{
   if(mode==='work'&&!['github-copilot','codex'].includes(id))throw new Error('Mode Kerja hanya tersedia untuk GitHub Copilot atau OpenAI Codex.');
   const executable=await locate(agent);
   if(!executable)throw new Error(agent.name+' belum ditemukan di PATH atau environment path khusus.');
-  const cwd=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
+  const cwd=this.getProjectRoot();
+  if(mode==='work'&&!await this.projectRootReady())throw new Error('Folder proyek belum dipilih atau bukan checkout Git. Buka Developer agents → Pilih folder proyek, lalu pilih folder repo entitashuman.');
   if(id==='codex'){
    const auth=await codexLoginStatus(executable,cwd);
    if(!auth.ready){
@@ -136,7 +143,7 @@ export class DeveloperAgentHub{
     throw new Error('Codex CLI terpasang tetapi belum login. Jalankan codex login di terminal lalu coba lagi.');
    }
   }
-  const safeWorkPrompt='Kerjakan hanya di folder proyek ini. Jangan git push, publish, mengubah kredensial, atau mengakses data di luar proyek. Buat perubahan sekecil yang diperlukan dan jelaskan file yang diubah. Tugas: '+prompt;
+  const safeWorkPrompt='Kerjakan hanya di folder proyek ini. Jangan git push, git merge, publish, mengganti branch, mengubah kredensial, atau mengakses data di luar proyek. Boleh membaca dan mengedit file di folder proyek menggunakan tool yang diizinkan. Buat perubahan sekecil yang diperlukan, jalankan test yang relevan bila tersedia, lalu jelaskan file yang diubah dan hasil test. Tugas: '+prompt;
   const args=id==='continue'?['-p',prompt,'--readonly']
    :id==='cody'?['chat','-m',prompt]
    :id==='github-copilot'&&mode==='work'?['-p',safeWorkPrompt,'-s','--available-tools=view,grep,glob,edit,create,apply_patch','--allow-tool=write','--disable-builtin-mcps','--no-ask-user','--no-auto-update','--disallow-temp-dir']
