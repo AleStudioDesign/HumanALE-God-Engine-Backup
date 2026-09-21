@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  closePanel:()=>ipcRenderer.send('dudidam:panel-close'),
  onPanelView:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,view)=>callback(view);ipcRenderer.on('dudidam:panel-view',handler);return()=>ipcRenderer.removeListener('dudidam:panel-view',handler);},
  agents:()=>ipcRenderer.invoke('dudidam:agents'),
+ chooseProjectRoot:()=>ipcRenderer.invoke('dudidam:project-root-choose'),
  runAgent:payload=>ipcRenderer.invoke('dudidam:agent-run',payload),
  openAgent:id=>ipcRenderer.invoke('dudidam:agent-open',id),
  center:()=>ipcRenderer.send('dudidam:center'),
