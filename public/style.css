@@ -16,3 +16,14 @@ body.summoning .wake-indicator,body.dismissing .wake-indicator{opacity:1;transfo
 .panel-slider-row{display:grid;grid-template-columns:auto auto;align-items:center}
 .panel-slider-row input[type=range]{grid-column:1/-1;width:100%;accent-color:#a1fdbc;margin:5px 0 1px}
 .panel-slider-row output{font:10px Consolas,monospace;color:#b7ffce}
+
+html.panel-surface,html.panel-surface body{background:#081610!important;overflow:hidden}
+body.detached-panel #presence,body.detached-panel #reveal{display:none!important}
+body.detached-panel dialog{width:calc(100% - 18px);max-width:none;max-height:calc(100dvh - 18px);margin:auto;box-shadow:none;zoom:var(--panel-zoom)}
+body.detached-panel dialog::backdrop{background:transparent;backdrop-filter:none}
+body.detached-panel #messages{height:min(270px,40dvh)}
+body.detached-panel #toast{max-width:calc(100% - 24px)}
+.persona-badge{position:absolute;top:6%;left:50%;transform:translateX(-50%);padding:6px 11px;border:1px solid #9effc54a;border-radius:99px;background:#05130db8;color:#bdffcf;font:10px/1 Consolas,monospace;letter-spacing:1.2px;white-space:nowrap;box-shadow:0 0 18px #43d37b1a}
+body[data-persona="copilot"] .persona-badge{border-color:#78dcff8c;color:#c4f2ff;background:#071d29d9;box-shadow:0 0 24px #38bbf651}
+body[data-persona="copilot"] #avatar{filter:drop-shadow(0 0 13px #32c4fd55)}
+body[data-persona="chatgpt"] .persona-badge{border-color:#7af3bc8c;color:#d2ffe7}

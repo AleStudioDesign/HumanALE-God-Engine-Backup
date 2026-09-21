@@ -21,6 +21,7 @@ export class BinaryAvatar {
   this.environment='auto';
   this.animate=true;
   this.color='spectrum';
+  this.persona='chatgpt';
   this.mode='mixed';
   this.allEffects=false;
   this.transitionKind='';

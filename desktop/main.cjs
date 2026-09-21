@@ -3,7 +3,7 @@ const http=require('node:http');
 const {readFile,writeFile}=require('node:fs/promises');
 const path=require('node:path');
 
-let win,server,origin,bridges,agentHub,tray,saveTimer,pointerTimer;
+let win,panelWin,server,origin,bridges,agentHub,indonesianStt,indonesianTts,tray,saveTimer,pointerTimer;
 let baseWindowSize={width:420,height:480};
 let panelZoomFactor=1;
 let quitting=false;
@@ -40,6 +40,7 @@ function summonAvatar(){
 function finishDismiss(){
  const reason=pendingDismiss||'hide';pendingDismiss='';
  if(reason==='quit'){quitting=true;app.quit();return;}
+ panelWin?.hide();
  win?.hide();
 }
 function requestDismiss(reason='hide'){
@@ -90,6 +91,27 @@ function resizeForAvatar(value=380){
  baseWindowSize={width:Math.max(360,size+40),height:Math.max(420,size+100)};
  resizeForPanel(panelZoomFactor,panelViewportOpen);
 }
+async function openPanel(view='controls'){
+ if(!win||win.isDestroyed())return;
+ const allowed=['controls','chatDialog','agentDialog'];
+ const target=allowed.includes(view)?view:'controls';
+ if(panelWin&&!panelWin.isDestroyed()){
+  panelWin.show();panelWin.focus();panelWin.webContents.send('dudidam:panel-view',target);return;
+ }
+ const bounds=win.getBounds(),display=screen.getDisplayNearestPoint({x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}),area=display.workArea;
+ const width=Math.min(460,area.width),height=Math.min(680,area.height);
+ const rightSpace=area.x+area.width-(bounds.x+bounds.width),leftSpace=bounds.x-area.x;
+ const x=rightSpace>=width+16?bounds.x+bounds.width+16:leftSpace>=width+16?bounds.x-width-16:rightSpace>=leftSpace?area.x+area.width-width:area.x;
+ const y=Math.max(area.y,Math.min(area.y+area.height-height,bounds.y));
+ panelWin=new BrowserWindow({width,height,x,y,minWidth:350,minHeight:360,backgroundColor:'#081610',frame:true,resizable:true,alwaysOnTop:true,show:false,title:'Dudidam · Panel',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,spellcheck:false}});
+ panelWin.setAlwaysOnTop(true,'floating');
+ panelWin.webContents.setWindowOpenHandler(({url})=>{try{if(['https://chatgpt.com','https://github.com'].includes(new URL(url).origin))shell.openExternal(url);}catch{}return {action:'deny'};});
+ panelWin.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith(origin+'/'))event.preventDefault();});
+ panelWin.webContents.on('will-attach-webview',event=>event.preventDefault());
+ panelWin.on('closed',()=>{panelWin=null;});
+ try{await panelWin.loadURL(origin+'/?panel='+encodeURIComponent(target));panelWin?.show();panelWin?.focus();}
+ catch(error){console.error('Dudidam panel failed:',error);throw error;}
+}
 function publishGlobalPointer(){
  if(!win||win.isDestroyed()||!win.isVisible()||win.webContents.isLoading())return;
  const point=screen.getCursorScreenPoint(),areas=screen.getAllDisplays().map(display=>display.workArea);
@@ -105,9 +127,11 @@ if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',showAvatar);
  app.whenReady().then(async()=>{
-  const [{ChatGPTBridge},{OpenAIBridge},{GrokBridge},{GeminiBridge},{ClaudeBridge},{DeepSeekBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions}]=await Promise.all([import('./bridge.mjs'),import('./openai-api.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./claude.mjs'),import('./deepseek.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs')]);
-  bridges={chatgpt:new ChatGPTBridge(),openai:new OpenAIBridge(),grok:new GrokBridge(),gemini:new GeminiBridge(),claude:new ClaudeBridge(),deepseek:new DeepSeekBridge(),askcodi:new AskCodiBridge()};
+  const [{ChatGPTBridge},{CopilotBridge},{OpenAIBridge},{GrokBridge},{GeminiBridge},{ClaudeBridge},{DeepSeekBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions},{IndonesianStt},{IndonesianTts}]=await Promise.all([import('./bridge.mjs'),import('./copilot.mjs'),import('./openai-api.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./claude.mjs'),import('./deepseek.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs'),import('./indonesian-stt.mjs'),import('./indonesian-tts.mjs')]);
+  bridges={chatgpt:new ChatGPTBridge(),copilot:new CopilotBridge(),openai:new OpenAIBridge(),grok:new GrokBridge(),gemini:new GeminiBridge(),claude:new ClaudeBridge(),deepseek:new DeepSeekBridge(),askcodi:new AskCodiBridge()};
   agentHub=new DeveloperAgentHub();
+  indonesianStt=new IndonesianStt();
+  indonesianTts=new IndonesianTts();
   const agentLinks=Object.fromEntries(agentDefinitions().map(item=>[item.id,item.url]));
   const root=path.resolve(__dirname,'../public');
   const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
@@ -119,12 +143,19 @@ else{
   win=new BrowserWindow({width,height,x:position.x,y:position.y,frame:false,transparent:true,backgroundColor:'#00000000',hasShadow:false,resizable:false,alwaysOnTop:true,skipTaskbar:true,title:'Dudidam — Avatar Transparan',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,spellcheck:false}});
   win.setAlwaysOnTop(true,'floating');
   win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
-  const trusted=e=>e.sender===win?.webContents&&e.senderFrame?.url?.startsWith(origin+'/');
+  const trusted=e=>(e.sender===win?.webContents||e.sender===panelWin?.webContents)&&e.senderFrame?.url?.startsWith(origin+'/');
 
-  const pickProvider=value=>['openai','grok','gemini','claude','deepseek','askcodi'].includes(value)?value:'chatgpt';
+  const pickProvider=value=>['copilot','openai','grok','gemini','claude','deepseek','askcodi'].includes(value)?value:'chatgpt';
   ipcMain.handle('dudidam:status',async(e,provider)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges[pickProvider(provider)].status();}catch(error){return {configured:false,error:error.message};}});
   ipcMain.handle('dudidam:ask',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{const provider=pickProvider(value?.provider);const payload={...value};delete payload.provider;return await bridges[provider].ask(payload);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:login',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges.chatgpt.login();}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:login-copilot',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await bridges.copilot.login();}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:stt-status',async e=>{if(!trusted(e))return {configured:false,error:'Akses ditolak.'};return await indonesianStt.status();});
+  ipcMain.handle('dudidam:transcribe',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await indonesianStt.transcribe(value);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:tts-status',async e=>{if(!trusted(e))return {configured:false,error:'Akses ditolak.'};return await indonesianTts.status();});
+  ipcMain.handle('dudidam:synthesize',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await indonesianTts.synthesize(value);}catch(error){return {error:error.message};}});
+  ipcMain.on('dudidam:panel-open',(e,view)=>{if(trusted(e))openPanel(view);});
+  ipcMain.on('dudidam:panel-close',e=>{if(trusted(e))panelWin?.hide();});
   ipcMain.handle('dudidam:agents',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.status();}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:agent-run',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.run(value);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:agent-open',async(e,id)=>{if(!trusted(e))return {error:'Akses ditolak.'};const url=agentLinks[String(id||'')];if(!url||!url.startsWith('https://'))return {error:'Tautan agent tidak valid.'};await shell.openExternal(url);return {ok:true};});
@@ -132,18 +163,18 @@ else{
   ipcMain.on('dudidam:minimize',e=>{if(trusted(e))requestDismiss('hide');});
   ipcMain.on('dudidam:close',e=>{if(trusted(e))requestDismiss('hide');});
   ipcMain.on('dudidam:dismiss-complete',e=>{if(trusted(e))finishDismiss();});
-  ipcMain.on('dudidam:passthrough',(e,value)=>{if(trusted(e))setDynamicPassthrough(value);});
+  ipcMain.on('dudidam:passthrough',(e,value)=>{if(e.sender===win?.webContents&&trusted(e))setDynamicPassthrough(value);});
   ipcMain.on('dudidam:passthrough-lock',(e,value)=>{if(trusted(e))setPassthroughLock(value);});
   ipcMain.on('dudidam:avatar-viewport',(e,value)=>{if(trusted(e))resizeForAvatar(value?.size);});
-  ipcMain.on('dudidam:panel-viewport',(e,value)=>{if(!trusted(e))return;resizeForPanel(value?.zoom,Boolean(value?.open));});
+  ipcMain.on('dudidam:panel-viewport',(e,value)=>{if(e.sender===win?.webContents&&trusted(e))resizeForPanel(value?.zoom,Boolean(value?.open));});
   ipcMain.on('dudidam:move',(e,d)=>{if(!trusted(e)||passthrough||!Number.isFinite(d?.dx)||!Number.isFinite(d?.dy))return;const [x,y]=win.getPosition(),[currentWidth,currentHeight]=win.getSize();const next=safePosition({x:x+Math.max(-100,Math.min(100,d.dx)),y:y+Math.max(-100,Math.min(100,d.dy))},currentWidth,currentHeight);win.setPosition(next.x,next.y);});
 
   win.webContents.setWindowOpenHandler(({url})=>{try{if(new URL(url).origin==='https://chatgpt.com')shell.openExternal(url);}catch{}return {action:'deny'};});
   win.webContents.on('will-navigate',(e,url)=>{if(!url.startsWith(origin+'/'))e.preventDefault();});
   win.webContents.on('will-attach-webview',e=>e.preventDefault());
-  win.webContents.session.setPermissionCheckHandler((contents,permission,requestingOrigin)=>contents===win.webContents&&permission==='media'&&typeof requestingOrigin==='string'&&requestingOrigin.startsWith(origin));
+  win.webContents.session.setPermissionCheckHandler((contents,permission,requestingOrigin)=>(contents===win.webContents||contents===panelWin?.webContents)&&permission==='media'&&typeof requestingOrigin==='string'&&requestingOrigin.startsWith(origin));
   win.webContents.session.setDisplayMediaRequestHandler(async(request,callback)=>{if(request.securityOrigin!==origin||!request.userGesture||!request.audioRequested){callback({});return;}try{const sources=await desktopCapturer.getSources({types:['screen']});if(!sources.length){callback({});return;}callback({video:sources[0],audio:'loopback'});}catch{callback({});}});
-  win.webContents.session.setPermissionRequestHandler(async(contents,permission,callback,details)=>{if(contents!==win.webContents||!contents.getURL().startsWith(origin+'/')||permission!=='media'){callback(false);return;}const mediaTypes=details.mediaTypes||[];const result=await dialog.showMessageBox(win,{type:'question',title:'Izin perangkat Dudidam',message:'Izinkan '+(mediaTypes.includes('video')?'kamera':'mikrofon')+' untuk sesi ini?',detail:'Mikrofon dipakai hanya saat Wake ALE, dikte, atau reaksi suara yang kamu aktifkan; status Wake selalu terlihat di layar. Kamera hanya mengirim satu foto setelah tombol kirim foto ditekan.',buttons:['Izinkan','Batal'],defaultId:1,cancelId:1});callback(result.response===0);});
+  win.webContents.session.setPermissionRequestHandler(async(contents,permission,callback,details)=>{if((contents!==win.webContents&&contents!==panelWin?.webContents)||!contents.getURL().startsWith(origin+'/')||permission!=='media'){callback(false);return;}const mediaTypes=details.mediaTypes||[];const result=await dialog.showMessageBox(panelWin?.isVisible()?panelWin:win,{type:'question',title:'Izin perangkat Dudidam',message:'Izinkan '+(mediaTypes.includes('video')?'kamera':'mikrofon')+' untuk sesi ini?',detail:'Mikrofon dipakai hanya saat Wake ALE, dikte, atau reaksi suara yang kamu aktifkan; status Wake selalu terlihat di layar. Kamera hanya mengirim satu foto setelah tombol kirim foto ditekan.',buttons:['Izinkan','Batal'],defaultId:1,cancelId:1});callback(result.response===0);});
 
   const trayIcon=nativeImage.createFromPath(path.join(root,'reference.png')).resize({width:20,height:20,quality:'best'});
   tray=new Tray(trayIcon);
@@ -160,11 +191,31 @@ else{
   if(ciSmoke){
    const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && typeof window.dudidamDesktop?.onGlobalPointer === 'function' && typeof window.dudidamDesktop?.avatarViewport === 'function' && document.title.includes('Dudidam')");
    if(!rendererReady)throw new Error('Renderer Dudidam tidak siap.');
-   console.log('Dudidam CI smoke passed: packaged runtime and renderer loaded.');
+   const wakeIdle=await win.webContents.executeJavaScript("Boolean(document.querySelector('#wakeToggle')) && !document.querySelector('#wakeToggle').checked && document.querySelector('#wakeIndicator')?.textContent?.includes('nonaktif')");
+   if(!wakeIdle)throw new Error('Wake mic harus nonaktif saat Dudidam mulai.');
+   await openPanel('controls');
+   const panelReady=await panelWin.webContents.executeJavaScript("document.body.classList.contains('detached-panel') && document.querySelector('#controls')?.open && document.documentElement.classList.contains('panel-surface')");
+   if(!panelReady)throw new Error('Panel terpisah Dudidam tidak siap.');
+   const avatarBounds=win.getBounds(),panelBounds=panelWin.getBounds(),workArea=screen.getDisplayNearestPoint({x:avatarBounds.x+avatarBounds.width/2,y:avatarBounds.y+avatarBounds.height/2}).workArea;
+   if(workArea.width>=avatarBounds.width+panelBounds.width+16&&avatarBounds.x<panelBounds.x+panelBounds.width&&panelBounds.x<avatarBounds.x+avatarBounds.width&&avatarBounds.y<panelBounds.y+panelBounds.height&&panelBounds.y<avatarBounds.y+avatarBounds.height)throw new Error('Panel menutupi avatar walau layar cukup lebar.');
+   await panelWin.webContents.executeJavaScript("new BroadcastChannel('dudidam-avatar-panel').postMessage({type:'persona',provider:'copilot'})");
+   const personaReady=await win.webContents.executeJavaScript("new Promise(resolve=>setTimeout(()=>resolve(document.querySelector('#personaBadge')?.textContent.includes('COPILOT')),100))");
+   if(!personaReady)throw new Error('Tampilan Copilot tidak tersambung ke avatar.');
+   if(process.env.DUDIDAM_VOICE_SMOKE==='1'){
+    const voiceReady=await panelWin.webContents.executeJavaScript("Promise.all([window.dudidamDesktop.sttStatus(),window.dudidamDesktop.ttsStatus()]).then(([stt,tts])=>stt.configured&&tts.configured)");
+    if(!voiceReady)throw new Error('Runtime suara Indonesia lokal belum siap.');
+    const speechReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.synthesize({text:'Halo dari Dudidam.'}).then(result=>result.mime==='audio/wav'&&result.audio?.length>1000)");
+    if(!speechReady)throw new Error('Suara Indonesia lokal gagal dibuat lewat panel.');
+   }
+   if(process.env.DUDIDAM_COPILOT_SMOKE==='1'){
+    const copilotReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.ask({provider:'copilot',message:'Jawab satu kata: siap',history:[]}).then(result=>Boolean(result.text)&&!result.error)");
+    if(!copilotReady)throw new Error('Percakapan GitHub Copilot dari panel gagal.');
+   }
+   console.log('Dudidam CI smoke passed: packaged runtime, renderer, and detached panel loaded.');
    quitting=true;app.quit();return;
   }
   console.log('Dudidam desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
  }).catch(error=>{console.error('Dudidam startup failed:',error);app.exit(1);});
  app.on('window-all-closed',()=>{});
- app.on('before-quit',()=>{quitting=true;globalShortcut.unregisterAll();clearTimeout(saveTimer);clearInterval(pointerTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();server?.close();tray?.destroy();});
+  app.on('before-quit',()=>{quitting=true;globalShortcut.unregisterAll();clearTimeout(saveTimer);clearInterval(pointerTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();indonesianStt?.stop();indonesianTts?.stop();panelWin?.destroy();server?.close();tray?.destroy();});
 }

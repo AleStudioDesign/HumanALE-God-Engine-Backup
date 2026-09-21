@@ -1,5 +1,6 @@
 import {spawn} from 'node:child_process';
 import {access} from 'node:fs/promises';
+import {join} from 'node:path';
 
 const agents=[
  {id:'continue',name:'Continue',method:'CLI + MCP',commands:['cn'],envPath:'CONTINUE_CLI_PATH',canRun:true,url:'https://docs.continue.dev/cli/quickstart'},
@@ -43,6 +44,10 @@ function locateCommand(command){
 async function locate(agent){
  const override=agent.envPath&&(process.env[agent.envPath]||'').trim();
  if(override&&await exists(override))return override;
+ if(['github-copilot','agent-copilot'].includes(agent.id)&&process.platform==='win32'&&process.env.LOCALAPPDATA){
+  const winget=join(process.env.LOCALAPPDATA,'Microsoft','WinGet','Links','copilot.exe');
+  if(await exists(winget))return winget;
+ }
  for(const command of agent.commands||[]){const found=await locateCommand(command);if(found)return found;}
  return null;
 }
