@@ -10,8 +10,12 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  move:delta=>ipcRenderer.send('dudidam:move',delta),
  passthrough:value=>ipcRenderer.send('dudidam:passthrough',value),
  passthroughLock:value=>ipcRenderer.send('dudidam:passthrough-lock',value),
+ avatarViewport:value=>ipcRenderer.send('dudidam:avatar-viewport',value),
  panelViewport:value=>ipcRenderer.send('dudidam:panel-viewport',value),
  minimize:()=>ipcRenderer.send('dudidam:minimize'),
  close:()=>ipcRenderer.send('dudidam:close'),
- onSummon:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:summon',handler);return()=>ipcRenderer.removeListener('dudidam:summon',handler);}
+ finishDismiss:reason=>ipcRenderer.send('dudidam:dismiss-complete',reason),
+ onSummon:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:summon',handler);return()=>ipcRenderer.removeListener('dudidam:summon',handler);},
+ onDismiss:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,reason)=>callback(reason);ipcRenderer.on('dudidam:dismiss',handler);return()=>ipcRenderer.removeListener('dudidam:dismiss',handler);},
+ onGlobalPointer:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,point)=>callback(point);ipcRenderer.on('dudidam:global-pointer',handler);return()=>ipcRenderer.removeListener('dudidam:global-pointer',handler);}
 }));

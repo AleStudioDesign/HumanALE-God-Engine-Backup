@@ -30,6 +30,7 @@ test('compact window, automatic transparent hit testing and media permission che
 test('neural roots, living dual-contrast glyphs, magnetic field, mouth, neck and 30 degree yaw are rendered',async()=>{const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');for(const feature of ['drawNeuralRoots','drawNeck','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors'])assert.match(avatar,new RegExp(feature));assert.match(avatar,/strokeText/);assert.match(avatar,/const maxYaw=Math\.PI\/6/);assert.match(avatar,/rx=clamp\(rx,-maxYaw,maxYaw\)/);assert.match(avatar,/quadraticCurveTo/);assert.match(avatar,/bezierCurveTo/);});
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
 test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pack,/Dudidam\.exe/);assert.match(pkg.scripts['package:desktop'],/install-electron --no/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(workflow,/npm run verify/);assert.match(workflow,/npm run package:desktop/);});
+test('safe launcher starts only the packaged Dudidam application',async()=>{const launcher=await readFile(new URL('../Jalankan-entitasale170925-SAFE.bat',import.meta.url),'utf8');assert.match(launcher,/Dudidam-Desktop\\Dudidam\.exe/);assert.match(launcher,/if not exist/);assert.doesNotMatch(launcher,/runas|powershell|reg add|taskkill/i);});
 test('desktop CI smoke mode verifies the packaged renderer',async()=>{const [desktop,workflow]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);assert.match(desktop,/--ci-smoke/);assert.match(desktop,/Dudidam CI smoke passed/);assert.match(desktop,/executeJavaScript/);assert.match(desktop,/app\.exit\(1\)/);assert.match(workflow,/Dudidam\.exe --ci-smoke/);});
 test('floating popup keeps only the avatar surface transparent while dialogs stay opaque',async()=>{const [css,surface]=await Promise.all([readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8')]);assert.match(css,/body\.desktop,body\.popup-widget\{background:transparent!important\}/);assert.match(css,/\.desktop dialog,\.popup-widget dialog\{background:rgba\(7,19,14,var\(--panel-alpha\)\)/);assert.match(surface,/isDesktop \|\| isPopup/);});
 test('Grok provider is wired through the xAI Responses API without renderer secrets',async()=>{const [grok,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/grok.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.equal(parseGrokResponse({output_text:' Halo '}),'Halo');assert.equal(parseGrokResponse({output:[{content:[{type:'output_text',text:'Hai'}]}]}),'Hai');assert.match(grok,/https:\/\/api\.x\.ai\/v1\/responses/);assert.match(grok,/XAI_API_KEY/);assert.match(grok,/Authorization':'Bearer '/);assert.match(desktop,/GrokBridge/);assert.match(preload,/dudidam:status/);assert.match(html,/value="grok"/);assert.match(app,/provider:aiProvider/);assert.doesNotMatch(html,/XAI_API_KEY\s*=/);});
@@ -84,6 +85,49 @@ test('custom avatar size, soft summon and bounded project work mode stay wired',
  assert.match(hub,/--allow-tool=write/);
  assert.match(hub,/Jangan git push/);
  assert.doesNotMatch(hub,/--allow-all/);
+});
+
+test('avatar size, full-desktop gaze and smooth brain-bound light pulses stay wired',async()=>{
+ const [html,app,avatar,desktop,preload]=await Promise.all([
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')
+ ]);
+ assert.match(html,/id="avatarSize" type="range" min="180" max="540"/);
+ assert.match(app,/Math\.max\(180,Math\.min\(540/);
+ assert.match(app,/avatarViewport/);
+ assert.match(desktop,/resizeForAvatar/);
+ assert.match(desktop,/getCursorScreenPoint/);
+ assert.match(desktop,/getAllDisplays/);
+ assert.match(desktop,/dudidam:global-pointer/);
+ assert.match(preload,/onGlobalPointer/);
+ assert.match(avatar,/gazePointer/);
+ assert.match(avatar,/gazeEase/);
+ assert.match(avatar,/drawBrainCorePulse/);
+ assert.match(avatar,/shadowBlur/);
+ assert.match(avatar,/rawProgress/);
+ assert.doesNotMatch(desktop,/globalHook|keylogger/i);
+});
+
+test('cinematic avatar assembles and dissolves without a permanent particle swarm',async()=>{
+ const [avatar,app,desktop,preload]=await Promise.all([
+  readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')
+ ]);
+ assert.match(avatar,/dismiss\(duration=3000\)/);
+ assert.match(avatar,/drawTransitionRibbons/);
+ assert.match(avatar,/transition\.kind==='disassemble'/);
+ assert.doesNotMatch(avatar,/this\.particles=Array/);
+ assert.doesNotMatch(avatar,/drawElectronOrbits/);
+ assert.match(app,/DISMISS_DURATION_MS=3000/);
+ assert.match(app,/dismissAle/);
+ assert.match(desktop,/dudidam:dismiss/);
+ assert.match(preload,/onDismiss/);
+ assert.match(preload,/finishDismiss/);
 });
 
 

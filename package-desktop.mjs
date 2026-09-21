@@ -5,7 +5,9 @@ if(process.platform!=='win32'){
  throw new Error('Paket desktop Dudidam saat ini hanya dibangun di Windows.');
 }
 
-const electronDist=path.resolve('node_modules','electron','dist');
+const electronDist=process.env.ELECTRON_DIST_PATH
+ ? path.resolve(process.env.ELECTRON_DIST_PATH)
+ : path.resolve('node_modules','electron','dist');
 const electronExe=path.join(electronDist,'electron.exe');
 await access(electronExe);
 

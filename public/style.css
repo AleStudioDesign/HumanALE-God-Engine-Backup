@@ -6,8 +6,8 @@
 .wake-indicator[data-active="true"]{opacity:.96;color:#d8ffe4;border-color:#9effc55c;text-shadow:0 0 8px #73ff9d88}
 .drag-handle{cursor:move;touch-action:none;user-select:none}
 .dialog-movable{position:fixed!important;margin:0!important;right:auto!important;bottom:auto!important}
-body.summoning #avatarArea,body.summoning .reveal,body.summoning dialog{pointer-events:none!important}
-body.summoning .wake-indicator{opacity:1;transform:translateX(-50%) scale(1.04)}
+body.summoning #avatarArea,body.summoning .reveal,body.summoning dialog,body.dismissing #avatarArea,body.dismissing .reveal,body.dismissing dialog{pointer-events:none!important}
+body.summoning .wake-indicator,body.dismissing .wake-indicator{opacity:1;transform:translateX(-50%) scale(1.04)}
 
 .avatar-size-row{display:grid;grid-template-columns:auto auto;align-items:center}
 .avatar-size-row input[type=range]{grid-column:1/-1;width:100%;accent-color:#a1fdbc;margin:5px 0 1px}
