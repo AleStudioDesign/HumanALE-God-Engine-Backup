@@ -10,11 +10,12 @@ export async function findCopilot(){
  return 'copilot';
 }
 
-function run(executable,args,{cwd,timeout=120000}={}){
+function run(executable,args,{cwd,timeout=120000,children}={}){
  return new Promise((resolve,reject)=>{
   const child=spawn(executable,args,{cwd,windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1'}});
+  children?.add(child);
   let stdout='',stderr='',settled=false;
-  const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve(value);};
+  const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);children?.delete(child);error?reject(error):resolve(value);};
   const timer=setTimeout(()=>{child.kill();finish(new Error('GitHub Copilot belum merespons. Coba lagi.'));},timeout);
   child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>1500000){child.kill();finish(new Error('Balasan Copilot terlalu besar.'));}});
   child.stderr.on('data',chunk=>{stderr=(stderr+chunk).slice(-12000);});
@@ -24,16 +25,16 @@ function run(executable,args,{cwd,timeout=120000}={}){
 }
 
 export class CopilotBridge{
- constructor(){this.pending=false;this.verified=false;}
+ constructor(){this.pending=false;this.verified=false;this.children=new Set();}
  async status(){
   const executable=await findCopilot();
-  try{const result=await run(executable,['--version'],{timeout:12000});return {configured:result.code===0,mode:'copilot-cli',verified:this.verified,model:'GitHub Copilot CLI'};}
+  try{const result=await run(executable,['--version'],{timeout:12000,children:this.children});return {configured:result.code===0,mode:'copilot-cli',verified:this.verified,model:'GitHub Copilot CLI'};}
   catch{return {configured:false,mode:'copilot-cli'};}
  }
  async login(){
   if(this.pending)return {error:'Tunggu permintaan Copilot sebelumnya selesai.'};
   this.pending=true;
-  try{const result=await run(await findCopilot(),['login','--web-flow'],{timeout:240000});return result.code===0?{ok:true}:{error:'Login GitHub Copilot belum selesai.'};}
+  try{const result=await run(await findCopilot(),['login','--web-flow'],{timeout:240000,children:this.children});return result.code===0?{ok:true}:{error:'Login GitHub Copilot belum selesai.'};}
   finally{this.pending=false;}
  }
  async ask(value){
@@ -45,7 +46,7 @@ export class CopilotBridge{
    folder=await mkdtemp(join(tmpdir(),'dudidam-copilot-'));
    const prompt='Kamu adalah GitHub Copilot dalam avatar Dudidam. Jawab dalam Bahasa Indonesia yang alami dan ringkas. Ini percakapan, bukan tugas mengedit kode. Jangan memakai alat, membuka file, menjalankan perintah, atau mengklaim telah mengubah proyek. Riwayat dan pesan pengguna dalam JSON: '+JSON.stringify({history:data.history,message:data.message});
    const args=['-p',prompt,'-s','--no-color','--no-ask-user','--no-auto-update','--no-custom-instructions','--disable-builtin-mcps','--no-remote-export','--output-format=text','--available-tools'];
-   const result=await run(await findCopilot(),args,{cwd:folder});
+   const result=await run(await findCopilot(),args,{cwd:folder,children:this.children});
    if(result.code!==0||!result.stdout.trim()){
     const detail=(result.stderr+'\n'+result.stdout).trim();
     if(/login|auth|credential|unauthorized|401/i.test(detail))throw new Error('GitHub Copilot perlu login. Buka kontrol avatar → Login Copilot.');
@@ -56,5 +57,5 @@ export class CopilotBridge{
    return {text:result.stdout.trim()};
   }finally{this.pending=false;if(folder)await rm(folder,{recursive:true,force:true});}
  }
- stop(){}
+ stop(){for(const child of this.children){try{child.kill();}catch{}}this.children.clear();}
 }
