@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  move:delta=>ipcRenderer.send('dudidam:move',delta),
  passthrough:value=>ipcRenderer.send('dudidam:passthrough',value),
  passthroughLock:value=>ipcRenderer.send('dudidam:passthrough-lock',value),
+ panelViewport:value=>ipcRenderer.send('dudidam:panel-viewport',value),
  minimize:()=>ipcRenderer.send('dudidam:minimize'),
  close:()=>ipcRenderer.send('dudidam:close'),
  onSummon:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:summon',handler);return()=>ipcRenderer.removeListener('dudidam:summon',handler);}
