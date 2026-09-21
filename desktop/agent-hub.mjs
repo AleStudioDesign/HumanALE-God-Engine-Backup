@@ -47,6 +47,10 @@ async function locate(agent){
  return null;
 }
 export function agentDefinitions(){return agents.map(({commands,envPath,configEnv,configEnvs,secondaryEnv,...agent})=>({...agent}));}
+function looksLikeCopilotTrustPrompt(text=''){
+ const value=String(text).toLowerCase();
+ return value.includes('trust')&&(value.includes('folder')||value.includes('directory')||value.includes('files in'));
+}
 export class DeveloperAgentHub{
  constructor(){this.child=null;this.pending=false;}
  async status(){
@@ -92,8 +96,22 @@ export class DeveloperAgentHub{
     this.child=child;let stdout='',stderr='',settled=false;
     const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);if(this.child===child)this.child=null;error?reject(error):resolve(value);};
     const timer=setTimeout(()=>{child.kill();finish(new Error(agent.name+' belum selesai dalam 120 detik.'));},120000);
-    child.stdout.on('data',data=>{stdout+=data;if(stdout.length>400000){child.kill();finish(new Error('Output agent terlalu besar.'));}});
-    child.stderr.on('data',data=>{stderr=(stderr+data).slice(-16000);});
+    child.stdout.on('data',data=>{
+     stdout+=data;
+     if(id==='github-copilot'&&looksLikeCopilotTrustPrompt(stdout)){
+      child.kill();
+      finish(new Error('GitHub Copilot meminta konfirmasi trust folder. Buka terminal di folder proyek, jalankan copilot sekali, trust folder tersebut, lalu jalankan lagi dari Dudidam.'));
+      return;
+     }
+     if(stdout.length>400000){child.kill();finish(new Error('Output agent terlalu besar.'));}
+    });
+    child.stderr.on('data',data=>{
+     stderr=(stderr+data).slice(-16000);
+     if(id==='github-copilot'&&looksLikeCopilotTrustPrompt(stderr)){
+      child.kill();
+      finish(new Error('GitHub Copilot meminta konfirmasi trust folder. Buka terminal di folder proyek, jalankan copilot sekali, trust folder tersebut, lalu jalankan lagi dari Dudidam.'));
+     }
+    });
     child.on('error',()=>finish(new Error(agent.name+' tidak dapat dijalankan.')));
     child.on('close',code=>code===0?finish(null,{id,name:agent.name,mode,text:stdout.trim()||'Agent selesai tanpa output teks.'}):finish(new Error((stderr||stdout||agent.name+' gagal dijalankan.').trim())));
    });
