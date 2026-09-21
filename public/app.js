@@ -296,6 +296,15 @@ function activateAllEffects(){
  $('#animate').checked=true;$('#track').checked=true;$('#color').value='spectrum';
  document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed','true'));
 }
+function showAle(){
+ if(panelOnly)return;
+ ++transitionSerial;summoning=false;dismissing=false;
+ document.body.classList.remove('summoning','dismissing');
+ avatar.reveal?.();
+ state('');
+ setPassthrough(true);
+ resumeWakeSoon(500);
+}
 async function summonAle(source='voice'){
  if(panelOnly){suspendWakeListening('ALE · dipanggil');panelChannel?.postMessage({type:'summon',source});return;}
  if(summoning)return;
@@ -459,6 +468,7 @@ if(panelChannel)panelChannel.onmessage=event=>{
  }
 };
 if(!panelOnly){
+ desktop?.onShow?.(showAle);
  desktop?.onSummon?.(()=>summonAle('global-hotkey'));
  desktop?.onDismiss?.(reason=>dismissAle(reason));
  desktop?.onGlobalPointer?.(point=>{if(!point||drag)return;avatar.gazePointer={x:Math.max(-1,Math.min(1,Number(point.x)||0)),y:Math.max(-1,Math.min(1,Number(point.y)||0))};avatar.gazeActive=true;});
