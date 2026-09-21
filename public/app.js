@@ -168,6 +168,17 @@ async function playMusic(file){if(!file)return;stopReactiveAudio();const player=
 function message(text,role='assistant',say=true,broadcast=true){const a=document.createElement('article');a.className='message '+role;const b=document.createElement('b');b.textContent=role==='assistant'?'DUDIDAM':'KAMU';const p=document.createElement('p');p.textContent=text;a.append(b,p);$('#messages').append(a);$('#messages').scrollTop=$('#messages').scrollHeight;if(role==='assistant'){$('#bubble').textContent=text;$('#bubble').hidden=!panelOnly&&$('#chatDialog').open;clearTimeout(bubbleTimer);bubbleTimer=setTimeout(()=>$('#bubble').hidden=true,15000);if(say)speak(text);}if(broadcast)panelChannel?.postMessage({type:'message',text,role});}
 async function submit(text,image){text=text.trim();if(!text||busy)return;message(text,'user',false);const cmd=!image&&parseCommand(text);if(cmd){let answer='';if(['blink','nod','shake'].includes(cmd)){avatar.trigger(cmd);answer={blink:'Saya berkedip.',nod:'Baik, saya mengangguk.',shake:'Saya menggelengkan kepala.'}[cmd];}if(cmd==='stop'){stopSpeech();stopListening();answer='Baik. Suara dihentikan.';}if(cmd==='hello'){avatar.trigger('nod');answer='Halo, saya Dudidam. Saya mendengarkan.';}if(cmd==='help')answer='Klik kanan atau tekan H untuk kontrol, Enter untuk percakapan. B berkedip, N mengangguk, G menggeleng, M mikrofon, R tengahkan. Tombol 1 sampai 5 mengganti gaya biner dan neural. Ukuran avatar dapat diatur dari kontrol. Seret wajah untuk memindahkan.';if(cmd==='time')answer='Sekarang pukul '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+'.';if(cmd==='date')answer='Hari ini '+new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';if(cmd==='pet'){document.querySelectorAll('dialog[open]').forEach(d=>d.close());answer='Panel disembunyikan.';}message(answer,'assistant',cmd!=='stop');return;}
  if(!desktop){message('Login Sites hanya mengenali akun. Untuk percakapan model gunakan Dudidam Desktop.','assistant',false);return;}
+ if(aiProvider==='copilot'&&!image&&isExplicitProjectWorkRequest(text)){
+  busy=true;stopSpeech();$('#send').disabled=true;$('#look').disabled=true;state('GitHub Copilot mengerjakan proyek…');$('#liveText').textContent='Copilot Work mode sedang mengedit checkout proyek…';
+  try{
+   const result=await runCopilotProjectWork(text);
+   if(result?.error)throw new Error(result.error);
+   const answer=result?.text||'Copilot selesai tanpa output teks.';
+   history.push({role:'user',content:text},{role:'assistant',content:answer});history=history.slice(-10);panelChannel?.postMessage({type:'history',history});message(answer);
+  }catch(error){message(error?.message||'Copilot Work mode gagal menjalankan tugas.','assistant',false);}
+  finally{busy=false;avatar.thinking=false;$('#send').disabled=false;$('#look').disabled=false;$('#liveText').textContent='';if(!avatar.speaking&&!listening)state();}
+  return;
+ }
  if(!aiReady){const missing={copilot:'GitHub Copilot CLI belum tersedia. Pasang dan login Copilot, lalu tekan Periksa lagi.',openai:'OpenAI API belum aktif. Atur OPENAI_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',grok:'Grok belum aktif. Atur XAI_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',gemini:'Gemini belum aktif. Atur GEMINI_API_KEY atau GOOGLE_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',claude:'Claude belum aktif. Atur ANTHROPIC_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',deepseek:'DeepSeek belum aktif. Atur DEEPSEEK_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',askcodi:'AskCodi belum aktif. Atur ASKCODI_API_KEY dan ASKCODI_MODEL, buka ulang Dudidam, lalu tekan Periksa lagi.'}[aiProvider]||'Silakan pilih Login ChatGPT pada kontrol avatar, selesaikan login di browser, lalu Periksa lagi.';message(missing,'assistant',false);return;}
  busy=true;stopSpeech();$('#send').disabled=true;$('#look').disabled=true;state('Berpikir…');const providerName={copilot:'GitHub Copilot',openai:'OpenAI API',grok:'Grok',gemini:'Gemini',claude:'Claude',deepseek:'DeepSeek',askcodi:'AskCodi'}[aiProvider]||'ChatGPT';$('#liveText').textContent=providerName+' sedang merespons…';
  try{const result=await desktop.ask({provider:aiProvider,message:text,history:history.slice(-10),image});if(result.error)throw new Error(result.error);history.push({role:'user',content:text},{role:'assistant',content:result.text});history=history.slice(-10);panelChannel?.postMessage({type:'history',history});message(result.text);}
@@ -202,7 +213,7 @@ async function checkAI(){
   }
  }catch{$('#aiStatus').textContent='Status belum tersedia';$('#apiDetail').textContent='Periksa koneksi lalu coba lagi.';aiReady=false;}
 }
-async function loadAgents(){if(!desktop)return;const list=$('#agentList'),select=$('#agentSelect');list.replaceChildren();select.replaceChildren();$('#agentOutput').hidden=true;$('#agentRun').disabled=true;const data=await desktop.agents();if(data?.error){$('#agentProject').textContent=data.error;return;}$('#agentProject').textContent='Project root: '+data.projectRoot;for(const item of data.agents||[]){const card=document.createElement('article');card.className='agent-card';card.setAttribute('role','listitem');const head=document.createElement('div');head.className='agent-card-head';const title=document.createElement('strong');title.textContent=item.name;const state=document.createElement('span');state.className='agent-state';state.textContent=item.state;head.append(title,state);const method=document.createElement('small');method.textContent=item.method;const detail=document.createElement('p');detail.textContent=item.detail;const actions=document.createElement('div');actions.className='actions';const open=document.createElement('button');open.type='button';open.textContent='Dokumentasi ↗';open.onclick=async()=>{const result=await desktop.openAgent(item.id);if(result?.error)toast(result.error);};actions.append(open);card.append(head,method,detail,actions);list.append(card);if(item.canRun){const option=document.createElement('option');option.value=item.id;option.textContent=item.name;select.append(option);}}$('#agentRun').disabled=!select.options.length;if(!select.options.length){const option=document.createElement('option');option.textContent='Tidak ada CLI agent terdeteksi';option.disabled=true;select.append(option);}syncAgentMode();}
+async function loadAgents(){if(!desktop)return;const list=$('#agentList'),select=$('#agentSelect');list.replaceChildren();select.replaceChildren();$('#agentOutput').hidden=true;$('#agentRun').disabled=true;const data=await desktop.agents();if(data?.error){$('#agentProject').textContent=data.error;return;}$('#agentProject').textContent=(data.projectRootReady?'Project checkout siap: ':'Folder kerja belum siap: ')+data.projectRoot;for(const item of data.agents||[]){const card=document.createElement('article');card.className='agent-card';card.setAttribute('role','listitem');const head=document.createElement('div');head.className='agent-card-head';const title=document.createElement('strong');title.textContent=item.name;const state=document.createElement('span');state.className='agent-state';state.textContent=item.state;head.append(title,state);const method=document.createElement('small');method.textContent=item.method;const detail=document.createElement('p');detail.textContent=item.detail;const actions=document.createElement('div');actions.className='actions';const open=document.createElement('button');open.type='button';open.textContent='Dokumentasi ↗';open.onclick=async()=>{const result=await desktop.openAgent(item.id);if(result?.error)toast(result.error);};actions.append(open);card.append(head,method,detail,actions);list.append(card);if(item.canRun){const option=document.createElement('option');option.value=item.id;option.textContent=item.name;select.append(option);}}$('#agentRun').disabled=!select.options.length;if(!select.options.length){const option=document.createElement('option');option.textContent='Tidak ada CLI agent terdeteksi';option.disabled=true;select.append(option);}syncAgentMode();}
 function syncAgentMode(){
  const id=$('#agentSelect').value,mode=$('#agentMode'),work=mode?.querySelector('option[value="work"]');
  const allowed=id==='github-copilot'||id==='codex';
@@ -219,6 +230,38 @@ async function runDeveloperAgent(event){
  try{const result=await desktop.runAgent({id,prompt,mode});$('#agentOutput').textContent=result?.error||result?.text||'Agent selesai tanpa output.';}
  catch(error){$('#agentOutput').textContent=error?.message||'Agent gagal dijalankan.';}
  finally{$('#agentRun').disabled=false;}
+}
+async function chooseProjectFolder(){
+ if(!desktop?.chooseProjectRoot)return;
+ const button=$('#projectPick');button.disabled=true;
+ try{
+  const result=await desktop.chooseProjectRoot();
+  if(result?.error){toast(result.error);return;}
+  if(result?.canceled)return;
+  toast(result?.projectRootReady?'Folder proyek siap untuk Mode Kerja.':'Folder dipilih, tetapi bukan checkout Git. Pilih folder repo yang memiliki .git.');
+  await loadAgents();
+ }catch(error){toast(error?.message||'Folder proyek belum dapat dipilih.');}
+ finally{button.disabled=false;}
+}
+function isExplicitProjectWorkRequest(text=''){
+ const value=String(text).toLowerCase().replace(/\s+/g,' ').trim();
+ return /^(?:ok[,. ]+)?(?:(?:tolong|bantu|coba)\s+)?(?:kerjakan(?:\s+langsung)?|lakukan(?:\s+(?:sekarang|langsung))?|perbaiki(?:\s+(?:kode|proyek|project|avatar|fitur))?|ubah(?:\s+(?:kode|proyek|project|avatar|fitur))|implementasikan|terapkan(?:\s+(?:perubahan|perbaikan|ini))?|lanjutkan\s+(?:proyek|project|tugas|pekerjaan)|edit\s+(?:kode|proyek|project|file))\b/.test(value);
+}
+function buildProjectWorkPrompt(text){
+ const context=history.slice(-6).map(item=>(item.role==='assistant'?'DUDIDAM':'PENGGUNA')+': '+item.content).join('\n');
+ const prompt='Pengguna secara eksplisit meminta perubahan proyek dari percakapan Dudidam. Gunakan konteks berikut untuk memahami target visual/bug, lalu benar-benar edit file yang relevan di checkout proyek. Jangan hanya memberi rencana.\n\n'+(context?context+'\n':'')+'PENGGUNA SEKARANG: '+text+'\n\nSetelah mengedit, jalankan test yang relevan dan laporkan file yang diubah serta hasilnya.';
+ return prompt.slice(-3900);
+}
+async function runCopilotProjectWork(text){
+ const status=await desktop.agents();
+ if(status?.error)throw new Error(status.error);
+ if(!status?.projectRootReady){
+  desktop.openPanel?.('agentDialog');
+  throw new Error('Folder checkout proyek belum dipilih. Buka Developer agents → Pilih folder proyek, pilih folder repo entitashuman yang memiliki .git, lalu kirim perintah kerja lagi.');
+ }
+ const copilot=(status.agents||[]).find(item=>item.id==='github-copilot');
+ if(!copilot?.canRun)throw new Error('GitHub Copilot Work mode belum siap. Pastikan Copilot CLI terpasang dan login, lalu Periksa koneksi di Developer agents.');
+ return await desktop.runAgent({id:'github-copilot',mode:'work',prompt:buildProjectWorkPrompt(text)});
 }
 function setMicStatus(text){$('#micStatus').textContent=text;}
 async function checkMicrophoneHealth(){
@@ -431,6 +474,7 @@ $('#refreshStatus').onclick=checkAI;
 $('#provider').onchange=e=>{aiProvider=['chatgpt',...apiProviders].includes(e.target.value)?e.target.value:'chatgpt';localStorage.setItem('dudidam-provider',aiProvider);history=[];stopCamera();setPersona(aiProvider);checkAI();};
 $('#agentHub').onclick=async()=>{if(!desktop)return;showDialog('#agentDialog');await loadAgents();};
 $('#agentRefresh').onclick=loadAgents;
+$('#projectPick').onclick=chooseProjectFolder;
 $('#agentSelect').onchange=syncAgentMode;
 $('#agentForm').onsubmit=runDeveloperAgent;
 $('#audioMic').onclick=startMicrophoneVisual;$('#systemAudio').onclick=startSystemAudio;$('#stopAudio').onclick=stopReactiveAudio;$('#musicFile').onchange=e=>playMusic(e.target.files?.[0]);$('#musicPlayer').onended=stopReactiveAudio;
@@ -482,7 +526,7 @@ if(!panelOnly){
  desktop?.onGlobalPointer?.(point=>{if(!point||drag)return;avatar.gazePointer={x:Math.max(-1,Math.min(1,Number(point.x)||0)),y:Math.max(-1,Math.min(1,Number(point.y)||0))};avatar.gazeActive=true;});
 }
 if(panelOnly){
- desktop.onPanelView?.(view=>showDialog('#'+view));
+ desktop.onPanelView?.(async view=>{showDialog('#'+view);if(view==='agentDialog')await loadAgents();});
  panelChannel?.postMessage({type:'panel-ready'});
  const initial=params.get('panel');
  if(['controls','chatDialog','agentDialog'].includes(initial))requestAnimationFrame(()=>showDialog('#'+initial));
