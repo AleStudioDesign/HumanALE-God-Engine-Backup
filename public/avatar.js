@@ -33,6 +33,9 @@ export class BinaryAvatar {
   this.evolving=false;
   this.evolutionStarted=0;
   this.evolutionCompleteUntil=0;
+  this.paused=false;
+  this.performanceModeUntil=0;
+  this.lastFrameCost=0;
   this.thinking=false;
   this.speechEnergy=0;
   this.speechTarget=0;
@@ -82,6 +85,7 @@ export class BinaryAvatar {
  trigger(action){this.action=action;this.actionStart=performance.now();if(action==='blink')this.blinkStart=this.actionStart;}
  setSpeechEnergy(value=.62){this.speechTarget=clamp(value,0,1);this.speechBeat=performance.now();}
  setListening(value=false){this.listening=Boolean(value);}
+ setPaused(value=false){this.paused=Boolean(value);}
  setEvolving(value=false){
   const next=Boolean(value);
   if(next&&!this.evolving)this.evolutionStarted=performance.now();
@@ -188,7 +192,7 @@ export class BinaryAvatar {
   const cycle=clock*.00042;
   const strength=this.evolving?1:clamp(1-(now-(this.evolutionCompleteUntil-2200))/2200,0,1);
   context.save();context.globalCompositeOperation='source-over';
-  for(let lane=-2;lane<=2;lane++){
+  for(let lane=-1;lane<=1;lane++){
    const phase=(cycle+lane*.173)%1;
    const direction=lane%2?1:-1;
    const sampler=t=>{
@@ -200,19 +204,19 @@ export class BinaryAvatar {
      y:cy+vertical+Math.sin(angle*.8)*fh*.035*direction
     };
    };
-   this.drawBinarySampler(context,sampler,18,hue+118+lane*17,(.08+.14*strength),lightEnvironment,size,61+lane);
+   this.drawBinarySampler(context,sampler,12,hue+118+lane*17,(.08+.14*strength),lightEnvironment,size,61+lane);
   }
   const scan=((elapsed*.00028)%1),scanY=cy-fh*.42+scan*fh*.84;
-  for(let bit=0;bit<12;bit++){
-   const t=bit/11,x=cx-fw*.34+t*fw*.68;
+  for(let bit=0;bit<8;bit++){
+   const t=bit/7,x=cx-fw*.34+t*fw*.68;
    const lift=Math.sin(t*Math.PI)*fh*.018;
    context.font=`${Math.max(5,size*.014)}px monospace`;
    this.drawAdaptiveGlyph(context,(bit+Math.floor(elapsed/240))%2?'1':'0',x,scanY-lift,hue+150+bit*4,.16+.18*strength,lightEnvironment,undefined,false);
   }
   if(completing){
    const finish=clamp(1-(this.evolutionCompleteUntil-now)/2200,0,1),burst=Math.sin(Math.min(1,finish*1.35)*Math.PI);
-   for(let bit=0;bit<18;bit++){
-    const angle=bit/18*TAU+clock*.00018,radius=fw*(.34+burst*.18),x=cx+Math.cos(angle)*radius,y=cy+Math.sin(angle)*fh*(.34+burst*.08);
+   for(let bit=0;bit<12;bit++){
+    const angle=bit/12*TAU+clock*.00018,radius=fw*(.34+burst*.18),x=cx+Math.cos(angle)*radius,y=cy+Math.sin(angle)*fh*(.34+burst*.08);
     context.font=`${Math.max(5,size*.014)}px monospace`;
     this.drawAdaptiveGlyph(context,bit%2?'1':'0',x,y,hue+180+bit*5,.18*burst,lightEnvironment,undefined,false);
    }
@@ -508,9 +512,13 @@ export class BinaryAvatar {
 
   frame(time){
   requestAnimationFrame(next=>this.frame(next));
-  if(document.hidden||time-this.last<32)return;
+  if(this.paused||document.hidden)return;
+  const frameInterval=(this.evolving||performance.now()<this.performanceModeUntil)?48:32;
+  if(time-this.last<frameInterval)return;
+  const frameStarted=performance.now();
   this.last=time;
   const context=this.ctx,width=this.w,height=this.h;if(!width||!height)return;
+  const lowCost=this.evolving||performance.now()<this.performanceModeUntil;
   context.clearRect(0,0,width,height);
   const auto=this.animate,clock=auto?time:0,motionClock=auto?time*PARTICLE_TIME_SCALE:0,size=Math.min(width,height),spectral=this.color==='spectrum';
   const hue=spectral?(motionClock*.012)%360:this.color==='cyan'?175:this.color==='violet'?272:this.color==='gold'?43:132,lightEnvironment=this.isLightEnvironment();
@@ -556,6 +564,7 @@ export class BinaryAvatar {
   context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
   const abstractStrength=this.allEffects? .62:this.mode==='abstract'?1:this.mode==='neural'? .58:this.mode==='mixed'? .28:0;
   for(let sampleIndex=0;sampleIndex<this.samples.length;sampleIndex++){
+   if(lowCost&&sampleIndex%2===1)continue;
    const point=this.samples[sampleIndex];
    let px=point.x,py=point.y,lum=point.lum;
    if(abstractStrength&&Math.sin(point.seed*91+motionClock*.0017+py*18)>.93-abstractStrength*.08)continue;
@@ -604,5 +613,7 @@ export class BinaryAvatar {
   if(assembly>.08)this.drawMouthSignal(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx,ry);
   this.drawMagneticField(context,size,hue,clock,lightEnvironment);
   context.restore();
+  this.lastFrameCost=performance.now()-frameStarted;
+  if(this.lastFrameCost>85)this.performanceModeUntil=performance.now()+3000;
  }
 }
