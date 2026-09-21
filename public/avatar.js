@@ -78,6 +78,7 @@ export class BinaryAvatar {
  trigger(action){this.action=action;this.actionStart=performance.now();if(action==='blink')this.blinkStart=this.actionStart;}
  setSpeechEnergy(value=.62){this.speechTarget=clamp(value,0,1);this.speechBeat=performance.now();}
  activateAllEffects(value=true){this.allEffects=Boolean(value);if(this.allEffects){this.mode='mixed';this.color='spectrum';this.animate=true;this.track=true;}}
+  reveal(){this.transitionKind='';this.awakeningStart=0;this.awakeningDuration=0;}
   awaken(duration=4200){this.activateAllEffects(true);this.transitionKind='assemble';this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1800,Number(duration)||4200);}
   dismiss(duration=3000){this.transitionKind='disassemble';this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1500,Number(duration)||3000);}
   isAwakening(now=performance.now()){return Boolean(this.transitionKind)&&this.awakeningDuration>0&&now-this.awakeningStart>=0&&now-this.awakeningStart<this.awakeningDuration;}
