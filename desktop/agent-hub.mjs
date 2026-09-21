@@ -48,7 +48,8 @@ async function locate(agent){
 }
 
 export function isCodexLoggedIn(text=''){
- return /logged in/i.test(String(text));
+ const value=String(text);
+ return !/\bnot logged in\b/i.test(value)&&/\blogged in\b/i.test(value);
 }
 export function parseCodexJsonOutput(stdout=''){
  let text='',failure=false;
