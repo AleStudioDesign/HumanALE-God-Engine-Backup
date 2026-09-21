@@ -88,6 +88,20 @@ test('Codex agent requires login, parses JSON events and uses bounded work timeo
 
 test('global ALE summon shortcut works without a keylogger',async()=>{const [desktop,preload,app]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(desktop,/globalShortcut/);assert.match(desktop,/CommandOrControl\+Alt\+5/);assert.match(desktop,/dudidam:summon/);assert.match(desktop,/unregisterAll/);assert.match(preload,/onSummon/);assert.match(app,/global-hotkey/);});
 
+test('ALE wake microphone is explicit opt-in and permission copy is accurate',async()=>{
+ const [app,html,desktop]=await Promise.all([
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')
+ ]);
+ assert.match(app,/dudidam-wake-enabled/);
+ assert.match(app,/if\(wakeEnabled\)startWakeListening\(\)/);
+ assert.doesNotMatch(html,/id="wakeToggle" checked/);
+ assert.match(html,/Tahan 5 sekitar 1,5 detik saat Dudidam fokus/);
+ assert.match(html,/Ctrl\+Alt\+5/);
+ assert.match(desktop,/Wake ALE, dikte, atau reaksi suara/);
+});
+
 
 test('custom avatar size, soft summon and bounded project work mode stay wired',async()=>{
  const [html,app,avatar,css,hub]=await Promise.all([
