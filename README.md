@@ -1,6 +1,10 @@
 # Dudidam 2 — Floating Binary Human
 Avatar wajah biner mengambang di tengah layar. Saat ALE dipanggil, biner/neural/electron mengalir dari pusat secara perlahan selama sekitar 4,2 detik, membentuk wajah dengan gerak lebih abstrak, elastis, dan lembut. Panel tersembunyi. Matrix, statistik generatif, abstrak, neural, dan campuran; kode biner membelok serta mengorbit di sekitar kursor sebagai medan magnet. Wajah tidak memakai bayang hitam atau pelat buram. Setiap glyph membentuk kontrasnya sendiri melalui outline gelap berwarna dan inti terang berwarna, sementara hue, saturasi, energi, serta opasitasnya berevolusi perlahan. Karena sisi gelap dan terang hadir bersamaan, glyph tetap terbaca di area wallpaper terang maupun gelap tanpa mengganti seluruh avatar ke satu mode. Leher biner mengikuti rotasi kepala maksimal ±30°, sementara akar neural dari belakang leher mengalirkan pulsa data dan gelombang frekuensi menuju area otak. Bibir dan glyph mulut bergerak berdasarkan energi suara saat Dudidam berbicara.
 
+## Dua alur, satu repository
+
+Riwayat aplikasi aktif dan proyek standalone lama sudah disatukan tanpa force-push atau penggantian source secara massal. Aplikasi 2.2.0 tetap menjadi alur aktif, sedangkan snapshot standalone dipertahankan pada branch `legacy/binary-assistant-v2`. Lihat [DUDIDAM-FLOWS.md](DUDIDAM-FLOWS.md) untuk hubungan branch dan aturan integrasi agar kedua alur tidak saling menimpa.
+
 ## Versi desktop Windows
 Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela avatar 420×480 transparan tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Kontrol, percakapan, dan Developer Agent Hub membuka **jendela panel terpisah** yang dapat diseret melalui bilah judul Windows, dipindah jauh dari avatar atau ke monitor lain, serta diubah ukurannya. Mengklik kanan wajah atau menekan H membuka kontrol; Enter membuka percakapan. Avatar tetap terlihat ketika panel dipindah. Dudidam dapat dipulihkan dari ikon tray saat disembunyikan. Area kosong di sekitar wajah otomatis meneruskan klik ke aplikasi di bawahnya. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
 
