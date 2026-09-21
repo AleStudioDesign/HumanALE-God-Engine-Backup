@@ -34,7 +34,7 @@ test('real audio energy is normalized for mouth and head motion',()=>{assert.equ
 test('microphone, music and Windows loopback controls remain wired',async()=>{const [html,app,audio,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/audio-reactor.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/id="audioMic"/);assert.match(html,/id="musicFile"/);assert.match(app,/getDisplayMedia/);assert.match(audio,/createAnalyser/);assert.match(desktop,/audio:'loopback'/);});
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
 test('desktop popup is recoverable and preserves position without overwriting the repository',async()=>{const [desktop,preload]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(desktop,/new Tray/);assert.match(desktop,/window-state\.json/);assert.match(desktop,/skipTaskbar:true/);assert.match(desktop,/setIgnoreMouseEvents/);assert.match(desktop,/getDisplayNearestPoint/);assert.match(preload,/passthrough/);});
-test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/--avatar-size:380px/);assert.match(css,/#avatarArea\{width:min\(var\(--avatar-size\)/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
+test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/--avatar-size:420px/);assert.match(css,/#avatarArea\{width:min\(var\(--avatar-size\)/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
 test('avatar structure uses binary and neural particles instead of continuous lines',async()=>{
  const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
  for(const feature of ['drawNeuralRoots','drawNeck','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors','drawBinarySampler','drawBinaryCubic','drawBinaryQuadratic','drawBinarySegment'])assert.match(avatar,new RegExp(feature));
@@ -135,7 +135,7 @@ test('custom avatar size, soft summon and bounded project work mode stay wired',
  assert.match(html,/id="agentMode"/);
  assert.match(app,/dudidam-avatar-size/);
  assert.match(app,/SUMMON_DURATION_MS=4200/);
- assert.match(css,/--avatar-size:380px/);
+ assert.match(css,/--avatar-size:420px/);
  assert.match(avatar,/awaken\(duration=4200\)/);
  assert.match(avatar,/fluidStrength/);
  assert.match(avatar,/rawAssembly-delay/);
@@ -168,6 +168,28 @@ test('avatar size, full-desktop gaze and smooth brain-bound light pulses stay wi
  assert.match(avatar,/shadowBlur/);
  assert.match(avatar,/rawProgress/);
  assert.doesNotMatch(desktop,/globalHook|keylogger/i);
+});
+
+test('larger avatar default and slow-motion particle clock stay wired',async()=>{
+ const [html,app,avatar,css,desktop]=await Promise.all([
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/style.css',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')
+ ]);
+ assert.match(app,/DEFAULT_AVATAR_SIZE=420/);
+ assert.match(app,/storedAvatarSize===380\?DEFAULT_AVATAR_SIZE/);
+ assert.match(html,/avatarSizeValue">420 px/);
+ assert.match(html,/id="avatarSize" type="range" min="180" max="540" step="10" value="420"/);
+ assert.match(css,/--avatar-size:420px/);
+ assert.match(css,/#avatarArea\{[^}]*width:min\(var\(--avatar-size\),94vw\)/);
+ assert.match(desktop,/resizeForAvatar\(value=420\)/);
+ assert.match(avatar,/PARTICLE_TIME_SCALE=\.58/);
+ assert.match(avatar,/motionClock=auto\?time\*PARTICLE_TIME_SCALE:0/);
+ assert.match(avatar,/drawNeuralRoots\([^\n]*motionClock/);
+ assert.match(avatar,/drawNeuralField\([^\n]*motionClock/);
+ assert.match(avatar,/drawMouthSignal\([^\n]*hue,clock,/);
 });
 
 test('human head uses 3D perspective and a single smoothed speech viseme',async()=>{
