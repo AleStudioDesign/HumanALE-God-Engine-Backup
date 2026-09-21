@@ -5,6 +5,7 @@ import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
 import {isExplicitProjectWorkRequest} from './work-intent.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,params=new URLSearchParams(location.search),popup=params.get('popup')==='1',panelOnly=Boolean(desktop&&params.has('panel')),avatar=new BinaryAvatar($('#avatar'));
 const panelChannel=desktop?new BroadcastChannel('dudidam-avatar-panel'):null;
+if(panelOnly)avatar.setPaused?.(true);
 const apiProviders=['copilot','openai','grok','gemini','claude','deepseek','askcodi'];
 const SUMMON_DURATION_MS=4200;
 const DISMISS_DURATION_MS=3000;
@@ -228,13 +229,10 @@ function syncAgentMode(){
  if(mode&&!allowed&&mode.value==='work')mode.value='analyze';
 }
 function setEvolutionVisual(mode='start'){
- const apply=()=>{
-  if(mode==='start'){avatar.setEvolving?.(true);state('EVOLVING · memperbaiki diri…');return;}
-  if(mode==='complete'){avatar.completeEvolution?.();state('EVOLUTION COMPLETE · menstabilkan upgrade…');setTimeout(()=>{if(!busy&&!avatar.speaking&&!listening)state();},2200);return;}
-  avatar.setEvolving?.(false);if(!busy&&!avatar.speaking&&!listening)state();
- };
- apply();
- if(panelOnly)panelChannel?.postMessage({type:'evolution',mode});
+ if(panelOnly){panelChannel?.postMessage({type:'evolution',mode});return;}
+ if(mode==='start'){avatar.setEvolving?.(true);state('EVOLVING · memperbaiki diri…');return;}
+ if(mode==='complete'){avatar.completeEvolution?.();state('EVOLUTION COMPLETE · menstabilkan upgrade…');setTimeout(()=>{if(!busy&&!avatar.speaking&&!listening)state();},2200);return;}
+ avatar.setEvolving?.(false);if(!busy&&!avatar.speaking&&!listening)state();
 }
 async function runDeveloperAgent(event){
  event.preventDefault();if(!desktop)return;
