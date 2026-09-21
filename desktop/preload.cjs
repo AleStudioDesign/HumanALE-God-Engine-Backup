@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  minimize:()=>ipcRenderer.send('dudidam:minimize'),
  close:()=>ipcRenderer.send('dudidam:close'),
  finishDismiss:reason=>ipcRenderer.send('dudidam:dismiss-complete',reason),
+ onShow:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:show',handler);return()=>ipcRenderer.removeListener('dudidam:show',handler);},
  onSummon:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:summon',handler);return()=>ipcRenderer.removeListener('dudidam:summon',handler);},
  onDismiss:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,reason)=>callback(reason);ipcRenderer.on('dudidam:dismiss',handler);return()=>ipcRenderer.removeListener('dudidam:dismiss',handler);},
  onGlobalPointer:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,point)=>callback(point);ipcRenderer.on('dudidam:global-pointer',handler);return()=>ipcRenderer.removeListener('dudidam:global-pointer',handler);}
