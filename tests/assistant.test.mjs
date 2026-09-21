@@ -164,6 +164,17 @@ test('human head uses 3D perspective and a single smoothed speech viseme',async(
  assert.doesNotMatch(avatar,/Math\.abs\(Math\.sin\(clock\*\.011\)\)/);
 });
 
+test('summon and dismiss transitions cannot lose the latest window command',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/transitionSerial=0/);
+ assert.match(app,/const transition=\+\+transitionSerial/);
+ assert.match(app,/transition!==transitionSerial/);
+ assert.match(app,/summoning=true;dismissing=false/);
+ assert.match(app,/dismissing=true;summoning=false/);
+ assert.doesNotMatch(app,/async function summonAle[\s\S]{0,100}if\(transitioning\(\)\)return/);
+ assert.doesNotMatch(app,/async function dismissAle[\s\S]{0,100}if\(transitioning\(\)\)return/);
+});
+
 test('cinematic avatar assembles and dissolves without a permanent particle swarm',async()=>{
  const [avatar,app,desktop,preload]=await Promise.all([
   readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
