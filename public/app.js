@@ -126,7 +126,15 @@ async function speakLocal(text){
   player.ontimeupdate=()=>{ttsEnergy=.35+.25*Math.abs(Math.sin(player.currentTime*9));syncFaceAudio();};
   player.onended=()=>stopSpeech();player.onerror=()=>{setMicStatus('Audio suara Indonesia gagal diputar.');stopSpeech();};
   await player.play();
- }catch(error){if(generation!==speechGeneration)return;setMicStatus(error.message||'Suara Indonesia lokal gagal.');stopSpeech();}
+ }catch(error){
+  if(generation!==speechGeneration)return;
+  localTtsConfigured=false;
+  const message=error.message||'Suara Indonesia lokal gagal.';
+  setMicStatus(message+' Mencoba voice Windows Indonesia…');
+  if(speakNativeIndonesian(text))return;
+  setMicStatus(message+' Voice Windows Indonesia juga tidak tersedia.');
+  stopSpeech();
+ }
 }
 function speakNativeIndonesian(text){
  const voices=window.speechSynthesis?.getVoices()||[];
