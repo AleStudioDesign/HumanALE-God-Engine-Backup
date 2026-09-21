@@ -4,6 +4,7 @@ const {readFile,writeFile}=require('node:fs/promises');
 const path=require('node:path');
 
 let win,server,origin,bridges,agentHub,tray,saveTimer;
+let baseWindowSize={width:420,height:480};
 let quitting=false;
 let passthrough=false;
 let passthroughLocked=false;
@@ -50,6 +51,20 @@ function applyPassthrough(value){
 }
 function setDynamicPassthrough(value){if(!passthroughLocked)applyPassthrough(value);}
 function setPassthroughLock(value){passthroughLocked=Boolean(value);applyPassthrough(passthroughLocked);rebuildTrayMenu();}
+function resizeForPanel(zoom=1,open=false){
+ if(!win||win.isDestroyed())return;
+ const factor=open?Math.max(1,Math.min(1.45,Number(zoom)||1)):1;
+ const [oldW,oldH]=win.getSize(),[oldX,oldY]=win.getPosition();
+ const center={x:Math.round(oldX+oldW/2),y:Math.round(oldY+oldH/2)};
+ const display=screen.getDisplayNearestPoint(center),area=display.workArea;
+ const width=Math.min(area.width,Math.round(baseWindowSize.width*factor));
+ const height=Math.min(area.height,Math.round(baseWindowSize.height*factor));
+ const x=Math.max(area.x,Math.min(area.x+area.width-width,Math.round(center.x-width/2)));
+ const y=Math.max(area.y,Math.min(area.y+area.height-height,Math.round(center.y-height/2)));
+ const [currentW,currentH]=win.getSize();
+ if(currentW===width&&currentH===height)return;
+ win.setBounds({x,y,width,height},false);
+}
 
 if(!app.requestSingleInstanceLock())app.quit();
 else{
@@ -64,7 +79,7 @@ else{
   server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);}catch{res.writeHead(404);res.end();}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   origin='http://127.0.0.1:'+server.address().port;
-  const workArea=screen.getPrimaryDisplay().workAreaSize,width=Math.min(420,workArea.width),height=Math.min(480,workArea.height);
+  const workArea=screen.getPrimaryDisplay().workAreaSize,width=Math.min(420,workArea.width),height=Math.min(480,workArea.height);baseWindowSize={width,height};
   const position=safePosition(await readWindowPosition(),width,height);
   win=new BrowserWindow({width,height,x:position.x,y:position.y,frame:false,transparent:true,backgroundColor:'#00000000',hasShadow:false,resizable:false,alwaysOnTop:true,skipTaskbar:true,title:'Dudidam — Avatar Transparan',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,spellcheck:false}});
   win.setAlwaysOnTop(true,'floating');
@@ -83,6 +98,7 @@ else{
   ipcMain.on('dudidam:close',e=>{if(trusted(e))win.hide();});
   ipcMain.on('dudidam:passthrough',(e,value)=>{if(trusted(e))setDynamicPassthrough(value);});
   ipcMain.on('dudidam:passthrough-lock',(e,value)=>{if(trusted(e))setPassthroughLock(value);});
+  ipcMain.on('dudidam:panel-viewport',(e,value)=>{if(!trusted(e))return;resizeForPanel(value?.zoom,Boolean(value?.open));});
   ipcMain.on('dudidam:move',(e,d)=>{if(!trusted(e)||passthrough||!Number.isFinite(d?.dx)||!Number.isFinite(d?.dy))return;const [x,y]=win.getPosition();const next=safePosition({x:x+Math.max(-100,Math.min(100,d.dx)),y:y+Math.max(-100,Math.min(100,d.dy))},width,height);win.setPosition(next.x,next.y);});
 
   win.webContents.setWindowOpenHandler(({url})=>{try{if(new URL(url).origin==='https://chatgpt.com')shell.openExternal(url);}catch{}return {action:'deny'};});
