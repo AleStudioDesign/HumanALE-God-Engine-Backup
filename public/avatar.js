@@ -1,4 +1,5 @@
 const TAU=Math.PI*2;
+const PARTICLE_TIME_SCALE=.58;
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 
 function cubicPoint(a,b,c,d,t){
@@ -377,9 +378,9 @@ export class BinaryAvatar {
   this.last=time;
   const context=this.ctx,width=this.w,height=this.h;if(!width||!height)return;
   context.clearRect(0,0,width,height);
-  const auto=this.animate,clock=auto?time:0,size=Math.min(width,height),spectral=this.color==='spectrum';
-  const hue=spectral?(clock*.012)%360:this.color==='cyan'?175:this.color==='violet'?272:this.color==='gold'?43:132,lightEnvironment=this.isLightEnvironment();
-  const faceHeight=size*.62,faceWidth=faceHeight*.79,floatX=auto?Math.sin(time/3700)*4:0,floatY=auto?Math.sin(time/2500)*6:0;
+  const auto=this.animate,clock=auto?time:0,motionClock=auto?time*PARTICLE_TIME_SCALE:0,size=Math.min(width,height),spectral=this.color==='spectrum';
+  const hue=spectral?(motionClock*.012)%360:this.color==='cyan'?175:this.color==='violet'?272:this.color==='gold'?43:132,lightEnvironment=this.isLightEnvironment();
+  const faceHeight=size*.62,faceWidth=faceHeight*.79,floatX=auto?Math.sin(motionClock/3700)*4:0,floatY=auto?Math.sin(motionClock/2500)*6:0;
   const cx=width/2+floatX,cy=height/2-size*.045+floatY;
   const quietTarget=this.speaking? .34:0;if(time-this.speechBeat>170)this.speechTarget=quietTarget;
   this.speechEnergy+=(this.speechTarget-this.speechEnergy)*(this.reducedMotion? .08:.2);
@@ -411,18 +412,18 @@ export class BinaryAvatar {
    context.rotate((1-assembly)*Math.sin(time*.0028)*.04);
    context.translate(-cx,-cy);
   }
-  this.drawNeuralRoots(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
-  this.drawNeck(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
-  this.drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment);
-  this.drawHeadStructure(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx,ry,close);
-  this.drawTransitionRibbons(context,size,cx,cy,hue,clock,lightEnvironment,transition);
+  this.drawNeuralRoots(context,size,cx,cy,faceWidth,faceHeight,hue,motionClock,lightEnvironment,rx);
+  this.drawNeck(context,size,cx,cy,faceWidth,faceHeight,hue,motionClock,lightEnvironment,rx);
+  this.drawNeuralField(context,size,cx,cy,hue,motionClock,lightEnvironment);
+  this.drawHeadStructure(context,size,cx,cy,faceWidth,faceHeight,hue,motionClock,lightEnvironment,rx,ry,close);
+  this.drawTransitionRibbons(context,size,cx,cy,hue,motionClock,lightEnvironment,transition);
 
   context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
   const abstractStrength=this.allEffects? .62:this.mode==='abstract'?1:this.mode==='neural'? .58:this.mode==='mixed'? .28:0;
   for(let sampleIndex=0;sampleIndex<this.samples.length;sampleIndex++){
    const point=this.samples[sampleIndex];
    let px=point.x,py=point.y,lum=point.lum;
-   if(abstractStrength&&Math.sin(point.seed*91+clock*.0017+py*18)>.93-abstractStrength*.08)continue;
+   if(abstractStrength&&Math.sin(point.seed*91+motionClock*.0017+py*18)>.93-abstractStrength*.08)continue;
    const leftEye=((px+.196)/.113)**2+((py+.06)/.038)**2,rightEye=((px-.19)/.12)**2+((py+.06)/.038)**2;
    if(leftEye<1||rightEye<1){if(close>.15){py=-.06+(py+.06)*(1-close);lum*=1-close*.42;}else{px+=rx*.026;py+=ry*.045;lum*=1.22;}}
    const mouthCenter=.265;
@@ -434,8 +435,8 @@ export class BinaryAvatar {
    const rotatedY=modelY*Math.cos(ry)-yawDepth*Math.sin(ry)*.38,rotatedDepth=yawDepth*Math.cos(ry)+modelY*Math.sin(ry)*.18;
    const perspective=clamp(1+rotatedDepth/(faceWidth*3.7),.84,1.18);
    let x=cx+rotatedX*perspective,y=cy+rotatedY*perspective;
-   const fracture=Math.sin(py*31+clock*.0012+point.seed*7)*abstractStrength;x+=fracture*size*.01*(.35+Math.abs(px)*1.4);y+=Math.sin(px*24-clock*.001+point.seed*11)*size*.004*abstractStrength;
-   const magnetic=this.magneticOffset(x,y,size,clock,point.seed,.48);x=magnetic.x;y=magnetic.y;
+   const fracture=Math.sin(py*31+motionClock*.0012+point.seed*7)*abstractStrength;x+=fracture*size*.01*(.35+Math.abs(px)*1.4);y+=Math.sin(px*24-motionClock*.001+point.seed*11)*size*.004*abstractStrength;
+   const magnetic=this.magneticOffset(x,y,size,motionClock,point.seed,.48);x=magnetic.x;y=magnetic.y;
    let localPresence=1;
    if(transition.kind){
     const delay=(point.seed*.62+(py+.5)*.38)*.42;
@@ -445,15 +446,15 @@ export class BinaryAvatar {
     const streamSide=point.seed>.5?1:-1;
     const sourceX=cx+streamSide*size*(.14+(1-soft)*.34)+Math.sin(spiral)*size*.09;
     const sourceY=cy+((point.seed-.5)*1.08+(1-soft)*streamSide*.12)*size+Math.cos(spiral*.78)*size*.045;
-    const fluidStrength=(1-soft)*Math.sin(clock*.00135+point.seed*17)*size*.026;
+    const fluidStrength=(1-soft)*Math.sin(motionClock*.00135+point.seed*17)*size*.026;
     x=sourceX+(x-sourceX)*soft+Math.cos(spiral)*fluidStrength;
     y=sourceY+(y-sourceY)*soft+Math.sin(spiral)*fluidStrength;
     localPresence=soft;
     if(localPresence<=.01)continue;
    }
-   const edge=Math.sqrt((px*2)**2+(py*2)**2),wave=Math.max(0,Math.sin(clock*.0007+point.seed*20)-.65);if(auto&&edge>.78){x+=px*wave*24;y+=py*wave*21;}
-   const depthLight=clamp(.68+rotatedDepth/(faceWidth*.72),.38,1.14),intensity=Math.min(1,lum*1.7),scan=auto? .9+.1*Math.sin(py*7-clock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*depthLight*(this.thinking?1.13:1))*localPresence;
-   const spectralShift=Math.sin(point.seed*25+clock*.00023)*(spectral?72:18),glyph=auto&&Math.sin(clock/700+point.seed*90)>.988?(point.glyph==='0'?'1':'0'):point.glyph;
+   const edge=Math.sqrt((px*2)**2+(py*2)**2),wave=Math.max(0,Math.sin(motionClock*.0007+point.seed*20)-.65);if(auto&&edge>.78){x+=px*wave*24;y+=py*wave*21;}
+   const depthLight=clamp(.68+rotatedDepth/(faceWidth*.72),.38,1.14),intensity=Math.min(1,lum*1.7),scan=auto? .9+.1*Math.sin(py*7-motionClock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*depthLight*(this.thinking?1.13:1))*localPresence;
+   const spectralShift=Math.sin(point.seed*25+motionClock*.00023)*(spectral?72:18),glyph=auto&&Math.sin(motionClock/700+point.seed*90)>.988?(point.glyph==='0'?'1':'0'):point.glyph;
    const livingHue=hue+spectralShift+abstractStrength*Math.sin(point.seed*19)*24+magnetic.force*48+rotatedDepth/faceWidth*18;
    this.drawAdaptiveGlyph(context,glyph,x,y,livingHue,alpha,lightEnvironment,undefined,sampleIndex%3===0||alpha>.9);
    if(abstractStrength>.5&&Math.abs(fracture)>.72)this.drawAdaptiveGlyph(context,glyph,x+fracture*size*.018,y-fracture*size*.006,hue+spectralShift+28,alpha*.18*abstractStrength,lightEnvironment);
