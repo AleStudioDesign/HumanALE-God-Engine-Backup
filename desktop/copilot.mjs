@@ -45,7 +45,7 @@ export class CopilotBridge{
   try{
    folder=await mkdtemp(join(tmpdir(),'dudidam-copilot-'));
    const prompt='Kamu adalah GitHub Copilot dalam avatar Dudidam. Jawab dalam Bahasa Indonesia yang alami dan ringkas. Ini percakapan, bukan tugas mengedit kode. Jangan memakai alat, membuka file, menjalankan perintah, atau mengklaim telah mengubah proyek. Riwayat dan pesan pengguna dalam JSON: '+JSON.stringify({history:data.history,message:data.message});
-   const args=['-p',prompt,'-s','--no-color','--no-ask-user','--no-auto-update','--no-custom-instructions','--disable-builtin-mcps','--no-remote-export','--output-format=text','--available-tools'];
+   const args=['-p',prompt,'-s','--no-color','--no-ask-user','--no-auto-update','--no-custom-instructions','--disable-builtin-mcps','--no-remote-export','--output-format=text','--available-tools=view'];
    const result=await run(await findCopilot(),args,{cwd:folder,children:this.children});
    if(result.code!==0||!result.stdout.trim()){
     const detail=(result.stderr+'\n'+result.stdout).trim();
