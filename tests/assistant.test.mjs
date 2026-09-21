@@ -35,7 +35,19 @@ test('microphone, music and Windows loopback controls remain wired',async()=>{co
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
 test('desktop popup is recoverable and preserves position without overwriting the repository',async()=>{const [desktop,preload]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(desktop,/new Tray/);assert.match(desktop,/window-state\.json/);assert.match(desktop,/skipTaskbar:true/);assert.match(desktop,/setIgnoreMouseEvents/);assert.match(desktop,/getDisplayNearestPoint/);assert.match(preload,/passthrough/);});
 test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/--avatar-size:380px/);assert.match(css,/#avatarArea\{width:min\(var\(--avatar-size\)/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
-test('neural roots, living dual-contrast glyphs, magnetic field, mouth, neck and 30 degree yaw are rendered',async()=>{const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');for(const feature of ['drawNeuralRoots','drawNeck','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors'])assert.match(avatar,new RegExp(feature));assert.match(avatar,/strokeText/);assert.match(avatar,/const maxYaw=Math\.PI\/6/);assert.match(avatar,/rx=clamp\(rx,-maxYaw,maxYaw\)/);assert.match(avatar,/quadraticCurveTo/);assert.match(avatar,/bezierCurveTo/);});
+test('avatar structure uses binary and neural particles instead of continuous lines',async()=>{
+ const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
+ for(const feature of ['drawNeuralRoots','drawNeck','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors','drawBinarySampler','drawBinaryCubic','drawBinaryQuadratic','drawBinarySegment'])assert.match(avatar,new RegExp(feature));
+ assert.match(avatar,/strokeText/);
+ assert.match(avatar,/const maxYaw=Math\.PI\/6/);
+ assert.match(avatar,/rx=clamp\(rx,-maxYaw,maxYaw\)/);
+ assert.doesNotMatch(avatar,/strokeAdaptivePath/);
+ assert.doesNotMatch(avatar,/context\.stroke\(\)/);
+ assert.doesNotMatch(avatar,/\.lineTo\(/);
+ assert.doesNotMatch(avatar,/bezierCurveTo/);
+ assert.doesNotMatch(avatar,/quadraticCurveTo/);
+ assert.doesNotMatch(avatar,/context\.ellipse/);
+});
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
 test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pack,/Dudidam\.exe/);assert.match(pkg.scripts['package:desktop'],/install-electron --no/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(workflow,/npm run verify/);assert.match(workflow,/npm run package:desktop/);});
 test('safe launcher starts only the packaged Dudidam application',async()=>{const launcher=await readFile(new URL('../Jalankan-entitasale170925-SAFE.bat',import.meta.url),'utf8');assert.match(launcher,/Dudidam-Desktop\\Dudidam\.exe/);assert.match(launcher,/if not exist/);assert.doesNotMatch(launcher,/runas|powershell|reg add|taskkill/i);});
@@ -95,6 +107,20 @@ test('Codex agent requires login, parses JSON events and uses bounded work timeo
 
 
 test('global ALE summon shortcut works without a keylogger',async()=>{const [desktop,preload,app]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(desktop,/globalShortcut/);assert.match(desktop,/CommandOrControl\+Alt\+5/);assert.match(desktop,/dudidam:summon/);assert.match(desktop,/unregisterAll/);assert.match(preload,/onSummon/);assert.match(app,/global-hotkey/);});
+
+test('ALE wake microphone is explicit opt-in and permission copy is accurate',async()=>{
+ const [app,html,desktop]=await Promise.all([
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')
+ ]);
+ assert.match(app,/dudidam-wake-enabled/);
+ assert.match(app,/if\(wakeEnabled\)startWakeListening\(\)/);
+ assert.doesNotMatch(html,/id="wakeToggle" checked/);
+ assert.match(html,/Tahan 5 sekitar 1,5 detik saat Dudidam fokus/);
+ assert.match(html,/Ctrl\+Alt\+5/);
+ assert.match(desktop,/Wake ALE, dikte, atau reaksi suara/);
+});
 
 
 test('custom avatar size, soft summon and bounded project work mode stay wired',async()=>{
@@ -156,6 +182,17 @@ test('human head uses 3D perspective and a single smoothed speech viseme',async(
  assert.match(avatar,/jawWeight/);
  assert.doesNotMatch(avatar,/time\/\(60\+Math\.abs\(px\)/);
  assert.doesNotMatch(avatar,/Math\.abs\(Math\.sin\(clock\*\.011\)\)/);
+});
+
+test('summon and dismiss transitions cannot lose the latest window command',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/transitionSerial=0/);
+ assert.match(app,/const transition=\+\+transitionSerial/);
+ assert.match(app,/transition!==transitionSerial/);
+ assert.match(app,/summoning=true;dismissing=false/);
+ assert.match(app,/dismissing=true;summoning=false/);
+ assert.doesNotMatch(app,/async function summonAle[\s\S]{0,100}if\(transitioning\(\)\)return/);
+ assert.doesNotMatch(app,/async function dismissAle[\s\S]{0,100}if\(transitioning\(\)\)return/);
 });
 
 test('cinematic avatar assembles and dissolves without a permanent particle swarm',async()=>{

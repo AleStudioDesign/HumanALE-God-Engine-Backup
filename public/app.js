@@ -8,7 +8,7 @@ const apiProviders=['copilot','openai','grok','gemini','claude','deepseek','askc
 const SUMMON_DURATION_MS=4200;
 const DISMISS_DURATION_MS=3000;
 let panelZoomFactor=1;
-let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,selectedVoiceURI=desktop?(localStorage.getItem('dudidam-voice-uri')||''):'',listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=false,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,dismissing=false,hold5Timer,hold5Fired=false;
+let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,selectedVoiceURI=desktop?(localStorage.getItem('dudidam-voice-uri')||''):'',listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=desktop?localStorage.getItem('dudidam-wake-enabled')==='true':false,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,dismissing=false,transitionSerial=0,hold5Timer,hold5Fired=false;
 let wakeStartGeneration=0;
 let micProbeGeneration=0,micChecking=false;
 let remoteSpeechEnergy=0;
@@ -288,22 +288,32 @@ function activateAllEffects(){
 }
 async function summonAle(source='voice'){
  if(panelOnly){suspendWakeListening('ALE · dipanggil');panelChannel?.postMessage({type:'summon',source});return;}
- if(transitioning())return;
- summoning=true;suspendWakeListening('ALE · dipanggil');stopListening(false);stopSpeech(false);stopReactiveAudio();
+ if(summoning)return;
+ const transition=++transitionSerial;
+ summoning=true;dismissing=false;
+ document.body.classList.remove('dismissing');
+ suspendWakeListening('ALE · dipanggil');stopListening(false);stopSpeech(false);stopReactiveAudio();
  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
  document.body.classList.add('summoning');desktop?.center();setPassthrough(true);activateAllEffects();avatar.awaken?.(SUMMON_DURATION_MS);
  state(source==='keyboard'?'ALE · menyusun diri dari pusat layar…':'ALE · panggilan diterima · menyusun diri…');
  await wait(SUMMON_DURATION_MS);
+ if(transition!==transitionSerial||!summoning)return;
  document.body.classList.remove('summoning');summoning=false;state('ALE siap · mendengarkan…');setPassthrough(true);
- await wait(180);await toggleMic({fromWake:true});
+ await wait(180);
+ if(transition!==transitionSerial||dismissing)return;
+ await toggleMic({fromWake:true});
 }
 async function dismissAle(reason='hide'){
- if(transitioning())return;
- dismissing=true;suspendWakeListening('ALE · transisi penutupan');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();
+ if(dismissing)return;
+ const transition=++transitionSerial;
+ dismissing=true;summoning=false;
+ document.body.classList.remove('summoning');
+ suspendWakeListening('ALE · transisi penutupan');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();
  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
  document.body.classList.add('dismissing');setPassthrough(true);avatar.dismiss?.(DISMISS_DURATION_MS);
  state('ALE · melebur menjadi aliran biner…');
  await wait(DISMISS_DURATION_MS);
+ if(transition!==transitionSerial||!dismissing)return;
  document.body.classList.remove('dismissing');dismissing=false;state('');
  desktop?.finishDismiss?.(reason);
 }
@@ -386,7 +396,7 @@ $('#environment').onchange=e=>{avatar.setEnvironment(e.target.value);if(panelOnl
 $('#speakSetting').onchange=e=>{voice=e.target.checked;if(!voice)stopSpeech();};
 $('#voiceSelect').onchange=e=>{selectedVoiceURI=e.target.value||'';if(desktop){if(selectedVoiceURI)localStorage.setItem('dudidam-voice-uri',selectedVoiceURI);else localStorage.removeItem('dudidam-voice-uri');}};
 $('#mic').onclick=$('#chatMic').onclick=()=>toggleMic();
-function changeWakeEnabled(enabled){wakeEnabled=Boolean(enabled);if(wakeEnabled){wakeRetryBlocked=false;wakeNetworkFailures=0;wakeHealthVerified=false;setWakeStatus('ALE · menyalakan wake mic…',false);startWakeListening();}else suspendWakeListening('ALE · wake mic nonaktif');}
+function changeWakeEnabled(enabled){wakeEnabled=Boolean(enabled);if(desktop&&!panelOnly)localStorage.setItem('dudidam-wake-enabled',String(wakeEnabled));if(wakeEnabled){wakeRetryBlocked=false;wakeNetworkFailures=0;wakeHealthVerified=false;setWakeStatus('ALE · menyalakan wake mic…',false);startWakeListening();}else suspendWakeListening('ALE · wake mic nonaktif');}
 $('#wakeToggle').onchange=e=>{if(panelOnly){panelChannel?.postMessage({type:'wake-toggle',enabled:e.target.checked});return;}changeWakeEnabled(e.target.checked);};
 $('#camera').onclick=toggleCamera;
 $('#center').onclick=center;
@@ -452,4 +462,4 @@ if(panelOnly){
 document.querySelectorAll('dialog').forEach(enableDialogDrag);window.addEventListener('resize',()=>document.querySelectorAll('dialog[open]').forEach(clampDialog));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){setPassthrough(true);suspendWakeListening('ALE · wake mic dijeda');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();}else resumeWakeSoon(500);});
 window.addEventListener('pagehide',()=>{setPassthrough(true);wakeEnabled=false;suspendWakeListening('ALE · wake mic berhenti');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();});
-document.addEventListener('avatar-error',()=>toast('Gambar avatar gagal dimuat. Muat ulang aplikasi.'));refreshIndonesianVoices();window.speechSynthesis?.addEventListener?.('voiceschanged',refreshIndonesianVoices);if(desktop)setPassthrough(true);setPersona(aiProvider);checkAI();setWakeStatus('ALE · wake mic nonaktif',false);
+document.addEventListener('avatar-error',()=>toast('Gambar avatar gagal dimuat. Muat ulang aplikasi.'));if(window.speechSynthesis){refreshIndonesianVoices();speechSynthesis.addEventListener?.('voiceschanged',refreshIndonesianVoices);}if(desktop)setPassthrough(true);setPersona(aiProvider);checkAI();if(desktop){setWakeStatus(!SR?'ALE · SpeechRecognition tidak tersedia':wakeEnabled?'ALE · menyalakan wake mic…':'ALE · wake mic nonaktif',false);if(wakeEnabled)startWakeListening();}
