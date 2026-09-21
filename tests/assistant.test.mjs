@@ -10,7 +10,7 @@ import {parseAskCodiResponse} from '../desktop/askcodi.mjs';
 import {parseOpenAIResponse} from '../desktop/openai-api.mjs';
 import {parseClaudeResponse} from '../desktop/claude.mjs';
 import {parseDeepSeekResponse} from '../desktop/deepseek.mjs';
-import {agentDefinitions} from '../desktop/agent-hub.mjs';
+import {agentDefinitions,isCodexLoggedIn,parseCodexJsonOutput,agentTimeoutMs} from '../desktop/agent-hub.mjs';
 import {normalizedAudioLevel} from '../public/audio-reactor.js';
 test('commands do not mistake normal conversation for gestures',()=>{assert.equal(parseCommand('Tolong menggelengkan kepala'),'shake');assert.equal(parseCommand('Coba berkedip!'),'blink');assert.equal(parseCommand('Jelaskan mengapa manusia berkedip'),null);});
 test('Sites login is never represented as model access',async()=>{const r=await handleAPI(new Request('https://example.test/api/status',{headers:{'oai-authenticated-user-email':'owner@example.test'}}));assert.deepEqual(await r.json(),{configured:false,mode:'sites-login',signedIn:true});});
@@ -59,6 +59,31 @@ test('OpenAI, Claude and DeepSeek API providers are wired without renderer secre
 });
 
 test('developer agent hub registers requested tools and exposes read-only CLI adapters only',async()=>{const defs=agentDefinitions();const ids=defs.map(x=>x.id);for(const id of ['continue','cody','pieces','askcodi','phind','amazonq','windsurf','tabnine','replit','cursor','github-copilot','agent-copilot','codex','openai-api','visual-copilot','qodo','blackbox','claude','microsoft-copilot','deepseek-coder','devin','codegeex','starcoder','tabbyml','grok','gemini'])assert.ok(ids.includes(id));const runnable=defs.filter(x=>x.canRun).map(x=>x.id).sort();assert.deepEqual(runnable,['codex','cody','continue','cursor','github-copilot']);const [hub,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(hub,/--readonly/);assert.match(hub,/--mode=ask/);assert.match(hub,/--available-tools=view,grep,glob/);assert.match(hub,/read-only/);assert.match(hub,/--ignore-user-config/);assert.doesNotMatch(hub,/--force/);assert.match(desktop,/dudidam:agent-run/);assert.match(preload,/runAgent/);assert.match(html,/id="agentDialog"/);assert.match(app,/desktop\.agents\(\)/);assert.match(app,/desktop\.runAgent/);});
+
+
+test('Codex agent requires login, parses JSON events and uses bounded work timeout',async()=>{
+ assert.equal(isCodexLoggedIn('Logged in using ChatGPT'),true);
+ assert.equal(isCodexLoggedIn('Not logged in'),false);
+ assert.deepEqual(parseCodexJsonOutput(
+  JSON.stringify({type:'item.completed',item:{type:'command_execution',text:'ignore'}})+'\n'+
+  JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'Selesai.'}})+'\n'+
+  JSON.stringify({type:'turn.completed'})
+ ),{text:'Selesai.',failure:false});
+ assert.equal(parseCodexJsonOutput(JSON.stringify({type:'turn.failed'})).failure,true);
+ assert.equal(agentTimeoutMs('analyze',{}),120000);
+ assert.equal(agentTimeoutMs('work',{}),600000);
+ assert.equal(agentTimeoutMs('work',{DUDIDAM_AGENT_TIMEOUT_MS:'1000'}),30000);
+ assert.equal(agentTimeoutMs('work',{DUDIDAM_AGENT_TIMEOUT_MS:'9999999'}),900000);
+ const hub=await readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8');
+ assert.match(hub,/codexLoginStatus/);
+ assert.match(hub,/\['login','status'\]/);
+ assert.match(hub,/Codex CLI terpasang tetapi belum login/);
+ assert.match(hub,/--json/);
+ assert.match(hub,/agentTimeoutMs\(mode\)/);
+ assert.match(hub,/workspace-write/);
+ assert.match(hub,/read-only/);
+});
+
 
 
 test('global ALE summon shortcut works without a keylogger',async()=>{const [desktop,preload,app]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(desktop,/globalShortcut/);assert.match(desktop,/CommandOrControl\+Alt\+5/);assert.match(desktop,/dudidam:summon/);assert.match(desktop,/unregisterAll/);assert.match(preload,/onSummon/);assert.match(app,/global-hotkey/);});
