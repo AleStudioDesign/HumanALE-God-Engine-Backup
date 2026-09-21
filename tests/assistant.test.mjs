@@ -12,6 +12,7 @@ import {parseClaudeResponse} from '../desktop/claude.mjs';
 import {parseDeepSeekResponse} from '../desktop/deepseek.mjs';
 import {agentDefinitions,isCodexLoggedIn,parseCodexJsonOutput,agentTimeoutMs} from '../desktop/agent-hub.mjs';
 import {normalizedAudioLevel} from '../public/audio-reactor.js';
+import {isExplicitProjectWorkRequest} from '../public/work-intent.js';
 import {IndonesianStt} from '../desktop/indonesian-stt.mjs';
 import {IndonesianTts} from '../desktop/indonesian-tts.mjs';
 test('commands do not mistake normal conversation for gestures',()=>{assert.equal(parseCommand('Tolong menggelengkan kepala'),'shake');assert.equal(parseCommand('Coba berkedip!'),'blink');assert.equal(parseCommand('Jelaskan mengapa manusia berkedip'),null);});
@@ -76,6 +77,33 @@ test('OpenAI, Claude and DeepSeek API providers are wired without renderer secre
  assert.match(desktop,/OpenAIBridge/);assert.match(desktop,/ClaudeBridge/);assert.match(desktop,/DeepSeekBridge/);
  assert.match(app,/OPENAI_API_KEY/);assert.match(app,/ANTHROPIC_API_KEY/);assert.match(app,/DEEPSEEK_API_KEY/);
  assert.doesNotMatch(html,/sk-[A-Za-z0-9_-]{12,}/);assert.doesNotMatch(env,/=sk-[A-Za-z0-9_-]+/);
+});
+
+test('Copilot chat distinguishes conversation from explicit project work',()=>{
+ for(const text of ['ok kerjakan','kerjakan langsung','bantu perbaiki avatar','lanjutkan proyek entitashuman','implementasikan','edit kode'])assert.equal(isExplicitProjectWorkRequest(text),true,text);
+ for(const text of ['hay','apa kabar','bagaimana bentuk avatar','jelaskan rencana','bisa bantu?'])assert.equal(isExplicitProjectWorkRequest(text),false,text);
+});
+
+test('Dudidam project work requires a selected Git checkout and exposes a folder picker',async()=>{
+ const [hub,desktop,preload,html,app]=await Promise.all([
+  readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8')
+ ]);
+ assert.match(hub,/setProjectRoot/);
+ assert.match(hub,/projectRootReady/);
+ assert.match(hub,/access\(join\(root,'\.git'\)\)/);
+ assert.match(hub,/Jangan git push, git merge, publish/);
+ assert.match(desktop,/project-root\.txt/);
+ assert.match(desktop,/dudidam:project-root-choose/);
+ assert.match(desktop,/showOpenDialog/);
+ assert.match(preload,/chooseProjectRoot/);
+ assert.match(html,/id="projectPick"/);
+ assert.match(app,/runCopilotProjectWork/);
+ assert.match(app,/id:'github-copilot',mode:'work'/);
+ assert.match(app,/isExplicitProjectWorkRequest\(text\)/);
 });
 
 test('developer agent hub registers requested tools and exposes read-only CLI adapters only',async()=>{const defs=agentDefinitions();const ids=defs.map(x=>x.id);for(const id of ['continue','cody','pieces','askcodi','phind','amazonq','windsurf','tabnine','replit','cursor','github-copilot','agent-copilot','codex','openai-api','visual-copilot','qodo','blackbox','claude','microsoft-copilot','deepseek-coder','devin','codegeex','starcoder','tabbyml','grok','gemini'])assert.ok(ids.includes(id));const runnable=defs.filter(x=>x.canRun).map(x=>x.id).sort();assert.deepEqual(runnable,['codex','cody','continue','cursor','github-copilot']);const [hub,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(hub,/--readonly/);assert.match(hub,/--mode=ask/);assert.match(hub,/--available-tools=view,grep,glob/);assert.match(hub,/read-only/);assert.match(hub,/--ignore-user-config/);assert.doesNotMatch(hub,/--force/);assert.match(desktop,/dudidam:agent-run/);assert.match(preload,/runAgent/);assert.match(html,/id="agentDialog"/);assert.match(app,/desktop\.agents\(\)/);assert.match(app,/desktop\.runAgent/);});
