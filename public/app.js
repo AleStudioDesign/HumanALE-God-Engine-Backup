@@ -13,7 +13,7 @@ let wakeStartGeneration=0;
 let micProbeGeneration=0,micChecking=false;
 let remoteSpeechEnergy=0;
 let localRecorder,localStream,localChunks=[],localTimer,localCaptureGeneration=0;
-let onlineSpeech,onlineSpeechUrl,speechGeneration=0;
+let onlineSpeech,onlineSpeechUrl,speechGeneration=0,localTtsConfigured=false;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();});
 if(desktop){document.body.classList.add('desktop');$('.desktop-actions').hidden=false;$('#providerRow').hidden=false;$('#provider').value=aiProvider;$('#popup').hidden=true;if(panelOnly)document.body.classList.add('detached-panel');}else $('#systemAudio').hidden=true;
@@ -105,7 +105,7 @@ function refreshIndonesianVoices(){
  select.value=selectedVoiceURI;
  if(desktop&&!savedExists&&previous)localStorage.removeItem('dudidam-voice-uri');
  if(status)status.textContent=voices.length?voices.length+' voice Bahasa Indonesia lokal tersedia.':'Mencari suara Indonesia lokal…';
- if(desktop?.ttsStatus)desktop.ttsStatus().then(result=>{if(status)status.textContent=result.configured?'Suara lokal Dudidam siap. Setiap balasan teks akan otomatis dibacakan.':voices.length?voices.length+' voice Bahasa Indonesia lokal tersedia.':'Voice Indonesia belum tersedia. Pasang paket suara Windows atau model Piper Indonesia.';}).catch(()=>{});
+ if(desktop?.ttsStatus)desktop.ttsStatus().then(result=>{localTtsConfigured=Boolean(result.configured);if(status)status.textContent=localTtsConfigured?'Suara lokal Dudidam siap. Setiap balasan teks akan otomatis dibacakan.':voices.length?voices.length+' voice Bahasa Indonesia lokal tersedia.':'Voice Indonesia belum tersedia. Pasang paket suara Windows atau model Piper Indonesia.';}).catch(()=>{localTtsConfigured=false;});
 }
 function stopSpeech(resumeWake=true){speechGeneration++;clearTimeout(speechTimer);window.speechSynthesis?.cancel();onlineSpeech?.pause();onlineSpeech=null;if(onlineSpeechUrl){URL.revokeObjectURL(onlineSpeechUrl);onlineSpeechUrl=null;}ttsActive=false;ttsEnergy=0;syncFaceAudio();if(!busy&&!listening&&!audioMode)state();if(resumeWake)resumeWakeSoon();}
 async function speakLocal(text){
@@ -125,22 +125,29 @@ async function speakLocal(text){
   await player.play();
  }catch(error){if(generation!==speechGeneration)return;setMicStatus(error.message||'Suara Indonesia lokal gagal.');stopSpeech();}
 }
-function speak(text){
- stopSpeech(false);
- if(!voice){resumeWakeSoon();return;}
- stopListening(false);suspendWakeListening('ALE · wake mic dijeda saat berbicara');
- if(desktop?.synthesize){speakLocal(text);return;}
+function speakNativeIndonesian(text){
  const voices=window.speechSynthesis?.getVoices()||[];
  const selected=voices.find(item=>item.voiceURI===selectedVoiceURI);
  const fallback=getIndonesianVoices()[0];
  const chosen=selected&&/^id(?:-|$)/i.test(selected.lang||'')?selected:fallback;
- if(!chosen){speakLocal(text);return;}
+ if(!chosen)return false;
  const u=new SpeechSynthesisUtterance(text);
  u.lang=chosen.lang;u.rate=1;u.voice=chosen;
  u.onstart=()=>{ttsActive=true;ttsEnergy=.7;syncFaceAudio();avatar.trigger('nod');state('Berbicara · '+(chosen?.name||'Bahasa Indonesia'));};
  u.onboundary=e=>{const ch=text.charCodeAt(Math.min(text.length-1,e.charIndex||0))||80;ttsEnergy=.35+(ch%61)/100;syncFaceAudio();};
  u.onend=u.onerror=()=>{ttsActive=false;ttsEnergy=0;syncFaceAudio();if(!busy&&!audioMode)state();resumeWakeSoon(700);};
  speechSynthesis.speak(u);speechTimer=setTimeout(stopSpeech,90000);
+ return true;
+}
+function speak(text){
+ stopSpeech(false);
+ if(!voice){resumeWakeSoon();return;}
+ stopListening(false);suspendWakeListening('ALE · wake mic dijeda saat berbicara');
+ if(localTtsConfigured&&desktop?.synthesize){speakLocal(text);return;}
+ if(speakNativeIndonesian(text))return;
+ if(desktop?.synthesize){speakLocal(text);return;}
+ setMicStatus('Voice Bahasa Indonesia belum tersedia. Balasan tampil sebagai teks.');
+ resumeWakeSoon();
 }
 function updateAudioUi(mode='',label='Tidak aktif'){audioMode=mode;$('#audioStatus').textContent=label;$('#audioMic').setAttribute('aria-pressed',String(mode==='microphone'));$('#systemAudio').setAttribute('aria-pressed',String(mode==='system'));$('#stopAudio').disabled=!mode;if(!busy&&!ttsActive)state(mode?'Audio aktif':'');}
 function stopReactiveAudio(){audioReactor.stop();audioEnergy=0;syncFaceAudio();const player=$('#musicPlayer');player.pause();if(musicUrl){URL.revokeObjectURL(musicUrl);musicUrl='';player.removeAttribute('src');player.load();}player.hidden=true;$('#musicFile').value='';updateAudioUi();}
