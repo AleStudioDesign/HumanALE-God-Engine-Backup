@@ -336,7 +336,7 @@ async function startWakeListening(){
   setWakeStatus('ALE · wake mic mengulang…',false);
   resumeWakeSoon(error==='no-speech'?1800:5000);
  };
- current.onend=()=>{if(wakeRecognition!==current)return;wakeRecognition=null;wakeListening=false;if(wakeEnabled&&!wakeRetryBlocked&&!summoning&&!listening&&!ttsActive)resumeWakeSoon(1200);};
+ current.onend=()=>{if(wakeRecognition!==current)return;wakeRecognition=null;wakeListening=false;syncListeningVisual();if(wakeEnabled&&!wakeRetryBlocked&&!summoning&&!listening&&!ttsActive)resumeWakeSoon(1200);};
  try{current.start();}catch{if(wakeRecognition===current)wakeRecognition=null;wakeListening=false;setWakeStatus('ALE · wake mic gagal dimulai',false);resumeWakeSoon(1800);}
 }
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
