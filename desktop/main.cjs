@@ -8,6 +8,7 @@ let baseWindowSize={width:420,height:480};
 let quitting=false;
 let passthrough=false;
 let passthroughLocked=false;
+let panelViewportOpen=false;
 const summonShortcut='CommandOrControl+Alt+5';
 const ciSmoke=process.argv.includes('--ci-smoke');
 
@@ -53,7 +54,8 @@ function setDynamicPassthrough(value){if(!passthroughLocked)applyPassthrough(val
 function setPassthroughLock(value){passthroughLocked=Boolean(value);applyPassthrough(passthroughLocked);rebuildTrayMenu();}
 function resizeForPanel(zoom=1,open=false){
  if(!win||win.isDestroyed())return;
- const factor=open?Math.max(1,Math.min(1.45,Number(zoom)||1)):1;
+ panelViewportOpen=Boolean(open);
+ const factor=panelViewportOpen?Math.max(1,Math.min(1.45,Number(zoom)||1)):1;
  const [oldW,oldH]=win.getSize(),[oldX,oldY]=win.getPosition();
  const center={x:Math.round(oldX+oldW/2),y:Math.round(oldY+oldH/2)};
  const display=screen.getDisplayNearestPoint(center),area=display.workArea;
@@ -115,7 +117,7 @@ else{
   rebuildTrayMenu();
   const shortcutRegistered=globalShortcut.register(summonShortcut,summonAvatar);
   if(!shortcutRegistered)console.warn('Dudidam global summon shortcut unavailable:',summonShortcut);
-  win.on('move',savePositionSoon);
+  win.on('move',()=>{if(!panelViewportOpen)savePositionSoon();});
   win.on('close',event=>{if(!quitting){event.preventDefault();win.hide();}});
   win.once('ready-to-show',()=>win.show());
   await win.loadURL(origin+'/');
