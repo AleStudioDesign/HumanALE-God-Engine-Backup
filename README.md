@@ -1,28 +1,31 @@
-# Dudidam · Binary Human Assistant
+# Dudidam 2 — Floating Binary Human
+Avatar wajah biner mengambang di tengah layar. Panel tersembunyi. Matrix, statistik generatif, abstrak, dan campuran; partikel bereaksi terhadap kursor sebagai medan magnet.
 
-Asisten web mandiri dengan wajah biner dari referensi pengguna, animasi tatapan/kedip/kepala, perintah Bahasa Indonesia, pengenalan suara browser, dan balasan TTS. Tidak mengganti pet bawaan Codex/ChatGPT dan tidak mengendalikan sistem operasi.
+## Versi desktop Windows
+Jalankan Dudidam.exe dalam folder output Dudidam-Desktop. Jendela transparan, tanpa bingkai, selalu di atas, dapat diseret. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
 
-## Menjalankan
+Klik kanan/dobel klik wajah atau H: kontrol. Enter: percakapan. B/N/G: kedip/angguk/geleng. 1–4: gaya partikel. M: mikrofon. R: tengahkan. Esc: tutup panel dan hentikan suara. Alt+F4 menutup aplikasi. Tombol minimalkan/tutup juga ada di kontrol.
 
-Node.js 22+: `node server.mjs`, lalu buka http://127.0.0.1:4177. Tidak ada dependency install. Build: `node build.mjs`. Tes: `node --test tests/*.test.mjs`.
+## ChatGPT tanpa API key
+Versi desktop menggunakan Codex CLI resmi yang sudah login dengan ChatGPT. Pemeriksaan memakai codex login status. Tombol Login ChatGPT menjalankan alur resmi codex login melalui browser. Tidak ada pembacaan/copy auth.json, cookie, password, atau token login. Tidak menggunakan API key. Mengikuti batas penggunaan akun ChatGPT/Codex. Ini bukan sinkronisasi riwayat chatgpt.com.
 
-## Koneksi AI
+Percakapan dipanggil melalui IPC lokal terbatas; tidak ada endpoint HTTP untuk menjalankan Codex. Renderer hanya memuat aset lokal dengan sandbox, context isolation, tanpa Node integration. CLI menggunakan read-only sandbox, sesi ephemeral, tool shell/browser/plugin/hooks/apps/multi-agent dimatikan, dan cwd temporer terpisah. Pesan dibatasi ukurannya. Foto hanya disimpan sementara selama satu permintaan lalu dihapus.
 
-Perintah gerakan dan waktu bekerja tanpa API. Untuk percakapan umum dan analisis satu foto kamera, tambahkan **secret** `OPENAI_API_KEY` pada runtime Sites, opsional `OPENAI_MODEL` (default `gpt-4.1-mini`), kemudian deploy ulang versi tersimpan. Jangan memasukkan key ke source/client atau percakapan. Login ChatGPT tidak sama dengan API key.
+Codex CLI ditemukan dari instalasi Codex Windows atau PATH. Untuk lokasi khusus gunakan environment DUDIDAM_CODEX_PATH pada launcher; jangan memasukkan kredensial.
 
-Backend menggunakan Responses API dengan `store:false`, timeout, pembatasan ukuran, validasi pesan/foto, dan same-origin POST. Situs harus tetap privat khusus pemilik; bila dibuka untuk umum tambahkan autentikasi dan rate limit sebelum memakai key berbayar.
+## Suara dan kamera
+Kamera menggunakan izin pengguna dan hanya mengirim satu foto ketika tombol Kirim satu foto & jelaskan ditekan. Tidak merekam video. Kamera berhenti saat panel chat ditutup atau aplikasi tersembunyi.
+Pengenalan suara menggunakan SpeechRecognition browser. Chromium/Electron bisa tidak menyediakan layanan ini; ketika gagal aplikasi memberi pesan yang jelas. Gunakan teks atau dikte OS (Win+H secara manual). Setiap balasan atas pesan yang diketik otomatis dibacakan selama opsi **Bacakan setiap balasan** aktif. Versi desktop memakai mesin suara native Windows dan memilih suara Indonesia bila tersedia; TTS browser menjadi cadangan. Mikrofon dan kamera bukan layanan yang selalu merekam.
 
-## Interaksi dan privasi
+## Sites
+https://binary-human-assistant.sitihasnah109.chatgpt.site
+Proyek yang sama dipertahankan pada .openai/hosting.json; akses privat. Sites menampilkan wajah biner saja dan login identitas resmi. Browser tidak dapat membuat latar tembus sampai desktop. Tombol pop-up membuka jendela browser kecil; transparansi OS dan model via login tersedia pada desktop lokal. Tidak ada API key yang diminta di versi 2.
 
-- B berkedip, N mengangguk, G menggeleng, M mikrofon, Escape menghentikan mikrofon/suara. Shortcut tidak aktif ketika mengetik atau dialog terbuka.
-- Mouse di atas avatar mengubah arah tatapan dan kepala. Mode pet adalah tampilan ringkas browser, bukan overlay Windows.
-- Mikrofon memakai SpeechRecognition jika didukung. Layanan browser dapat memproses audio secara online. Browser tanpa dukungan menampilkan petunjuk dan tetap menerima teks.
-- Kamera hanya aktif atas klik, pratinjau lokal. Satu foto dikirim ke OpenAI hanya setelah tombol “Lihat & jelaskan”. Tidak ada perekaman atau penyimpanan gambar dalam aplikasi.
-- Kamera/mikrofon berhenti saat tab disembunyikan/ditutup. Riwayat percakapan berada di memori tab; tidak disimpan di localStorage/database.
-- Permission perangkat, akurasi pengenalan suara, TTS, serta akses model/kuota perlu diverifikasi di perangkat pemilik.
+## Develop / verify
+node server.mjs — http://127.0.0.1:4177
+node build.mjs — dist/client dan dist/server
+node --test tests/*.test.mjs
+npm run desktop — popup native
+node desktop/smoke.mjs — satu permintaan model nyata menggunakan akun ChatGPT (memakai kuota)
 
-## Deploy
-
-Identitas Sites disimpan di `.openai/hosting.json`. `node build.mjs` menyiapkan Worker dan aset pada `dist`. Arsip deployment harus dibuat dari `dist` sesudah source yang sama di-commit/push. Pertahankan akses owner-private.
-
-Dokumentasi API: https://developers.openai.com/api/docs/guides/text dan https://developers.openai.com/api/docs/guides/images-vision
+Statistik pada partikel adalah efek visual generatif, bukan metrik sistem. Tidak ada autostart Windows atau perubahan pet bawaan Codex.
