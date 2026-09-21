@@ -30,7 +30,7 @@ function savePositionSoon(){
 function showAvatar(){
  if(!win||win.isDestroyed())return;
  pendingDismiss='';win.show();win.setAlwaysOnTop(true,'floating');win.moveTop();win.focus();
- if(!win.webContents.isLoading())win.webContents.send('dudidam:summon');
+ if(!win.webContents.isLoading())win.webContents.send('dudidam:show');
 }
 function summonAvatar(){
  if(!win||win.isDestroyed())return;
