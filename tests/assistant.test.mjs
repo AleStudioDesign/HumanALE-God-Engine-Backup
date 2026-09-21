@@ -132,7 +132,7 @@ test('zoomed panel resizes Electron viewport safely',async()=>{
  assert.match(preload,/panelViewport/);
  assert.match(app,/panelZoomFactor/);
  assert.match(app,/panelViewport\?\.\(\{zoom:panelZoomFactor,open:true\}\)/);
- assert.match(app,/panelViewport\?\.\(\{zoom:panelZoomFactor,open:false\}\)/);
+ assert.match(app,/syncPanelViewportFromDialogs/);assert.match(app,/open:Boolean\(document\.querySelector\('dialog\[open\]'\)\)/);
 });
 
 test('Copilot trust-folder prompt fails fast instead of hanging',async()=>{
