@@ -21,6 +21,7 @@ export class BinaryAvatar {
   this.environment='auto';
   this.animate=true;
   this.color='spectrum';
+  this.persona='chatgpt';
   this.mode='mixed';
   this.allEffects=false;
   this.transitionKind='';
@@ -91,6 +92,25 @@ export class BinaryAvatar {
   }
  setEnvironment(value='auto'){this.environment=['auto','light','dark'].includes(value)?value:'auto';}
  isLightEnvironment(){return this.environment==='light'||(this.environment==='auto'&&this.environmentQuery.matches);}
+
+ drawPersonaAccent(context,cx,cy,faceWidth,faceHeight,clock){
+  const pulse=.52+.15*Math.sin(clock*.0014);
+  context.save();context.lineWidth=Math.max(1,faceWidth*.006);context.lineCap='round';
+  if(this.persona==='copilot'){
+   context.strokeStyle=`hsla(184,100%,75%,${pulse})`;
+   for(const side of [-1,1]){
+    const eyeX=cx+side*faceWidth*.19,eyeY=cy-faceHeight*.06;
+    context.beginPath();context.ellipse(eyeX,eyeY,faceWidth*.115,faceHeight*.045,0,Math.PI*.15,Math.PI*.85);context.stroke();
+    context.beginPath();context.moveTo(eyeX+side*faceWidth*.115,eyeY);context.lineTo(eyeX+side*faceWidth*.21,eyeY-faceHeight*.055);context.stroke();
+   }
+  }else if(this.persona==='chatgpt'){
+   context.strokeStyle=`hsla(145,90%,74%,${pulse*.55})`;
+   for(let i=0;i<3;i++){
+    context.beginPath();context.ellipse(cx,cy-faceHeight*.17,faceWidth*.55,faceHeight*.32,(i-1)*.28,Math.PI*1.08,Math.PI*1.9);context.stroke();
+   }
+  }
+  context.restore();
+ }
 
  adaptiveColors(hue,alpha,_lightEnvironment,saturation=92){
   const evolution=.5+.5*Math.sin(hue*Math.PI/96);
@@ -402,6 +422,7 @@ export class BinaryAvatar {
    if(abstractStrength>.5&&Math.abs(fracture)>.72)this.drawAdaptiveGlyph(context,glyph,x+fracture*size*.018,y-fracture*size*.006,hue+spectralShift+28,alpha*.18*abstractStrength,lightEnvironment);
   }
   if(assembly>.08)this.drawMouthSignal(context,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,ry);
+  if(assembly>.08)this.drawPersonaAccent(context,cx,cy,faceWidth,faceHeight,clock);
   this.drawMagneticField(context,size,hue,clock,lightEnvironment);
   context.restore();
  }
