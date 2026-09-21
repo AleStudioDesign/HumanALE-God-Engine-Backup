@@ -51,7 +51,8 @@ function setPassthrough(ignore){if(!desktop)return;const now=performance.now();i
 function pointInElement(element,x,y){if(!element||element.hidden)return false;const rect=element.getBoundingClientRect();return x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom;}
 function pointInAvatarFace(x,y){const canvas=$('#avatar');if(!canvas)return false;const rect=canvas.getBoundingClientRect(),rx=rect.width*.36,ry=rect.height*.43;if(!rx||!ry)return false;const dx=(x-(rect.left+rect.width/2))/rx,dy=(y-(rect.top+rect.height/2))/ry;return dx*dx+dy*dy<=1;}
 function syncPassthrough(event){if(!desktop)return;if(summoning){setPassthrough(true);return;}if(document.querySelector('dialog[open]')){setPassthrough(false);return;}const x=event?.clientX,y=event?.clientY;if(!Number.isFinite(x)||!Number.isFinite(y)){setPassthrough(true);return;}const interactive=pointInAvatarFace(x,y)||['#reveal','#bubble','#toast'].some(selector=>pointInElement($(selector),x,y));setPassthrough(!interactive);}
-function showDialog(id){if(summoning)return;setPassthrough(false);document.querySelectorAll('dialog[open]').forEach(d=>d.close());desktop?.panelViewport?.({zoom:panelZoomFactor,open:true});$(id).showModal();requestAnimationFrame(()=>clampDialog($(id)));if(id==='#chatDialog')$('#prompt').focus();}
+function syncPanelViewportFromDialogs(){requestAnimationFrame(()=>desktop?.panelViewport?.({zoom:panelZoomFactor,open:Boolean(document.querySelector('dialog[open]'))}));}
+function showDialog(id){if(summoning)return;setPassthrough(false);document.querySelectorAll('dialog[open]').forEach(d=>d.close());$(id).showModal();desktop?.panelViewport?.({zoom:panelZoomFactor,open:true});requestAnimationFrame(()=>clampDialog($(id)));if(id==='#chatDialog')$('#prompt').focus();}
 function clampDialog(dialog){
  const rect=dialog.getBoundingClientRect(),left=Math.max(0,Math.min(innerWidth-rect.width,rect.left)),top=Math.max(0,Math.min(innerHeight-rect.height,rect.top));
  dialog.style.left=left+'px';dialog.style.top=top+'px';
@@ -247,9 +248,9 @@ $('#popup').onclick=()=>{const pop=window.open(location.origin+'/?popup=1','dudi
 $('#login').onclick=async()=>{if(!desktop){location.href='/signin-with-chatgpt?return_to=%2F';return;}$('#login').disabled=true;try{const r=await desktop.login();if(r.error)toast(r.error);else toast('Login selesai.');await checkAI();}catch{toast('Login belum selesai. Coba lagi.');}finally{$('#login').disabled=false;}};
 $('#clickThrough').onclick=()=>{document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());desktop?.passthroughLock(true);toast('Tembus klik penuh aktif. Matikan dari ikon Dudidam di tray Windows.');};$('#minimize').onclick=()=>desktop?.minimize();$('#closeApp').onclick=()=>desktop?.close();
 $('#chatForm').onsubmit=e=>{e.preventDefault();const text=$('#prompt').value.trim();if(text&&!busy){$('#prompt').value='';submit(text);}};$('#prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#chatForm').requestSubmit();}};$('#clear').onclick=()=>{if(busy)return;history=[];$('#messages').replaceChildren();$('#bubble').hidden=true;stopSpeech();};
-$('#chatDialog').addEventListener('close',()=>{stopCamera();setPassthrough(true);desktop?.panelViewport?.({zoom:panelZoomFactor,open:false});});
-$('#controls').addEventListener('close',()=>{setPassthrough(true);desktop?.panelViewport?.({zoom:panelZoomFactor,open:false});});
-$('#agentDialog').addEventListener('close',()=>{setPassthrough(true);desktop?.panelViewport?.({zoom:panelZoomFactor,open:false});});
+$('#chatDialog').addEventListener('close',()=>{stopCamera();setPassthrough(true);syncPanelViewportFromDialogs();});
+$('#controls').addEventListener('close',()=>{setPassthrough(true);syncPanelViewportFromDialogs();});
+$('#agentDialog').addEventListener('close',()=>{setPassthrough(true);syncPanelViewportFromDialogs();});
 document.addEventListener('mousemove',syncPassthrough,{passive:true});
 document.addEventListener('mouseleave',()=>setPassthrough(true));
 document.addEventListener('keydown',e=>{
