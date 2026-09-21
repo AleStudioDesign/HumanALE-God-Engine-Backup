@@ -244,6 +244,21 @@ test('tray show restores avatar without triggering summon or microphone',async()
  assert.match(avatar,/reveal\(\)\{this\.transitionKind=''/);
 });
 
+test('Copilot chat uses a valid minimal tool allowlist',async()=>{
+ const copilot=await readFile(new URL('../desktop/copilot.mjs',import.meta.url),'utf8');
+ assert.match(copilot,/--available-tools=view/);
+ assert.doesNotMatch(copilot,/['"]--available-tools['"]\s*\]/);
+ assert.match(copilot,/--disable-builtin-mcps/);
+});
+
+test('failed Piper synthesis falls back to native Indonesian voice',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/localTtsConfigured=false/);
+ assert.match(app,/Mencoba voice Windows Indonesia/);
+ assert.match(app,/if\(speakNativeIndonesian\(text\)\)return/);
+ assert.match(app,/Voice Windows Indonesia juga tidak tersedia/);
+});
+
 test('external Copilot and Indonesian voice child processes are stoppable',async()=>{
  const [copilot,stt,tts]=await Promise.all([
   readFile(new URL('../desktop/copilot.mjs',import.meta.url),'utf8'),
