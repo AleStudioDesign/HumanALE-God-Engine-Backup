@@ -15,6 +15,8 @@ const summonShortcut='CommandOrControl+Alt+5';
 const ciSmoke=process.argv.includes('--ci-smoke');
 
 function statePath(){return path.join(app.getPath('userData'),'window-state.json');}
+function projectRootPath(){return path.join(app.getPath('userData'),'project-root.txt');}
+async function readProjectRoot(){try{return (await readFile(projectRootPath(),'utf8')).trim();}catch{return '';}}
 async function readWindowPosition(){try{const value=JSON.parse(await readFile(statePath(),'utf8'));return Number.isFinite(value?.x)&&Number.isFinite(value?.y)?value:null;}catch{return null;}}
 function safePosition(saved,width,height){
  const display=saved?screen.getDisplayNearestPoint({x:Math.round(saved.x+width/2),y:Math.round(saved.y+height/2)}):screen.getPrimaryDisplay();
@@ -130,6 +132,7 @@ else{
   const [{ChatGPTBridge},{CopilotBridge},{OpenAIBridge},{GrokBridge},{GeminiBridge},{ClaudeBridge},{DeepSeekBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions},{IndonesianStt},{IndonesianTts}]=await Promise.all([import('./bridge.mjs'),import('./copilot.mjs'),import('./openai-api.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./claude.mjs'),import('./deepseek.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs'),import('./indonesian-stt.mjs'),import('./indonesian-tts.mjs')]);
   bridges={chatgpt:new ChatGPTBridge(),copilot:new CopilotBridge(),openai:new OpenAIBridge(),grok:new GrokBridge(),gemini:new GeminiBridge(),claude:new ClaudeBridge(),deepseek:new DeepSeekBridge(),askcodi:new AskCodiBridge()};
   agentHub=new DeveloperAgentHub();
+  const savedProjectRoot=await readProjectRoot();if(savedProjectRoot)agentHub.setProjectRoot(savedProjectRoot);
   indonesianStt=new IndonesianStt();
   indonesianTts=new IndonesianTts();
   const agentLinks=Object.fromEntries(agentDefinitions().map(item=>[item.id,item.url]));
@@ -157,6 +160,15 @@ else{
   ipcMain.on('dudidam:panel-open',(e,view)=>{if(trusted(e))openPanel(view);});
   ipcMain.on('dudidam:panel-close',e=>{if(trusted(e))panelWin?.hide();});
   ipcMain.handle('dudidam:agents',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.status();}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:project-root-choose',async e=>{
+   if(!trusted(e))return {error:'Akses ditolak.'};
+   const result=await dialog.showOpenDialog(panelWin?.isVisible()?panelWin:win,{title:'Pilih folder checkout proyek Dudidam',properties:['openDirectory']});
+   if(result.canceled||!result.filePaths?.[0])return {canceled:true};
+   const selected=path.resolve(result.filePaths[0]);
+   agentHub.setProjectRoot(selected);
+   try{await writeFile(projectRootPath(),selected,'utf8');}catch(error){return {error:'Folder terpilih, tetapi pengaturan tidak dapat disimpan: '+error.message};}
+   return {ok:true,...await agentHub.status()};
+  });
   ipcMain.handle('dudidam:agent-run',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.run(value);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:agent-open',async(e,id)=>{if(!trusted(e))return {error:'Akses ditolak.'};const url=agentLinks[String(id||'')];if(!url||!url.startsWith('https://'))return {error:'Tautan agent tidak valid.'};await shell.openExternal(url);return {ok:true};});
   ipcMain.on('dudidam:center',e=>{if(trusted(e)){win.center();savePositionSoon();}});
