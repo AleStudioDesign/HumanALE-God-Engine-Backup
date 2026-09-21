@@ -301,6 +301,39 @@ export class BinaryAvatar {
   context.restore();
  }
 
+  drawEars(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw){
+  const profile=Math.max(.58,Math.cos(yaw)),yawShift=Math.sin(yaw)*fw*.19;
+  context.save();context.globalCompositeOperation='source-over';
+  for(const side of [-1,1]){
+   const visibility=clamp(.78+side*Math.sin(yaw)*.34,.42,1);
+   const rootX=cx+yawShift*.66+side*fw*.405*profile;
+   const topY=cy-fh*.035,bottomY=cy+fh*.225,midY=cy+fh*.095;
+   const outerX=rootX+side*fw*(.075+.018*visibility);
+   const top={x:rootX,y:topY},bottom={x:rootX-side*fw*.006,y:bottomY};
+   this.drawBinaryCubic(context,
+    top,
+    {x:outerX,y:cy-fh*.005},
+    {x:outerX+side*fw*.012,y:cy+fh*.15},
+    bottom,
+    10,hue+34,.24*visibility,lightEnvironment,size,side+31.1);
+   this.drawBinaryCubic(context,
+    bottom,
+    {x:rootX+side*fw*.028,y:cy+fh*.185},
+    {x:rootX+side*fw*.03,y:cy+fh*.025},
+    top,
+    9,hue+46,.2*visibility,lightEnvironment,size,side+32.1);
+   this.drawBinaryCubic(context,
+    {x:rootX+side*fw*.016,y:cy+fh*.025},
+    {x:rootX+side*fw*.055,y:midY-fh*.035},
+    {x:rootX+side*fw*.047,y:midY+fh*.055},
+    {x:rootX+side*fw*.012,y:cy+fh*.17},
+    7,hue+58,.17*visibility,lightEnvironment,size,side+33.1);
+   context.font=`${Math.max(5,size*.0135)}px monospace`;
+   this.drawAdaptiveGlyph(context,side>0?'1':'0',outerX,midY,hue+72,.14*visibility,lightEnvironment,undefined,false);
+  }
+  context.restore();
+ }
+
   drawHeadStructure(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw,pitch,blink){
   const yawShift=Math.sin(yaw)*fw*.19,profile=Math.cos(yaw),centerX=cx+yawShift*.42;
   context.save();context.globalCompositeOperation='source-over';
@@ -317,6 +350,8 @@ export class BinaryAvatar {
   this.drawBinaryCubic(context,
    {x:centerX,y:cy-fh*.4},{x:centerX+yawShift*.72,y:cy-fh*.18},{x:centerX+yawShift*.76,y:cy+fh*.18},{x:centerX+yawShift*.52,y:cy+fh*.43},
    14,hue+42,.16,lightEnvironment,size,5.2);
+
+  this.drawEars(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw);
 
   const eyeY=cy-fh*.065+pitch*fh*.09,eyeOpen=fh*.018*(1-blink);
   for(const side of [-1,1]){
