@@ -172,13 +172,18 @@ async function submit(text,image){text=text.trim();if(!text||busy)return;message
  if(!desktop){message('Login Sites hanya mengenali akun. Untuk percakapan model gunakan Dudidam Desktop.','assistant',false);return;}
  if(aiProvider==='copilot'&&!image&&isExplicitProjectWorkRequest(text)){
   busy=true;stopSpeech();$('#send').disabled=true;$('#look').disabled=true;state('GitHub Copilot mengerjakan proyek…');$('#liveText').textContent='Copilot Work mode sedang mengedit checkout proyek…';
+  let workSucceeded=false;setEvolutionVisual('start');
   try{
    const result=await runCopilotProjectWork(text);
    if(result?.error)throw new Error(result.error);
    const answer=result?.text||'Copilot selesai tanpa output teks.';
    history.push({role:'user',content:text},{role:'assistant',content:answer});history=history.slice(-10);panelChannel?.postMessage({type:'history',history});message(answer);
+   workSucceeded=true;
   }catch(error){message(error?.message||'Copilot Work mode gagal menjalankan tugas.','assistant',false);}
-  finally{busy=false;avatar.thinking=false;$('#send').disabled=false;$('#look').disabled=false;$('#liveText').textContent='';if(!avatar.speaking&&!listening)state();}
+  finally{
+   setEvolutionVisual(workSucceeded?'complete':'stop');
+   busy=false;avatar.thinking=false;$('#send').disabled=false;$('#look').disabled=false;$('#liveText').textContent='';if(!avatar.speaking&&!listening&&workSucceeded)state('EVOLUTION COMPLETE · upgrade diterapkan');
+  }
   return;
  }
  if(!aiReady){const missing={copilot:'GitHub Copilot CLI belum tersedia. Pasang dan login Copilot, lalu tekan Periksa lagi.',openai:'OpenAI API belum aktif. Atur OPENAI_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',grok:'Grok belum aktif. Atur XAI_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',gemini:'Gemini belum aktif. Atur GEMINI_API_KEY atau GOOGLE_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',claude:'Claude belum aktif. Atur ANTHROPIC_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',deepseek:'DeepSeek belum aktif. Atur DEEPSEEK_API_KEY pada environment Windows, buka ulang Dudidam, lalu tekan Periksa lagi.',askcodi:'AskCodi belum aktif. Atur ASKCODI_API_KEY dan ASKCODI_MODEL, buka ulang Dudidam, lalu tekan Periksa lagi.'}[aiProvider]||'Silakan pilih Login ChatGPT pada kontrol avatar, selesaikan login di browser, lalu Periksa lagi.';message(missing,'assistant',false);return;}
@@ -222,6 +227,15 @@ function syncAgentMode(){
  if(work)work.disabled=!allowed;
  if(mode&&!allowed&&mode.value==='work')mode.value='analyze';
 }
+function setEvolutionVisual(mode='start'){
+ const apply=()=>{
+  if(mode==='start'){avatar.setEvolving?.(true);state('EVOLVING · memperbaiki diri…');return;}
+  if(mode==='complete'){avatar.completeEvolution?.();state('EVOLUTION COMPLETE · menstabilkan upgrade…');setTimeout(()=>{if(!busy&&!avatar.speaking&&!listening)state();},2200);return;}
+  avatar.setEvolving?.(false);if(!busy&&!avatar.speaking&&!listening)state();
+ };
+ apply();
+ if(panelOnly)panelChannel?.postMessage({type:'evolution',mode});
+}
 async function runDeveloperAgent(event){
  event.preventDefault();if(!desktop)return;
  const id=$('#agentSelect').value,prompt=$('#agentPrompt').value.trim(),mode=$('#agentMode').value;
@@ -229,9 +243,19 @@ async function runDeveloperAgent(event){
  if(mode==='work'&&!['github-copilot','codex'].includes(id)){toast('Mode Kerja hanya tersedia untuk GitHub Copilot atau OpenAI Codex.');return;}
  $('#agentRun').disabled=true;$('#agentOutput').hidden=false;
  $('#agentOutput').textContent=mode==='work'?'Agent sedang melanjutkan pekerjaan proyek…':'Agent sedang menganalisis…';
- try{const result=await desktop.runAgent({id,prompt,mode});$('#agentOutput').textContent=result?.error||result?.text||'Agent selesai tanpa output.';}
- catch(error){$('#agentOutput').textContent=error?.message||'Agent gagal dijalankan.';}
- finally{$('#agentRun').disabled=false;}
+ let workSucceeded=false;
+ if(mode==='work')setEvolutionVisual('start');
+ try{
+  const result=await desktop.runAgent({id,prompt,mode});
+  if(result?.error)throw new Error(result.error);
+  $('#agentOutput').textContent=result?.text||'Agent selesai tanpa output.';
+  workSucceeded=mode==='work';
+ }catch(error){
+  $('#agentOutput').textContent=error?.message||'Agent gagal dijalankan.';
+ }finally{
+  if(mode==='work')setEvolutionVisual(workSucceeded?'complete':'stop');
+  $('#agentRun').disabled=false;
+ }
 }
 async function chooseProjectFolder(){
  if(!desktop?.chooseProjectRoot)return;
@@ -502,6 +526,7 @@ if(panelChannel)panelChannel.onmessage=event=>{
  if(data.type==='history'){history=Array.isArray(data.history)?data.history.slice(-10):[];return;}
  if(data.type==='persona'&&!panelOnly){aiProvider=data.provider;setPersona(aiProvider);$('#provider').value=aiProvider;return;}
  if(data.type==='speech-level'&&!panelOnly){remoteSpeechEnergy=Number(data.level)||0;syncFaceAudio();return;}
+ if(data.type==='evolution'&&!panelOnly){setEvolutionVisual(data.mode==='complete'?'complete':data.mode==='start'?'start':'stop');return;}
  if(data.type==='wake-status'&&panelOnly){wakeEnabled=Boolean(data.enabled);setWakeStatus(String(data.text||''),Boolean(data.active));return;}
  if(data.type==='panel-ready'&&!panelOnly){setWakeStatus($('#wakeIndicator').textContent,$('#wakeIndicator').dataset.active==='true');setPersona(aiProvider);return;}
  if(panelOnly)return;
