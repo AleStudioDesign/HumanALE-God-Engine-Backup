@@ -7,6 +7,7 @@ const panelChannel=desktop?new BroadcastChannel('dudidam-avatar-panel'):null;
 const apiProviders=['copilot','openai','grok','gemini','claude','deepseek','askcodi'];
 const SUMMON_DURATION_MS=4200;
 const DISMISS_DURATION_MS=3000;
+const DEFAULT_AVATAR_SIZE=420;
 let panelZoomFactor=1;
 let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,selectedVoiceURI=desktop?(localStorage.getItem('dudidam-voice-uri')||''):'',listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=desktop?localStorage.getItem('dudidam-wake-enabled')==='true':false,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,dismissing=false,transitionSerial=0,hold5Timer,hold5Fired=false;
 let wakeStartGeneration=0;
@@ -19,7 +20,7 @@ const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();})
 if(desktop){document.body.classList.add('desktop');$('.desktop-actions').hidden=false;$('#providerRow').hidden=false;$('#provider').value=aiProvider;$('#popup').hidden=true;if(panelOnly)document.body.classList.add('detached-panel');}else $('#systemAudio').hidden=true;
 if(popup){document.body.classList.add('popup-widget');$('#popup').hidden=true;}
 function applyAvatarSize(value){
- const size=Math.max(180,Math.min(540,Number(value)||380));
+ const size=Math.max(180,Math.min(540,Number(value)||DEFAULT_AVATAR_SIZE));
  document.documentElement.style.setProperty('--avatar-size',size+'px');
  const slider=$('#avatarSize'),output=$('#avatarSizeValue');
  if(slider)slider.value=String(size);
@@ -29,7 +30,9 @@ function applyAvatarSize(value){
  if(panelOnly)panelChannel?.postMessage({type:'avatar-size',size});
  requestAnimationFrame(()=>avatar.resize());
 }
-applyAvatarSize(desktop?localStorage.getItem('dudidam-avatar-size')||380:380);
+const storedAvatarSize=desktop?Number(localStorage.getItem('dudidam-avatar-size')):0;
+const initialAvatarSize=!storedAvatarSize||storedAvatarSize===380?DEFAULT_AVATAR_SIZE:storedAvatarSize;
+applyAvatarSize(initialAvatarSize);
 function applyPanelZoom(value){
  const zoom=Math.max(75,Math.min(145,Number(value)||100));
  panelZoomFactor=zoom/100;
