@@ -48,8 +48,11 @@ async function locate(agent){
 }
 export function agentDefinitions(){return agents.map(({commands,envPath,configEnv,configEnvs,secondaryEnv,...agent})=>({...agent}));}
 function looksLikeCopilotTrustPrompt(text=''){
- const value=String(text).toLowerCase();
- return value.includes('trust')&&(value.includes('folder')||value.includes('directory')||value.includes('files in'));
+ const value=String(text).replace(/\s+/g,' ').toLowerCase();
+ return value.includes('trust the files in')||
+  value.includes('trust this folder')||
+  value.includes('trust this directory')||
+  value.includes('confirm that you trust');
 }
 export class DeveloperAgentHub{
  constructor(){this.child=null;this.pending=false;}
@@ -83,8 +86,8 @@ export class DeveloperAgentHub{
   const safeWorkPrompt='Kerjakan hanya di folder proyek ini. Jangan git push, publish, mengubah kredensial, atau mengakses data di luar proyek. Buat perubahan sekecil yang diperlukan dan jelaskan file yang diubah. Tugas: '+prompt;
   const args=id==='continue'?['-p',prompt,'--readonly']
    :id==='cody'?['chat','-m',prompt]
-   :id==='github-copilot'&&mode==='work'?['-p',safeWorkPrompt,'-s','--available-tools=view,grep,glob,edit,create,apply_patch','--allow-tool=write','--disable-builtin-mcps','--no-ask-user']
-   :id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user']
+   :id==='github-copilot'&&mode==='work'?['-p',safeWorkPrompt,'-s','--available-tools=view,grep,glob,edit,create,apply_patch','--allow-tool=write','--disable-builtin-mcps','--no-ask-user','--no-auto-update','--disallow-temp-dir']
+   :id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user','--no-auto-update','--disallow-temp-dir']
    :id==='codex'&&mode==='work'?['exec','--sandbox','workspace-write','--ephemeral','--ignore-user-config',safeWorkPrompt]
    :id==='codex'?['exec','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]
    :['-p',prompt,'--mode=ask','--output-format','text'];
