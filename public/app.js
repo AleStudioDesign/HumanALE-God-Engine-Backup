@@ -7,7 +7,7 @@ const apiProviders=['openai','grok','gemini','claude','deepseek','askcodi'];
 const SUMMON_DURATION_MS=4200;
 const DISMISS_DURATION_MS=3000;
 let panelZoomFactor=1;
-let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,selectedVoiceURI=desktop?(localStorage.getItem('dudidam-voice-uri')||''):'',listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=desktop?localStorage.getItem('dudidam-wake-enabled')==='true':false,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,dismissing=false,hold5Timer,hold5Fired=false;
+let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,selectedVoiceURI=desktop?(localStorage.getItem('dudidam-voice-uri')||''):'',listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=desktop?localStorage.getItem('dudidam-wake-enabled')==='true':false,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,dismissing=false,transitionSerial=0,hold5Timer,hold5Fired=false;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();});
 if(desktop){document.body.classList.add('desktop');$('.desktop-actions').hidden=false;$('#providerRow').hidden=false;$('#provider').value=aiProvider;$('#popup').hidden=true;}else $('#systemAudio').hidden=true;
@@ -241,22 +241,32 @@ function activateAllEffects(){
  document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed','true'));
 }
 async function summonAle(source='voice'){
- if(transitioning())return;
- summoning=true;suspendWakeListening('ALE · dipanggil');stopListening(false);stopSpeech(false);stopReactiveAudio();
+ if(summoning)return;
+ const transition=++transitionSerial;
+ summoning=true;dismissing=false;
+ document.body.classList.remove('dismissing');
+ suspendWakeListening('ALE · dipanggil');stopListening(false);stopSpeech(false);stopReactiveAudio();
  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
  document.body.classList.add('summoning');desktop?.center();setPassthrough(true);activateAllEffects();avatar.awaken?.(SUMMON_DURATION_MS);
  state(source==='keyboard'?'ALE · menyusun diri dari pusat layar…':'ALE · panggilan diterima · menyusun diri…');
  await wait(SUMMON_DURATION_MS);
+ if(transition!==transitionSerial||!summoning)return;
  document.body.classList.remove('summoning');summoning=false;state('ALE siap · mendengarkan…');setPassthrough(true);
- await wait(180);await toggleMic({fromWake:true});
+ await wait(180);
+ if(transition!==transitionSerial||dismissing)return;
+ await toggleMic({fromWake:true});
 }
 async function dismissAle(reason='hide'){
- if(transitioning())return;
- dismissing=true;suspendWakeListening('ALE · transisi penutupan');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();
+ if(dismissing)return;
+ const transition=++transitionSerial;
+ dismissing=true;summoning=false;
+ document.body.classList.remove('summoning');
+ suspendWakeListening('ALE · transisi penutupan');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();
  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
  document.body.classList.add('dismissing');setPassthrough(true);avatar.dismiss?.(DISMISS_DURATION_MS);
  state('ALE · melebur menjadi aliran biner…');
  await wait(DISMISS_DURATION_MS);
+ if(transition!==transitionSerial||!dismissing)return;
  document.body.classList.remove('dismissing');dismissing=false;state('');
  desktop?.finishDismiss?.(reason);
 }
