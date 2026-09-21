@@ -226,6 +226,39 @@ test('summon and dismiss transitions cannot lose the latest window command',asyn
  assert.doesNotMatch(app,/async function dismissAle[\s\S]{0,100}if\(transitioning\(\)\)return/);
 });
 
+test('tray show restores avatar without triggering summon or microphone',async()=>{
+ const [desktop,preload,app,avatar]=await Promise.all([
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/avatar.js',import.meta.url),'utf8')
+ ]);
+ const showStart=desktop.indexOf('function showAvatar()');
+ const summonStart=desktop.indexOf('function summonAvatar()',showStart);
+ const showBlock=desktop.slice(showStart,summonStart);
+ assert.match(showBlock,/dudidam:show/);
+ assert.doesNotMatch(showBlock,/dudidam:summon/);
+ assert.match(preload,/onShow/);
+ assert.match(app,/function showAle/);
+ assert.match(app,/desktop\?\.onShow\?\.\(showAle\)/);
+ assert.match(avatar,/reveal\(\)\{this\.transitionKind=''/);
+});
+
+test('external Copilot and Indonesian voice child processes are stoppable',async()=>{
+ const [copilot,stt,tts]=await Promise.all([
+  readFile(new URL('../desktop/copilot.mjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/indonesian-stt.mjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/indonesian-tts.mjs',import.meta.url),'utf8')
+ ]);
+ for(const source of [copilot,stt,tts]){
+  assert.match(source,/this\.children=new Set\(\)/);
+  assert.match(source,/children\?\.add\(child\)/);
+  assert.match(source,/children\?\.delete\(child\)/);
+  assert.match(source,/for\(const child of this\.children\)/);
+  assert.match(source,/child\.kill\(\)/);
+ }
+});
+
 test('cinematic avatar assembles and dissolves without a permanent particle swarm',async()=>{
  const [avatar,app,desktop,preload]=await Promise.all([
   readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
