@@ -37,7 +37,7 @@ test('desktop popup is recoverable and preserves position without overwriting th
 test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/--avatar-size:420px/);assert.match(css,/#avatarArea\{width:min\(var\(--avatar-size\)/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
 test('avatar structure uses binary and neural particles instead of continuous lines',async()=>{
  const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
- for(const feature of ['drawNeuralRoots','drawNeck','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors','drawBinarySampler','drawBinaryCubic','drawBinaryQuadratic','drawBinarySegment'])assert.match(avatar,new RegExp(feature));
+ for(const feature of ['drawNeuralRoots','drawNeck','drawEars','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors','drawBinarySampler','drawBinaryCubic','drawBinaryQuadratic','drawBinarySegment'])assert.match(avatar,new RegExp(feature));
  assert.match(avatar,/strokeText/);
  assert.match(avatar,/const maxYaw=Math\.PI\/6/);
  assert.match(avatar,/rx=clamp\(rx,-maxYaw,maxYaw\)/);
@@ -190,6 +190,15 @@ test('larger avatar default and slow-motion particle clock stay wired',async()=>
  assert.match(avatar,/drawNeuralRoots\([^\n]*motionClock/);
  assert.match(avatar,/drawNeuralField\([^\n]*motionClock/);
  assert.match(avatar,/drawMouthSignal\([^\n]*hue,clock,/);
+});
+
+test('particle ears follow head yaw without continuous strokes',async()=>{
+ const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
+ assert.match(avatar,/drawEars\(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw\)/);
+ assert.match(avatar,/visibility=clamp\(\.78\+side\*Math\.sin\(yaw\)\*\.34/);
+ assert.match(avatar,/this\.drawEars\(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw\)/);
+ assert.doesNotMatch(avatar,/context\.stroke\(\)/);
+ assert.doesNotMatch(avatar,/context\.ellipse/);
 });
 
 test('human head uses 3D perspective and a single smoothed speech viseme',async()=>{
