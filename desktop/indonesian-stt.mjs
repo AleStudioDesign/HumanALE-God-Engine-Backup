@@ -9,11 +9,12 @@ async function pythonPath(){
  return process.platform==='win32'?'python.exe':'python3';
 }
 
-function run(executable,args,{timeout=120000}={}){
+function run(executable,args,{timeout=120000,children}={}){
  return new Promise((resolve,reject)=>{
   const child=spawn(executable,args,{windowsHide:true,stdio:['ignore','pipe','pipe']});
+  children?.add(child);
   let stdout='',stderr='',done=false;
-  const finish=(error,result)=>{if(done)return;done=true;clearTimeout(timer);error?reject(error):resolve(result);};
+  const finish=(error,result)=>{if(done)return;done=true;clearTimeout(timer);children?.delete(child);error?reject(error):resolve(result);};
   const timer=setTimeout(()=>{child.kill();finish(new Error('Dikte Indonesia melewati batas waktu.'));},timeout);
   child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>100000){child.kill();finish(new Error('Hasil dikte terlalu besar.'));}});
   child.stderr.on('data',chunk=>{stderr=(stderr+chunk).slice(-5000);});
@@ -23,9 +24,9 @@ function run(executable,args,{timeout=120000}={}){
 }
 
 export class IndonesianStt{
- constructor(){this.pending=false;this.child=null;}
+ constructor(){this.pending=false;this.children=new Set();}
  async status(){
-  try{const result=await run(await pythonPath(),['-c','import faster_whisper; print("ready")'],{timeout:12000});return {configured:result.code===0,mode:'local-whisper',language:'id-ID'};}
+  try{const result=await run(await pythonPath(),['-c','import faster_whisper; print("ready")'],{timeout:12000,children:this.children});return {configured:result.code===0,mode:'local-whisper',language:'id-ID'};}
   catch{return {configured:false,mode:'local-whisper',language:'id-ID'};}
  }
  async transcribe(value){
@@ -37,12 +38,12 @@ export class IndonesianStt{
    const ext=value.audio.startsWith('data:audio/ogg')?'ogg':value.audio.startsWith('data:audio/mp4')?'mp4':'webm';
    const audioPath=join(folder,'voice.'+ext);
    await writeFile(audioPath,Buffer.from(value.audio.split(',')[1],'base64'));
-   const result=await run(await pythonPath(),[join(import.meta.dirname,'transcribe_id.py'),audioPath],{timeout:120000});
+   const result=await run(await pythonPath(),[join(import.meta.dirname,'transcribe_id.py'),audioPath],{timeout:120000,children:this.children});
    if(result.code!==0)throw new Error('Dikte Indonesia lokal gagal. '+result.stderr.slice(-300));
    const data=JSON.parse(result.stdout);
    if(!data.text)throw new Error('Ucapan belum dikenali. Coba bicara lebih dekat ke mikrofon.');
    return {text:data.text,language:data.language};
   }finally{this.pending=false;if(folder)await rm(folder,{recursive:true,force:true});}
  }
- stop(){this.child?.kill();}
+ stop(){for(const child of this.children){try{child.kill();}catch{}}this.children.clear();}
 }
