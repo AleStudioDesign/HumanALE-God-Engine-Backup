@@ -27,12 +27,13 @@ export class IndonesianTts{
  async synthesize(value){
   const text=String(value?.text||'').trim();
   if(!text||text.length>2000)throw new Error('Teks suara harus berisi 1–2000 karakter.');
+  const style=value?.style==='natural'?'natural':'baby-robot';
   if(this.pending)throw new Error('Suara sebelumnya masih dibuat.');
   this.pending=true;let folder;
   try{
    folder=await mkdtemp(join(tmpdir(),'dudidam-suara-'));
    const output=join(folder,'speech.wav');
-   const result=await run(await pythonPath(),[join(import.meta.dirname,'speak_id.py'),join(modelFolder,modelName),output],120000,text,this.children);
+   const result=await run(await pythonPath(),[join(import.meta.dirname,'speak_id.py'),join(modelFolder,modelName),output,style],120000,text,this.children);
    if(result.code!==0)throw new Error('Suara Indonesia lokal gagal. '+result.stderr.slice(-200));
    const audio=await readFile(output);
    if(!audio.length||audio.length>15000000)throw new Error('Hasil suara kosong atau terlalu besar.');

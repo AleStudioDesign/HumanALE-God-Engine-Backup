@@ -80,13 +80,13 @@ test('avatar adds particle depth and listening ear frequency waves',async()=>{
  assert.match(avatar,/this\.listening=false/);
  assert.match(avatar,/setListening\(value=false\)/);
  assert.match(avatar,/drawEarFrequencyWaves/);
- assert.match(avatar,/if\(!this\.listening\)return/);
+ assert.match(avatar,/if\(!this\.listening&&Math\.max\(bands\.low,bands\.mid,bands\.high\)<\.025\)return/);
  assert.match(avatar,/const depthShift=fw\*/);
  assert.match(avatar,/const lipDepth=fh\*/);
  assert.match(app,/function syncListeningVisual/);
  assert.match(app,/avatar\.setListening/);
  assert.match(app,/wakeListening=false;syncListeningVisual\(\)/);
- assert.match(html,/telinga mengirim riak biner halus saat Dudidam sedang mendengarkan/);
+ assert.match(html,/telinga mengirim riak biner sesuai frekuensi rendah, menengah, dan tinggi saat audio diterima/);
  assert.doesNotMatch(avatar,/context\.stroke\(\)/);
  assert.doesNotMatch(avatar,/\.lineTo\(/);
 });
@@ -279,7 +279,7 @@ test('particle ears follow head yaw without continuous strokes',async()=>{
  const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
  assert.match(avatar,/drawEars\(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock\)/);
  assert.match(avatar,/visibility=clamp\(\.78\+side\*Math\.sin\(yaw\)\*\.34/);
- assert.match(avatar,/this\.drawEars\(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock\)/);
+ assert.match(avatar,/this\.drawEars\(context,size,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,motionClock\)/);
  assert.doesNotMatch(avatar,/context\.stroke\(\)/);
  assert.doesNotMatch(avatar,/context\.ellipse/);
 });

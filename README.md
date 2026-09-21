@@ -78,3 +78,6 @@ node desktop/smoke.mjs — satu permintaan model nyata menggunakan akun ChatGPT 
 
 Statistik pada partikel adalah efek visual generatif, bukan metrik sistem. Tidak ada autostart Windows atau perubahan pet bawaan Codex.
 
+# Avatar, telinga, emosi, dan suara Indonesia
+
+Kontrol avatar menyediakan **Karakter emosi** (otomatis dari balasan, netral, bahagia, marah, kesal, sedih) dan **Efek suara** (bayi robot atau natural). Preset bayi robot memakai model suara Indonesia lokal Piper bila tersedia; suara Windows Indonesia menjadi cadangan. Telinga biner bereaksi terhadap pita frekuensi rendah, menengah, dan tinggi dari Mikrofon visual, Audio perangkat, atau file musik yang dipilih. Mikrofon tetap memerlukan izin pengguna.

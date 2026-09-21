@@ -3,6 +3,7 @@ import {parseCommand} from './commands.js';
 import {AudioReactor} from './audio-reactor.js';
 import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
 import {isExplicitProjectWorkRequest} from './work-intent.js';
+import {emotionFromText,emotions} from './avatar-emotion.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,params=new URLSearchParams(location.search),popup=params.get('popup')==='1',panelOnly=Boolean(desktop&&params.has('panel')),avatar=new BinaryAvatar($('#avatar'));
 const panelChannel=desktop?new BroadcastChannel('dudidam-avatar-panel'):null;
 if(panelOnly)avatar.setPaused?.(true);
@@ -17,8 +18,12 @@ let micProbeGeneration=0,micChecking=false;
 let remoteSpeechEnergy=0;
 let localRecorder,localStream,localChunks=[],localTimer,localCaptureGeneration=0;
 let onlineSpeech,onlineSpeechUrl,speechGeneration=0,localTtsConfigured=false;
+let voiceStyle=desktop?localStorage.getItem('dudidam-voice-style')||'baby-robot':'baby-robot',emotionChoice=desktop?localStorage.getItem('dudidam-emotion')||'auto':'auto',lastBandsSent=0;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();});
+const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();},bands=>{
+ avatar.setEarSpectrum(bands);
+ if(panelOnly&&(Math.max(bands.low,bands.mid,bands.high)===0||performance.now()-lastBandsSent>80)){panelChannel?.postMessage({type:'ear-spectrum',bands});lastBandsSent=performance.now();}
+});
 if(desktop){document.body.classList.add('desktop');$('.desktop-actions').hidden=false;$('#providerRow').hidden=false;$('#provider').value=aiProvider;$('#popup').hidden=true;if(panelOnly)document.body.classList.add('detached-panel');}else $('#systemAudio').hidden=true;
 if(popup){document.body.classList.add('popup-widget');$('#popup').hidden=true;}
 function applyAvatarSize(value){
@@ -59,7 +64,12 @@ applyPanelZoom(desktop?localStorage.getItem('dudidam-panel-zoom')||100:100);
 applyPanelTransparency(desktop?localStorage.getItem('dudidam-panel-transparency')||5:5);
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,6000);}
 function state(text=''){$('#state').textContent=text;$('#state').hidden=!text;avatar.thinking=busy;}
-function syncListeningVisual(){avatar.setListening?.(Boolean(listening||wakeListening||micChecking));}
+function syncListeningVisual(){avatar.setListening?.(Boolean(listening||wakeListening||micChecking||audioMode));}
+function applyEmotion(value,forward=true){
+ const emotion=emotions.includes(value)?value:'neutral';
+ avatar.setEmotion(emotion);
+ if(panelOnly&&forward)panelChannel?.postMessage({type:'setting',name:'emotion',value:emotion});
+}
 function setWakeStatus(text,active=false){const el=$('#wakeIndicator');if(el){el.textContent=text;el.dataset.active=active?'true':'false';}const toggle=$('#wakeToggle');if(toggle)toggle.checked=wakeEnabled;syncListeningVisual();if(!panelOnly)panelChannel?.postMessage({type:'wake-status',text,active,enabled:wakeEnabled});}
 let passthroughRequested, passthroughSentAt=0;
 function setPassthrough(ignore){if(!desktop||panelOnly)return;const now=performance.now();if(passthroughRequested===ignore&&now-passthroughSentAt<500)return;passthroughRequested=ignore;passthroughSentAt=now;desktop.passthrough(ignore);}
@@ -119,7 +129,7 @@ async function speakLocal(text){
  if(!desktop?.synthesize){setMicStatus('Voice Bahasa Indonesia belum tersedia. Balasan tampil sebagai teks.');resumeWakeSoon();return;}
  state('Menyiapkan suara Indonesia…');
  try{
-  const result=await desktop.synthesize({text:text.slice(0,2000)});
+  const result=await desktop.synthesize({text:text.slice(0,2000),style:voiceStyle});
   if(generation!==speechGeneration)return;
   if(result.error)throw new Error(result.error);
   const bytes=Uint8Array.from(atob(result.audio),character=>character.charCodeAt(0));
@@ -146,7 +156,7 @@ function speakNativeIndonesian(text){
  const chosen=selected&&/^id(?:-|$)/i.test(selected.lang||'')?selected:fallback;
  if(!chosen)return false;
  const u=new SpeechSynthesisUtterance(text);
- u.lang=chosen.lang;u.rate=1;u.voice=chosen;
+ u.lang=chosen.lang;u.rate=voiceStyle==='baby-robot'?1.12:1;u.pitch=voiceStyle==='baby-robot'?1.65:1;u.voice=chosen;
  u.onstart=()=>{ttsActive=true;ttsEnergy=.7;syncFaceAudio();avatar.trigger('nod');state('Berbicara · '+(chosen?.name||'Bahasa Indonesia'));};
  u.onboundary=e=>{const ch=text.charCodeAt(Math.min(text.length-1,e.charIndex||0))||80;ttsEnergy=.35+(ch%61)/100;syncFaceAudio();};
  u.onend=u.onerror=()=>{ttsActive=false;ttsEnergy=0;syncFaceAudio();if(!busy&&!audioMode)state();resumeWakeSoon(700);};
@@ -163,12 +173,12 @@ function speak(text){
  setMicStatus('Voice Bahasa Indonesia belum tersedia. Balasan tampil sebagai teks.');
  resumeWakeSoon();
 }
-function updateAudioUi(mode='',label='Tidak aktif'){audioMode=mode;$('#audioStatus').textContent=label;$('#audioMic').setAttribute('aria-pressed',String(mode==='microphone'));$('#systemAudio').setAttribute('aria-pressed',String(mode==='system'));$('#stopAudio').disabled=!mode;if(!busy&&!ttsActive)state(mode?'Audio aktif':'');}
+function updateAudioUi(mode='',label='Tidak aktif'){audioMode=mode;syncListeningVisual();$('#audioStatus').textContent=label;$('#audioMic').setAttribute('aria-pressed',String(mode==='microphone'));$('#systemAudio').setAttribute('aria-pressed',String(mode==='system'));$('#stopAudio').disabled=!mode;if(!busy&&!ttsActive)state(mode?'Audio aktif':'');}
 function stopReactiveAudio(){audioReactor.stop();audioEnergy=0;syncFaceAudio();const player=$('#musicPlayer');player.pause();if(musicUrl){URL.revokeObjectURL(musicUrl);musicUrl='';player.removeAttribute('src');player.load();}player.hidden=true;$('#musicFile').value='';updateAudioUi();}
 async function startMicrophoneVisual(){if(audioMode==='microphone'){stopReactiveAudio();return;}stopReactiveAudio();try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});await audioReactor.useStream(stream);updateAudioUi('microphone','Mikrofon bereaksi');}catch(error){stopReactiveAudio();toast(error?.name==='NotAllowedError'?'Izin mikrofon belum diberikan.':'Mikrofon tidak dapat dianalisis.');}}
 async function startSystemAudio(){if(audioMode==='system'){stopReactiveAudio();return;}stopReactiveAudio();if(!desktop||!navigator.mediaDevices?.getDisplayMedia){toast('Audio perangkat tersedia pada Dudidam Desktop Windows.');return;}try{const stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});stream.getVideoTracks().forEach(track=>track.stop());if(!stream.getAudioTracks().length)throw new Error('no-audio');await audioReactor.useStream(stream);for(const track of stream.getAudioTracks())track.addEventListener('ended',()=>updateAudioUi(),{once:true});updateAudioUi('system','Audio perangkat bereaksi');}catch{stopReactiveAudio();toast('Audio perangkat tidak tersedia. Putar musik dari file atau gunakan mikrofon visual.');}}
 async function playMusic(file){if(!file)return;stopReactiveAudio();const player=$('#musicPlayer');try{musicUrl=URL.createObjectURL(file);player.src=musicUrl;player.hidden=false;await audioReactor.useElement(player);await player.play();updateAudioUi('music','Musik bereaksi');}catch{stopReactiveAudio();toast('File audio tidak dapat diputar. Pilih MP3, WAV, atau format yang didukung.');}}
-function message(text,role='assistant',say=true,broadcast=true){const a=document.createElement('article');a.className='message '+role;const b=document.createElement('b');b.textContent=role==='assistant'?'DUDIDAM':'KAMU';const p=document.createElement('p');p.textContent=text;a.append(b,p);$('#messages').append(a);$('#messages').scrollTop=$('#messages').scrollHeight;if(role==='assistant'){$('#bubble').textContent=text;$('#bubble').hidden=!panelOnly&&$('#chatDialog').open;clearTimeout(bubbleTimer);bubbleTimer=setTimeout(()=>$('#bubble').hidden=true,15000);if(say)speak(text);}if(broadcast)panelChannel?.postMessage({type:'message',text,role});}
+function message(text,role='assistant',say=true,broadcast=true){const a=document.createElement('article');a.className='message '+role;const b=document.createElement('b');b.textContent=role==='assistant'?'DUDIDAM':'KAMU';const p=document.createElement('p');p.textContent=text;a.append(b,p);$('#messages').append(a);$('#messages').scrollTop=$('#messages').scrollHeight;if(role==='assistant'){$('#bubble').textContent=text;$('#bubble').hidden=!panelOnly&&$('#chatDialog').open;clearTimeout(bubbleTimer);bubbleTimer=setTimeout(()=>$('#bubble').hidden=true,15000);if(emotionChoice==='auto')applyEmotion(emotionFromText(text),broadcast);if(say)speak(text);}if(broadcast)panelChannel?.postMessage({type:'message',text,role});}
 async function submit(text,image){text=text.trim();if(!text||busy)return;message(text,'user',false);const cmd=!image&&parseCommand(text);if(cmd){let answer='';if(['blink','nod','shake'].includes(cmd)){avatar.trigger(cmd);answer={blink:'Saya berkedip.',nod:'Baik, saya mengangguk.',shake:'Saya menggelengkan kepala.'}[cmd];}if(cmd==='stop'){stopSpeech();stopListening();answer='Baik. Suara dihentikan.';}if(cmd==='hello'){avatar.trigger('nod');answer='Halo, saya Dudidam. Saya mendengarkan.';}if(cmd==='help')answer='Klik kanan atau tekan H untuk kontrol, Enter untuk percakapan. B berkedip, N mengangguk, G menggeleng, M mikrofon, R tengahkan. Tombol 1 sampai 5 mengganti gaya biner dan neural. Ukuran avatar dapat diatur dari kontrol. Seret wajah untuk memindahkan.';if(cmd==='time')answer='Sekarang pukul '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+'.';if(cmd==='date')answer='Hari ini '+new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';if(cmd==='pet'){document.querySelectorAll('dialog[open]').forEach(d=>d.close());answer='Panel disembunyikan.';}message(answer,'assistant',cmd!=='stop');return;}
  if(!desktop){message('Login Sites hanya mengenali akun. Untuk percakapan model gunakan Dudidam Desktop.','assistant',false);return;}
  if(aiProvider==='copilot'&&!image&&isExplicitProjectWorkRequest(text)){
@@ -485,6 +495,11 @@ $('#color').onchange=e=>{avatar.color=e.target.value;if(panelOnly)panelChannel?.
 $('#environment').onchange=e=>{avatar.setEnvironment(e.target.value);if(panelOnly)panelChannel?.postMessage({type:'setting',name:'environment',value:e.target.value});};
 $('#speakSetting').onchange=e=>{voice=e.target.checked;if(!voice)stopSpeech();};
 $('#voiceSelect').onchange=e=>{selectedVoiceURI=e.target.value||'';if(desktop){if(selectedVoiceURI)localStorage.setItem('dudidam-voice-uri',selectedVoiceURI);else localStorage.removeItem('dudidam-voice-uri');}};
+$('#voiceStyle').value=['baby-robot','natural'].includes(voiceStyle)?voiceStyle:'baby-robot';
+$('#voiceStyle').onchange=e=>{voiceStyle=e.target.value==='natural'?'natural':'baby-robot';if(desktop)localStorage.setItem('dudidam-voice-style',voiceStyle);};
+$('#emotion').value=emotionChoice==='auto'||emotions.includes(emotionChoice)?emotionChoice:'auto';
+$('#emotion').onchange=e=>{emotionChoice=e.target.value;if(desktop)localStorage.setItem('dudidam-emotion',emotionChoice);applyEmotion(emotionChoice==='auto'?'neutral':emotionChoice);if(panelOnly)panelChannel?.postMessage({type:'emotion-choice',value:emotionChoice});};
+applyEmotion(emotionChoice==='auto'?'neutral':emotionChoice,false);
 $('#mic').onclick=$('#chatMic').onclick=()=>toggleMic();
 function changeWakeEnabled(enabled){wakeEnabled=Boolean(enabled);if(desktop&&!panelOnly)localStorage.setItem('dudidam-wake-enabled',String(wakeEnabled));if(wakeEnabled){wakeRetryBlocked=false;wakeNetworkFailures=0;wakeHealthVerified=false;setWakeStatus('ALE · menyalakan wake mic…',false);startWakeListening();}else suspendWakeListening('ALE · wake mic nonaktif');}
 $('#wakeToggle').onchange=e=>{if(panelOnly){panelChannel?.postMessage({type:'wake-toggle',enabled:e.target.checked});return;}changeWakeEnabled(e.target.checked);};
@@ -524,6 +539,8 @@ if(panelChannel)panelChannel.onmessage=event=>{
  if(data.type==='history'){history=Array.isArray(data.history)?data.history.slice(-10):[];return;}
  if(data.type==='persona'&&!panelOnly){aiProvider=data.provider;setPersona(aiProvider);$('#provider').value=aiProvider;return;}
  if(data.type==='speech-level'&&!panelOnly){remoteSpeechEnergy=Number(data.level)||0;syncFaceAudio();return;}
+ if(data.type==='ear-spectrum'&&!panelOnly){avatar.setEarSpectrum(data.bands);return;}
+ if(data.type==='emotion-choice'&&!panelOnly){emotionChoice=data.value==='auto'||emotions.includes(data.value)?data.value:'auto';$('#emotion').value=emotionChoice;return;}
  if(data.type==='evolution'&&!panelOnly){setEvolutionVisual(data.mode==='complete'?'complete':data.mode==='start'?'start':'stop');return;}
  if(data.type==='wake-status'&&panelOnly){wakeEnabled=Boolean(data.enabled);setWakeStatus(String(data.text||''),Boolean(data.active));return;}
  if(data.type==='panel-ready'&&!panelOnly){setWakeStatus($('#wakeIndicator').textContent,$('#wakeIndicator').dataset.active==='true');setPersona(aiProvider);return;}
@@ -538,6 +555,7 @@ if(panelChannel)panelChannel.onmessage=event=>{
   if(data.name==='animate')avatar.animate=Boolean(data.value);
   if(data.name==='color'&&typeof data.value==='string')avatar.color=data.value;
   if(data.name==='environment'&&typeof data.value==='string')avatar.setEnvironment(data.value);
+  if(data.name==='emotion')applyEmotion(data.value,false);
  }
 };
 if(!panelOnly){

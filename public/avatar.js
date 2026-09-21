@@ -30,6 +30,8 @@ export class BinaryAvatar {
   this.awakeningDuration=0;
   this.speaking=false;
   this.listening=false;
+  this.earSpectrum={low:0,mid:0,high:0};
+  this.emotion='neutral';
   this.evolving=false;
   this.evolutionStarted=0;
   this.evolutionCompleteUntil=0;
@@ -85,6 +87,8 @@ export class BinaryAvatar {
  trigger(action){this.action=action;this.actionStart=performance.now();if(action==='blink')this.blinkStart=this.actionStart;}
  setSpeechEnergy(value=.62){this.speechTarget=clamp(value,0,1);this.speechBeat=performance.now();}
  setListening(value=false){this.listening=Boolean(value);}
+ setEarSpectrum(value={}){for(const band of ['low','mid','high'])this.earSpectrum[band]=clamp(Number(value[band])||0,0,1);}
+ setEmotion(value='neutral'){this.emotion=['neutral','happy','angry','annoyed','sad'].includes(value)?value:'neutral';}
  setPaused(value=false){this.paused=Boolean(value);}
  setEvolving(value=false){
   const next=Boolean(value);
@@ -132,7 +136,7 @@ export class BinaryAvatar {
 
  drawBinarySampler(context,sampler,count,hue,alpha,lightEnvironment,size,seed=0){
   const steps=Math.max(2,Math.round(count));
-  const fontSize=Math.max(4.8,size*.0145);
+  const fontSize=Math.max(5.8,size*.016);
   context.save();
   for(let i=0;i<=steps;i++){
    const t=i/steps,point=sampler(t);
@@ -361,12 +365,14 @@ export class BinaryAvatar {
  }
 
   drawEarFrequencyWaves(context,size,rootX,midY,fw,fh,hue,lightEnvironment,side,visibility,clock){
-  if(!this.listening)return;
+  const bands=this.earSpectrum;
+  if(!this.listening&&Math.max(bands.low,bands.mid,bands.high)<.025)return;
   const pulse=.5+.5*Math.sin(clock*.0105+side*.7);
   for(let wave=0;wave<3;wave++){
+   const energy=[bands.low,bands.mid,bands.high][wave];
    const travel=(clock*.00042+wave*.29)%1;
-   const reach=fw*(.07+travel*.16),height=fh*(.035+travel*.07);
-   const alpha=(1-travel)*(.12+.16*pulse)*visibility;
+   const reach=fw*(.07+travel*.16+energy*.11),height=fh*(.035+travel*.07+energy*.035);
+   const alpha=(1-travel)*(.08+.12*pulse+energy*.58)*visibility;
    const start={x:rootX+side*fw*.055,y:midY};
    const end={x:rootX+side*(fw*.055+reach),y:midY};
    this.drawBinaryQuadratic(context,start,{x:rootX+side*(fw*.07+reach*.58),y:midY-height},end,6,hue+92+wave*12,alpha,lightEnvironment,size,40+wave+side);
@@ -379,12 +385,12 @@ export class BinaryAvatar {
   context.save();context.globalCompositeOperation='source-over';
   for(const side of [-1,1]){
    const visibility=clamp(.78+side*Math.sin(yaw)*.34,.42,1);
-   const rootX=cx+yawShift*.66+side*fw*.405*profile;
+   const rootX=cx+yawShift*.66+side*fw*.57*profile;
    const topY=cy-fh*.045,bottomY=cy+fh*.235,midY=cy+fh*.095;
-   const outerX=rootX+side*fw*(.085+.018*visibility);
+   const outerX=rootX+side*fw*(.13+.025*visibility);
    const top={x:rootX,y:topY},bottom={x:rootX-side*fw*.008,y:bottomY};
-   this.drawBinaryCubic(context,top,{x:outerX,y:cy-fh*.018},{x:outerX+side*fw*.018,y:cy+fh*.16},bottom,14,hue+30,.33*visibility,lightEnvironment,size,side+31.1);
-   this.drawBinaryCubic(context,bottom,{x:rootX+side*fw*.035,y:cy+fh*.2},{x:rootX+side*fw*.037,y:cy+fh*.012},top,11,hue+47,.25*visibility,lightEnvironment,size,side+32.1);
+   this.drawBinaryCubic(context,top,{x:outerX,y:cy-fh*.018},{x:outerX+side*fw*.018,y:cy+fh*.16},bottom,16,hue+30,.62*visibility,lightEnvironment,size,side+31.1);
+   this.drawBinaryCubic(context,bottom,{x:rootX+side*fw*.035,y:cy+fh*.2},{x:rootX+side*fw*.037,y:cy+fh*.012},top,12,hue+47,.45*visibility,lightEnvironment,size,side+32.1);
    this.drawBinaryCubic(context,
     {x:rootX+side*fw*.018,y:cy+fh*.012},
     {x:rootX+side*fw*.068,y:midY-fh*.05},
@@ -396,7 +402,7 @@ export class BinaryAvatar {
     {x:rootX+side*fw*.052,y:midY+fh*.008},
     {x:rootX+side*fw*.022,y:midY+fh*.052},
     6,hue+82,.18*visibility,lightEnvironment,size,side+34.1);
-   context.font=`${Math.max(5.2,size*.014)}px monospace`;
+   context.font=`${Math.max(6.2,size*.017)}px monospace`;
    this.drawAdaptiveGlyph(context,side>0?'1':'0',outerX,midY,hue+76,.22*visibility,lightEnvironment,undefined,false);
    this.drawAdaptiveGlyph(context,side>0?'0':'1',rootX+side*fw*.03,bottomY-fh*.025,hue+58,.16*visibility,lightEnvironment,undefined,false);
    this.drawEarFrequencyWaves(context,size,rootX,midY,fw,fh,hue,lightEnvironment,side,visibility,clock);
@@ -440,16 +446,16 @@ export class BinaryAvatar {
    {x:centerX,y:cy-fh*.4},{x:centerX+yawShift*.72,y:cy-fh*.18},{x:centerX+yawShift*.76,y:cy+fh*.18},{x:centerX+yawShift*.52,y:cy+fh*.43},
    14,hue+42,.16,lightEnvironment,size,5.2);
 
-  this.drawEars(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock);
-
-  const eyeY=cy-fh*.065+pitch*fh*.09,eyeOpen=fh*.018*(1-blink);
+  const sad=this.emotion==='sad',angry=this.emotion==='angry',annoyed=this.emotion==='annoyed',happy=this.emotion==='happy';
+  const eyeY=cy-fh*.065+pitch*fh*.09+(sad?fh*.012:0),eyeOpen=fh*.018*(happy?.72:angry?.82:1)*(1-blink);
   for(const side of [-1,1]){
    const visibility=clamp(1-side*Math.sin(yaw)*.42,.55,1),eyeX=centerX+side*fw*.19*profile+yawShift*.12,eyeWidth=fw*.105*profile;
    const left={x:eyeX-eyeWidth,y:eyeY},right={x:eyeX+eyeWidth,y:eyeY};
    this.drawBinaryQuadratic(context,left,{x:eyeX,y:eyeY-eyeOpen},right,7,hue+55,.3*visibility,lightEnvironment,size,side+6.1);
    this.drawBinaryQuadratic(context,right,{x:eyeX,y:eyeY+eyeOpen*.72},left,7,hue+62,.27*visibility,lightEnvironment,size,side+7.1);
+   const browTilt=angry?-side*fh*.045:annoyed?-side*fh*.023:sad?side*fh*.032:happy?fh*.012:0;
    this.drawBinaryQuadratic(context,
-    {x:eyeX-side*eyeWidth*.92,y:cy-fh*.125},{x:eyeX,y:cy-fh*(.145+visibility*.008)},{x:eyeX+side*eyeWidth*.86,y:cy-fh*.12},
+    {x:eyeX-side*eyeWidth*.92,y:cy-fh*.125+browTilt},{x:eyeX,y:cy-fh*(.145+visibility*.008)+(happy?-fh*.015:0)},{x:eyeX+side*eyeWidth*.86,y:cy-fh*.12-browTilt},
     7,hue+38,.18*visibility,lightEnvironment,size,side+8.1);
   }
 
@@ -478,9 +484,11 @@ export class BinaryAvatar {
   drawMouthSignal(context,size,cx,cy,fw,fh,hue,clock,lightEnvironment,yaw,pitch){
   const energy=this.speaking?clamp(this.speechEnergy,0,1):0,viseme=this.speaking?this.viseme:0;
   const open=fh*(.0028+energy*(.005+viseme*.038)),width=fw*(.17+viseme*.015)*Math.cos(yaw),centerX=cx+Math.sin(yaw)*fw*.12,centerY=cy+fh*.262+pitch*fh*.045;
+  const expression=this.speaking?0:this.emotion==='happy'?1:this.emotion==='sad'?-1:this.emotion==='angry'?.32:this.emotion==='annoyed'?-.38:0;
+  const cornerLift=expression*fh*.028;
   context.save();context.globalCompositeOperation='source-over';
 
-  const left={x:centerX-width,y:centerY},midTop={x:centerX,y:centerY-open*.32},right={x:centerX+width,y:centerY},midBottom={x:centerX,y:centerY+open*.86};
+  const left={x:centerX-width,y:centerY-cornerLift},midTop={x:centerX,y:centerY-open*.32+cornerLift*.22},right={x:centerX+width,y:centerY-cornerLift},midBottom={x:centerX,y:centerY+open*.86+cornerLift*.32};
   this.drawBinaryCubic(context,left,{x:centerX-width*.52,y:centerY-open*.34},{x:centerX-width*.24,y:centerY-open*.52},midTop,7,hue+16,.48+energy*.34,lightEnvironment,size,21.1);
   this.drawBinaryCubic(context,midTop,{x:centerX+width*.24,y:centerY-open*.52},{x:centerX+width*.52,y:centerY-open*.34},right,7,hue+22,.48+energy*.34,lightEnvironment,size,22.1);
   this.drawBinaryCubic(context,left,{x:centerX-width*.5,y:centerY+open*.72},{x:centerX-width*.24,y:centerY+open*.92},midBottom,7,hue-12,.5+energy*.36,lightEnvironment,size,23.1);
@@ -508,6 +516,23 @@ export class BinaryAvatar {
    this.drawAdaptiveGlyph(context,lower?'1':'0',x,y,hue+i*5,(.24+energy*.38)*shimmer,lightEnvironment,undefined,false);
   }
   context.restore();
+ }
+
+ drawEmotionOverlay(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw){
+  if(this.emotion==='neutral')return;
+  const happy=this.emotion==='happy',sad=this.emotion==='sad',angry=this.emotion==='angry',annoyed=this.emotion==='annoyed';
+  const centerX=cx+Math.sin(yaw)*fw*.08,profile=Math.cos(yaw);
+  for(const side of [-1,1]){
+   const x=centerX+side*fw*.19*profile,y=cy-fh*.15,width=fw*.11*profile;
+   const innerY=y+(angry?fh*.035:sad?-fh*.032:annoyed&&side===1?fh*.018:0);
+   const outerY=y+(angry?-fh*.023:sad?fh*.015:annoyed&&side===-1?-fh*.025:happy?-fh*.014:0);
+   this.drawBinaryQuadratic(context,{x:x-side*width,y:innerY},{x,y:y-(happy?fh*.024:0)},{x:x+side*width,y:outerY},10,hue+(angry?-30:sad?36:60),.78,lightEnvironment,size,side+70);
+  }
+  if(this.speaking)return;
+  const y=cy+fh*.265,width=fw*.18*profile;
+  const edge=happy?-fh*.035:sad?fh*.022:annoyed?fh*.012:0;
+  const middle=happy?fh*.038:sad?-fh*.02:angry?-fh*.008:annoyed?-fh*.003:0;
+  this.drawBinaryQuadratic(context,{x:centerX-width,y:y+edge},{x:centerX,y:y+middle},{x:centerX+width,y:y+(annoyed?edge*.25:edge)},15,hue+(sad?35:happy?85:0),.88,lightEnvironment,size,77);
  }
 
   frame(time){
@@ -561,7 +586,7 @@ export class BinaryAvatar {
   this.drawEvolutionField(context,size,cx,cy,faceWidth,faceHeight,hue,motionClock,lightEnvironment);
   this.drawTransitionRibbons(context,size,cx,cy,hue,motionClock,lightEnvironment,transition);
 
-  context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
+  context.font=`${Math.max(6.6,faceWidth/110*3.15)}px monospace`;
   const abstractStrength=this.allEffects? .62:this.mode==='abstract'?1:this.mode==='neural'? .58:this.mode==='mixed'? .28:0;
   for(let sampleIndex=0;sampleIndex<this.samples.length;sampleIndex++){
    if(lowCost&&sampleIndex%2===1)continue;
@@ -610,7 +635,11 @@ export class BinaryAvatar {
    this.drawAdaptiveGlyph(context,glyph,x,y,livingHue,alpha,lightEnvironment,undefined,sampleIndex%3===0||alpha>.9);
    if(abstractStrength>.5&&Math.abs(fracture)>.72)this.drawAdaptiveGlyph(context,glyph,x+fracture*size*.018,y-fracture*size*.006,hue+spectralShift+28,alpha*.18*abstractStrength,lightEnvironment);
   }
-  if(assembly>.08)this.drawMouthSignal(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx,ry);
+  if(assembly>.08){
+   this.drawEars(context,size,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,motionClock);
+   this.drawMouthSignal(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx,ry);
+   this.drawEmotionOverlay(context,size,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx);
+  }
   this.drawMagneticField(context,size,hue,clock,lightEnvironment);
   context.restore();
   this.lastFrameCost=performance.now()-frameStarted;

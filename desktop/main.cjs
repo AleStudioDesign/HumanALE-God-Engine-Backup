@@ -1,7 +1,9 @@
 const {app,BrowserWindow,ipcMain,shell,dialog,screen,desktopCapturer,Tray,Menu,nativeImage,globalShortcut}=require('electron');
 const http=require('node:http');
 const {readFile,writeFile}=require('node:fs/promises');
+const {mkdtempSync}=require('node:fs');
 const path=require('node:path');
+const {tmpdir}=require('node:os');
 
 let win,panelWin,server,origin,bridges,agentHub,indonesianStt,indonesianTts,tray,saveTimer,pointerTimer;
 let baseWindowSize={width:420,height:480};
@@ -13,6 +15,7 @@ let passthroughLocked=false;
 let panelViewportOpen=false;
 const summonShortcut='CommandOrControl+Alt+5';
 const ciSmoke=process.argv.includes('--ci-smoke');
+if(ciSmoke)app.setPath('userData',mkdtempSync(path.join(tmpdir(),'dudidam-ci-smoke-')));
 
 function statePath(){return path.join(app.getPath('userData'),'window-state.json');}
 function projectRootPath(){return path.join(app.getPath('userData'),'project-root.txt');}
@@ -103,7 +106,17 @@ async function openPanel(view='controls'){
  const bounds=win.getBounds(),display=screen.getDisplayNearestPoint({x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}),area=display.workArea;
  const width=Math.min(460,area.width),height=Math.min(680,area.height);
  const rightSpace=area.x+area.width-(bounds.x+bounds.width),leftSpace=bounds.x-area.x;
- const x=rightSpace>=width+16?bounds.x+bounds.width+16:leftSpace>=width+16?bounds.x-width-16:rightSpace>=leftSpace?area.x+area.width-width:area.x;
+ let x;
+ if(rightSpace>=width+16)x=bounds.x+bounds.width+16;
+ else if(leftSpace>=width+16)x=bounds.x-width-16;
+ else if(area.width>=bounds.width+width+16){
+  const leftAvatarX=area.x+width+16;
+  const rightAvatarX=area.x+area.width-width-16-bounds.width;
+  const putPanelLeft=Math.abs(bounds.x-leftAvatarX)<=Math.abs(bounds.x-rightAvatarX);
+  const avatarX=putPanelLeft?leftAvatarX:rightAvatarX;
+  win.setPosition(avatarX,bounds.y);
+  x=putPanelLeft?area.x:avatarX+bounds.width+16;
+ }else x=rightSpace>=leftSpace?area.x+area.width-width:area.x;
  const y=Math.max(area.y,Math.min(area.y+area.height-height,bounds.y));
  panelWin=new BrowserWindow({width,height,x,y,minWidth:350,minHeight:360,backgroundColor:'#081610',frame:true,resizable:true,alwaysOnTop:true,show:false,title:'Dudidam · Panel',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,spellcheck:false}});
  panelWin.setAlwaysOnTop(true,'floating');
@@ -208,15 +221,24 @@ else{
    await openPanel('controls');
    const panelReady=await panelWin.webContents.executeJavaScript("document.body.classList.contains('detached-panel') && document.querySelector('#controls')?.open && document.documentElement.classList.contains('panel-surface')");
    if(!panelReady)throw new Error('Panel terpisah Dudidam tidak siap.');
+   const avatarControls=await panelWin.webContents.executeJavaScript("Boolean(document.querySelector('#emotion')) && Boolean(document.querySelector('#voiceStyle')) && document.querySelector('#voiceStyle').value==='baby-robot'");
+   if(!avatarControls)throw new Error('Kontrol emosi dan suara bayi robot tidak siap.');
    const avatarBounds=win.getBounds(),panelBounds=panelWin.getBounds(),workArea=screen.getDisplayNearestPoint({x:avatarBounds.x+avatarBounds.width/2,y:avatarBounds.y+avatarBounds.height/2}).workArea;
-   if(workArea.width>=avatarBounds.width+panelBounds.width+16&&avatarBounds.x<panelBounds.x+panelBounds.width&&panelBounds.x<avatarBounds.x+avatarBounds.width&&avatarBounds.y<panelBounds.y+panelBounds.height&&panelBounds.y<avatarBounds.y+avatarBounds.height)throw new Error('Panel menutupi avatar walau layar cukup lebar.');
+   if(workArea.width>=avatarBounds.width+panelBounds.width+16&&avatarBounds.x<panelBounds.x+panelBounds.width&&panelBounds.x<avatarBounds.x+avatarBounds.width&&avatarBounds.y<panelBounds.y+panelBounds.height&&panelBounds.y<avatarBounds.y+avatarBounds.height)throw new Error(`Panel menutupi avatar walau layar cukup lebar: ${JSON.stringify({avatarBounds,panelBounds,workArea})}`);
    await panelWin.webContents.executeJavaScript("new BroadcastChannel('dudidam-avatar-panel').postMessage({type:'persona',provider:'copilot'})");
    const personaReady=await win.webContents.executeJavaScript("new Promise(resolve=>setTimeout(()=>resolve(document.querySelector('#personaBadge')?.textContent.includes('COPILOT')),100))");
    if(!personaReady)throw new Error('Tampilan Copilot tidak tersambung ke avatar.');
+   if(process.env.DUDIDAM_CAPTURE_SMOKE){
+    await new Promise(resolve=>setTimeout(resolve,700));
+    await writeFile(process.env.DUDIDAM_CAPTURE_SMOKE,(await win.capturePage()).toPNG());
+    await panelWin.webContents.executeJavaScript("{const el=document.querySelector('#emotion');el.value='happy';el.dispatchEvent(new Event('change',{bubbles:true}));}");
+    await new Promise(resolve=>setTimeout(resolve,250));
+    await writeFile(process.env.DUDIDAM_CAPTURE_SMOKE.replace(/\.png$/,'-happy.png'),(await win.capturePage()).toPNG());
+   }
    if(process.env.DUDIDAM_VOICE_SMOKE==='1'){
     const voiceReady=await panelWin.webContents.executeJavaScript("Promise.all([window.dudidamDesktop.sttStatus(),window.dudidamDesktop.ttsStatus()]).then(([stt,tts])=>stt.configured&&tts.configured)");
     if(!voiceReady)throw new Error('Runtime suara Indonesia lokal belum siap.');
-    const speechReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.synthesize({text:'Halo dari Dudidam.'}).then(result=>result.mime==='audio/wav'&&result.audio?.length>1000)");
+    const speechReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.synthesize({text:'Halo dari Dudidam.',style:'baby-robot'}).then(result=>result.mime==='audio/wav'&&result.audio?.length>1000)");
     if(!speechReady)throw new Error('Suara Indonesia lokal gagal dibuat lewat panel.');
    }
    if(process.env.DUDIDAM_COPILOT_SMOKE==='1'){
