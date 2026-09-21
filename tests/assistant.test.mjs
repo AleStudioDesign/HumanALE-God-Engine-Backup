@@ -142,3 +142,21 @@ test('Copilot trust-folder prompt fails fast instead of hanging',async()=>{
  assert.match(hub,/child\.kill\(\)/);
  assert.match(hub,/GitHub Copilot meminta konfirmasi trust folder/);
 });
+
+
+test('temporary panel resize does not corrupt saved position',async()=>{
+ const desktop=await readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8');
+ assert.match(desktop,/panelViewportOpen/);
+ assert.match(desktop,/if\(!panelViewportOpen\)savePositionSoon\(\)/);
+});
+
+test('Copilot programmatic run is hardened without broad permissions',async()=>{
+ const hub=await readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8');
+ assert.match(hub,/--no-auto-update/);
+ assert.match(hub,/--disallow-temp-dir/);
+ assert.match(hub,/--available-tools=view,grep,glob,edit,create,apply_patch/);
+ assert.match(hub,/--allow-tool=write/);
+ assert.doesNotMatch(hub,/--allow-all/);
+ assert.doesNotMatch(hub,/--allow-all-paths/);
+ assert.match(hub,/trust the files in/);
+});
