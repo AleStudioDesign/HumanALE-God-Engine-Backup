@@ -290,7 +290,7 @@ test('Copilot programmatic run is hardened without broad permissions',async()=>{
 });
 
 
-test('Indonesian TTS voice selection stays wired',async()=>{
+test('Indonesian TTS prefers Piper only when configured and falls back to Windows voice',async()=>{
  const [html,app]=await Promise.all([
   readFile(new URL('../public/index.html',import.meta.url),'utf8'),
   readFile(new URL('../public/app.js',import.meta.url),'utf8')
@@ -298,9 +298,12 @@ test('Indonesian TTS voice selection stays wired',async()=>{
  assert.match(html,/id="voiceSelect"/);
  assert.match(html,/Voice Indonesia/);
  assert.match(app,/getIndonesianVoices/);
+ assert.match(app,/localTtsConfigured=false/);
+ assert.match(app,/localTtsConfigured=Boolean\(result\.configured\)/);
+ assert.match(app,/function speakNativeIndonesian/);
+ assert.match(app,/if\(localTtsConfigured&&desktop\?\.synthesize\)\{speakLocal\(text\);return;\}/);
+ assert.match(app,/if\(speakNativeIndonesian\(text\)\)return/);
  assert.match(app,/if\(desktop\?\.synthesize\)\{speakLocal\(text\);return;\}/);
- assert.match(app,/\^id\(\?:-\|\$\)/);
- assert.match(app,/if\(!chosen\)\{speakLocal\(text\)/);
  assert.match(app,/u\.lang=chosen\.lang/);
  assert.match(app,/dudidam-voice-uri/);
  assert.match(app,/voiceschanged/);
