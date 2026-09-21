@@ -46,6 +46,43 @@ async function locate(agent){
  for(const command of agent.commands||[]){const found=await locateCommand(command);if(found)return found;}
  return null;
 }
+
+export function isCodexLoggedIn(text=''){
+ return /logged in/i.test(String(text));
+}
+export function parseCodexJsonOutput(stdout=''){
+ let text='',failure=false;
+ for(const line of String(stdout).split(/\r?\n/)){
+  try{
+   const event=JSON.parse(line);
+   if(event.type==='item.completed'&&event.item?.type==='agent_message'&&typeof event.item.text==='string')text=event.item.text;
+   if(event.type==='turn.failed'||event.type==='error')failure=true;
+  }catch{}
+ }
+ return {text:text.trim(),failure};
+}
+export function agentTimeoutMs(mode='analyze',env=process.env){
+ const fallback=mode==='work'?600000:120000;
+ const raw=Number(env.DUDIDAM_AGENT_TIMEOUT_MS);
+ if(!Number.isFinite(raw)||raw<=0)return fallback;
+ return Math.max(30000,Math.min(900000,Math.round(raw)));
+}
+function runProcess(executable,args,{cwd,timeout=12000}={}){
+ return new Promise(resolve=>{
+  const child=spawn(executable,args,{cwd,windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1'}});
+  let stdout='',stderr='',settled=false;
+  const finish=value=>{if(settled)return;settled=true;clearTimeout(timer);resolve(value);};
+  const timer=setTimeout(()=>{child.kill();finish({code:null,stdout,stderr,timedOut:true});},timeout);
+  child.stdout.on('data',data=>stdout+=data);
+  child.stderr.on('data',data=>stderr=(stderr+data).slice(-16000));
+  child.on('error',error=>finish({code:null,stdout,stderr,error}));
+  child.on('close',code=>finish({code,stdout,stderr}));
+ });
+}
+async function codexLoginStatus(executable,cwd){
+ const result=await runProcess(executable,['login','status'],{cwd,timeout:12000});
+ return {ready:result.code===0&&isCodexLoggedIn(result.stdout+'\n'+result.stderr),...result};
+}
 export function agentDefinitions(){return agents.map(({commands,envPath,configEnv,configEnvs,secondaryEnv,...agent})=>({...agent}));}
 function looksLikeCopilotTrustPrompt(text=''){
  const value=String(text).replace(/\s+/g,' ').toLowerCase();
@@ -62,15 +99,17 @@ export class DeveloperAgentHub{
    const executable=await locate(agent);
    const configNames=[agent.configEnv,...(agent.configEnvs||[])].filter(Boolean);
    const configured=configNames.length?Boolean(configNames.some(name=>(process.env[name]||'').trim())&&(!agent.secondaryEnv||(process.env[agent.secondaryEnv]||'').trim())):false;
+   const codexAuth=agent.id==='codex'&&executable?await codexLoginStatus(executable,projectRoot):null;
    let state='available',detail='';
    if(agent.external){state='external';detail='Terdaftar di Agent Hub sebagai konektor eksternal; Dudidam tidak menjalankannya langsung.';}
    else if(agent.runtime){state=configured?'configured':executable?'installed':'setup';detail=configured?'Kredensial provider runtime terdeteksi dari environment.':executable?'CLI lokal terdeteksi; provider runtime masih memerlukan kredensial environment.':'Provider tersedia di Dudidam tetapi belum dikonfigurasi di environment.';}
    else if(agent.id==='replit'){state='mcp-client';detail='Replit Agent menerima remote MCP dari halaman Integrations.';}
    else if(agent.id==='pieces'){state=configured?'configured':executable?'installed':'setup';detail=configured?'PIECES_MCP_URL terdeteksi.':executable?'PiecesOS terdeteksi; salin URL MCP ke PIECES_MCP_URL bila ingin dipakai lintas agent.':'Install PiecesOS lalu ambil URL MCP lokal.';}
    else if(agent.id==='askcodi'){state=configured?'configured':'setup';detail=configured?'AskCodi API siap dipakai dari provider Dudidam.':'Atur ASKCODI_API_KEY dan ASKCODI_MODEL.';}
+   else if(agent.id==='codex'&&executable){state=codexAuth?.ready?'configured':'installed';detail=codexAuth?.ready?'Codex CLI terdeteksi dan login aktif.':'Codex CLI terdeteksi tetapi belum login. Jalankan codex login lalu coba lagi.';}
    else if(executable){state='installed';detail='CLI/aplikasi lokal terdeteksi.';}
    else{state='setup';detail=agent.method.includes('MCP')?'Belum terdeteksi lokal; integrasi MCP tetap didukung oleh produknya.':'Belum dikonfigurasi.';}
-   return {id:agent.id,name:agent.name,method:agent.method,state,detail,canRun:Boolean(agent.canRun&&executable),url:agent.url,executable:executable?true:false};
+   return {id:agent.id,name:agent.name,method:agent.method,state,detail,canRun:Boolean(agent.canRun&&executable&&(agent.id!=='codex'||codexAuth?.ready)),url:agent.url,executable:executable?true:false};
   }));
   return {projectRoot,agents:rows};
  }
@@ -83,22 +122,30 @@ export class DeveloperAgentHub{
   if(mode==='work'&&!['github-copilot','codex'].includes(id))throw new Error('Mode Kerja hanya tersedia untuk GitHub Copilot atau OpenAI Codex.');
   const executable=await locate(agent);
   if(!executable)throw new Error(agent.name+' belum ditemukan di PATH atau environment path khusus.');
+  const cwd=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
+  if(id==='codex'){
+   const auth=await codexLoginStatus(executable,cwd);
+   if(!auth.ready){
+    if(auth.timedOut)throw new Error('Pemeriksaan login Codex melewati batas waktu. Jalankan codex login status di terminal.');
+    throw new Error('Codex CLI terpasang tetapi belum login. Jalankan codex login di terminal lalu coba lagi.');
+   }
+  }
   const safeWorkPrompt='Kerjakan hanya di folder proyek ini. Jangan git push, publish, mengubah kredensial, atau mengakses data di luar proyek. Buat perubahan sekecil yang diperlukan dan jelaskan file yang diubah. Tugas: '+prompt;
   const args=id==='continue'?['-p',prompt,'--readonly']
    :id==='cody'?['chat','-m',prompt]
    :id==='github-copilot'&&mode==='work'?['-p',safeWorkPrompt,'-s','--available-tools=view,grep,glob,edit,create,apply_patch','--allow-tool=write','--disable-builtin-mcps','--no-ask-user','--no-auto-update','--disallow-temp-dir']
    :id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user','--no-auto-update','--disallow-temp-dir']
-   :id==='codex'&&mode==='work'?['exec','--sandbox','workspace-write','--ephemeral','--ignore-user-config',safeWorkPrompt]
-   :id==='codex'?['exec','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]
+   :id==='codex'&&mode==='work'?['exec','--json','--sandbox','workspace-write','--ephemeral','--ignore-user-config',safeWorkPrompt]
+   :id==='codex'?['exec','--json','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]
    :['-p',prompt,'--mode=ask','--output-format','text'];
-  const cwd=(process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();
+  const timeoutMs=agentTimeoutMs(mode);
   this.pending=true;
   try{
    return await new Promise((resolve,reject)=>{
     const child=spawn(executable,args,{cwd,windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1'}});
     this.child=child;let stdout='',stderr='',settled=false;
     const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);if(this.child===child)this.child=null;error?reject(error):resolve(value);};
-    const timer=setTimeout(()=>{child.kill();finish(new Error(agent.name+' belum selesai dalam 120 detik.'));},120000);
+    const timer=setTimeout(()=>{child.kill();finish(new Error(agent.name+' belum selesai dalam '+Math.round(timeoutMs/1000)+' detik.'));},timeoutMs);
     child.stdout.on('data',data=>{
      stdout+=data;
      if(id==='github-copilot'&&looksLikeCopilotTrustPrompt(stdout)){
@@ -116,7 +163,16 @@ export class DeveloperAgentHub{
      }
     });
     child.on('error',()=>finish(new Error(agent.name+' tidak dapat dijalankan.')));
-    child.on('close',code=>code===0?finish(null,{id,name:agent.name,mode,text:stdout.trim()||'Agent selesai tanpa output teks.'}):finish(new Error((stderr||stdout||agent.name+' gagal dijalankan.').trim())));
+    child.on('close',code=>{
+     if(id==='codex'){
+      const parsed=parseCodexJsonOutput(stdout);
+      const combined=(stderr+'\n'+stdout).trim();
+      if(/not logged in|login required|authentication|unauthorized/i.test(combined))return finish(new Error('Login Codex tidak aktif. Jalankan codex login lalu coba lagi.'));
+      if(code===0&&!parsed.failure)return finish(null,{id,name:agent.name,mode,text:parsed.text||'Codex selesai tanpa pesan teks.'});
+      return finish(new Error((stderr||parsed.text||'Codex gagal dijalankan.').trim()));
+     }
+     return code===0?finish(null,{id,name:agent.name,mode,text:stdout.trim()||'Agent selesai tanpa output teks.'}):finish(new Error((stderr||stdout||agent.name+' gagal dijalankan.').trim()));
+    });
    });
   }finally{this.pending=false;}
  }
