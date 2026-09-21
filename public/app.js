@@ -2,6 +2,7 @@ import {BinaryAvatar} from './avatar.js';
 import {parseCommand} from './commands.js';
 import {AudioReactor} from './audio-reactor.js';
 import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
+import {isExplicitProjectWorkRequest} from './work-intent.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,params=new URLSearchParams(location.search),popup=params.get('popup')==='1',panelOnly=Boolean(desktop&&params.has('panel')),avatar=new BinaryAvatar($('#avatar'));
 const panelChannel=desktop?new BroadcastChannel('dudidam-avatar-panel'):null;
 const apiProviders=['copilot','openai','grok','gemini','claude','deepseek','askcodi'];
@@ -242,10 +243,6 @@ async function chooseProjectFolder(){
   await loadAgents();
  }catch(error){toast(error?.message||'Folder proyek belum dapat dipilih.');}
  finally{button.disabled=false;}
-}
-function isExplicitProjectWorkRequest(text=''){
- const value=String(text).toLowerCase().replace(/\s+/g,' ').trim();
- return /^(?:ok[,. ]+)?(?:(?:tolong|bantu|coba)\s+)?(?:kerjakan(?:\s+langsung)?|lakukan(?:\s+(?:sekarang|langsung))?|perbaiki(?:\s+(?:kode|proyek|project|avatar|fitur))?|ubah(?:\s+(?:kode|proyek|project|avatar|fitur))|implementasikan|terapkan(?:\s+(?:perubahan|perbaikan|ini))?|lanjutkan\s+(?:proyek|project|tugas|pekerjaan)|edit\s+(?:kode|proyek|project|file))\b/.test(value);
 }
 function buildProjectWorkPrompt(text){
  const context=history.slice(-6).map(item=>(item.role==='assistant'?'DUDIDAM':'PENGGUNA')+': '+item.content).join('\n');
