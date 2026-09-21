@@ -167,6 +167,7 @@ function speak(text){
  stopSpeech(false);
  if(!voice){resumeWakeSoon();return;}
  stopListening(false);suspendWakeListening('ALE · wake mic dijeda saat berbicara');
+ if(selectedVoiceURI&&speakNativeIndonesian(text))return;
  if(localTtsConfigured&&desktop?.synthesize){speakLocal(text);return;}
  if(speakNativeIndonesian(text))return;
  if(desktop?.synthesize){speakLocal(text);return;}

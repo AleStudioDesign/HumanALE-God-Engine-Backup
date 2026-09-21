@@ -219,7 +219,7 @@ else{
    const wakeIdle=await win.webContents.executeJavaScript("Boolean(document.querySelector('#wakeToggle')) && !document.querySelector('#wakeToggle').checked && document.querySelector('#wakeIndicator')?.textContent?.includes('nonaktif')");
    if(!wakeIdle)throw new Error('Wake mic harus nonaktif saat Dudidam mulai.');
    await openPanel('controls');
-   const panelReady=await panelWin.webContents.executeJavaScript("document.body.classList.contains('detached-panel') && document.querySelector('#controls')?.open && document.documentElement.classList.contains('panel-surface')");
+   const panelReady=await panelWin.webContents.executeJavaScript("new Promise(resolve=>{const deadline=Date.now()+2500;const check=()=>{const ready=document.body.classList.contains('detached-panel')&&document.querySelector('#controls')?.open&&document.documentElement.classList.contains('panel-surface');if(ready||Date.now()>deadline)resolve(Boolean(ready));else setTimeout(check,50);};check();})");
    if(!panelReady)throw new Error('Panel terpisah Dudidam tidak siap.');
    const avatarControls=await panelWin.webContents.executeJavaScript("Boolean(document.querySelector('#emotion')) && Boolean(document.querySelector('#voiceStyle')) && document.querySelector('#voiceStyle').value==='baby-robot'");
    if(!avatarControls)throw new Error('Kontrol emosi dan suara bayi robot tidak siap.');
