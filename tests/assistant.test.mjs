@@ -118,3 +118,27 @@ test('custom panel zoom and transparency persist',async()=>{
  assert.match(css,/zoom:var\(--panel-zoom\)/);
  assert.match(css,/background:rgba\(7,19,14,var\(--panel-alpha\)\)/);
 });
+
+
+test('zoomed panel resizes Electron viewport safely',async()=>{
+ const [desktop,preload,app]=await Promise.all([
+  readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8')
+ ]);
+ assert.match(desktop,/resizeForPanel/);
+ assert.match(desktop,/dudidam:panel-viewport/);
+ assert.match(desktop,/setBounds/);
+ assert.match(preload,/panelViewport/);
+ assert.match(app,/panelZoomFactor/);
+ assert.match(app,/panelViewport\?\.\(\{zoom:panelZoomFactor,open:true\}\)/);
+ assert.match(app,/panelViewport\?\.\(\{zoom:panelZoomFactor,open:false\}\)/);
+});
+
+test('Copilot trust-folder prompt fails fast instead of hanging',async()=>{
+ const hub=await readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8');
+ assert.match(hub,/looksLikeCopilotTrustPrompt/);
+ assert.match(hub,/trust folder/);
+ assert.match(hub,/child\.kill\(\)/);
+ assert.match(hub,/GitHub Copilot meminta konfirmasi trust folder/);
+});
