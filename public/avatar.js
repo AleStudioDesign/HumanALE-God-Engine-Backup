@@ -31,6 +31,8 @@ export class BinaryAvatar {
   this.speechEnergy=0;
   this.speechTarget=0;
   this.speechBeat=0;
+  this.viseme=0;
+  this.visemeTarget=0;
   this.action='';
   this.actionStart=0;
   this.blinkStart=-10000;
@@ -263,13 +265,52 @@ export class BinaryAvatar {
   context.restore();
  }
 
- drawMouthSignal(context,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock){
-  const energy=this.speaking?clamp(this.speechEnergy,0,1):0,viseme=this.speaking? .35+.65*Math.abs(Math.sin(clock*.011)):0;
-  const open=fh*(.005+energy*viseme*.026),width=fw*.18*Math.cos(yaw),centerX=cx+Math.sin(yaw)*fw*.12,centerY=cy+fh*.262;
+ drawHeadStructure(context,cx,cy,fw,fh,hue,lightEnvironment,yaw,pitch,blink){
+  const yawShift=Math.sin(yaw)*fw*.19,profile=Math.cos(yaw),centerX=cx+yawShift*.42;
   context.save();context.globalCompositeOperation='source-over';
-  for(const side of [-1,1]){context.beginPath();context.moveTo(centerX-width,centerY);context.quadraticCurveTo(centerX,centerY+side*open*1.35,centerX+width,centerY);this.strokeAdaptivePath(context,hue+side*14,.4+energy*.35,lightEnvironment,.75+energy*.45);}
+  context.beginPath();context.moveTo(centerX,cy-fh*.49);
+  context.bezierCurveTo(cx+yawShift*.18+fw*.48*profile,cy-fh*.43,cx+yawShift*.68+fw*.5*profile,cy+fh*.15,cx+yawShift*.72+fw*.29*profile,cy+fh*.39);
+  context.bezierCurveTo(cx+yawShift*.58+fw*.18*profile,cy+fh*.5,centerX+fw*.07*profile,cy+fh*.53,centerX,cy+fh*.53);
+  context.bezierCurveTo(centerX-fw*.07*profile,cy+fh*.53,cx+yawShift*.58-fw*.18*profile,cy+fh*.5,cx+yawShift*.72-fw*.29*profile,cy+fh*.39);
+  context.bezierCurveTo(cx+yawShift*.68-fw*.5*profile,cy+fh*.15,cx+yawShift*.18-fw*.48*profile,cy-fh*.43,centerX,cy-fh*.49);
+  this.strokeAdaptivePath(context,hue+18,.2,lightEnvironment,.62);
+
+  context.beginPath();context.moveTo(centerX,cy-fh*.4);context.bezierCurveTo(centerX+yawShift*.72,cy-fh*.18,centerX+yawShift*.76,cy+fh*.18,centerX+yawShift*.52,cy+fh*.43);
+  this.strokeAdaptivePath(context,hue+42,.11,lightEnvironment,.48);
+
+  const eyeY=cy-fh*.065+pitch*fh*.09,eyeOpen=fh*.018*(1-blink);
+  for(const side of [-1,1]){
+   const visibility=clamp(1-side*Math.sin(yaw)*.42,.55,1),eyeX=centerX+side*fw*.19*profile+yawShift*.12,eyeWidth=fw*.105*profile;
+   context.beginPath();context.moveTo(eyeX-eyeWidth,eyeY);context.quadraticCurveTo(eyeX,eyeY-eyeOpen,eyeX+eyeWidth,eyeY);context.quadraticCurveTo(eyeX,eyeY+eyeOpen*.72,eyeX-eyeWidth,eyeY);
+   this.strokeAdaptivePath(context,hue+55,.2*visibility,lightEnvironment,.5);
+   context.beginPath();context.moveTo(eyeX-side*eyeWidth*.92,cy-fh*.125);context.quadraticCurveTo(eyeX,cy-fh*(.145+visibility*.008),eyeX+side*eyeWidth*.86,cy-fh*.12);
+   this.strokeAdaptivePath(context,hue+38,.12*visibility,lightEnvironment,.44);
+  }
+
+  const noseX=centerX+yawShift*.62;
+  context.beginPath();context.moveTo(noseX,cy-fh*.015);context.bezierCurveTo(noseX+yawShift*.18,cy+fh*.07,noseX+yawShift*.12+fw*.018,cy+fh*.16,noseX+yawShift*.06,cy+fh*.205);
+  context.quadraticCurveTo(noseX-fw*.055*profile,cy+fh*.225,noseX-fw*.09*profile,cy+fh*.2);
+  this.strokeAdaptivePath(context,hue+68,.22,lightEnvironment,.54);
+
+  for(const side of [-1,1]){
+   context.beginPath();context.moveTo(centerX+side*fw*.32*profile,cy+fh*.08);context.bezierCurveTo(centerX+side*fw*.29*profile+yawShift*.22,cy+fh*.19,centerX+side*fw*.23*profile+yawShift*.3,cy+fh*.29,centerX+side*fw*.17*profile+yawShift*.38,cy+fh*.35);
+   this.strokeAdaptivePath(context,hue+side*9,.09,lightEnvironment,.42);
+  }
+  context.restore();
+ }
+
+ drawMouthSignal(context,cx,cy,fw,fh,hue,lightEnvironment,yaw,pitch){
+  const energy=this.speaking?clamp(this.speechEnergy,0,1):0,viseme=this.speaking?this.viseme:0;
+  const open=fh*(.0028+energy*(.005+viseme*.038)),width=fw*(.17+viseme*.015)*Math.cos(yaw),centerX=cx+Math.sin(yaw)*fw*.12,centerY=cy+fh*.262+pitch*fh*.045;
+  context.save();context.globalCompositeOperation='source-over';
+  context.beginPath();context.moveTo(centerX-width,centerY);context.bezierCurveTo(centerX-width*.52,centerY-open*.34,centerX-width*.24,centerY-open*.52,centerX,centerY-open*.32);context.bezierCurveTo(centerX+width*.24,centerY-open*.52,centerX+width*.52,centerY-open*.34,centerX+width,centerY);context.bezierCurveTo(centerX+width*.5,centerY+open*.72,centerX+width*.24,centerY+open*.92,centerX,centerY+open*.86);context.bezierCurveTo(centerX-width*.24,centerY+open*.92,centerX-width*.5,centerY+open*.72,centerX-width,centerY);context.closePath();
+  context.fillStyle=`hsla(${hue+6},72%,9%,${.08+energy*viseme*.28})`;context.fill();
+  context.beginPath();context.moveTo(centerX-width,centerY);context.bezierCurveTo(centerX-width*.52,centerY-open*.34,centerX-width*.24,centerY-open*.52,centerX,centerY-open*.32);context.bezierCurveTo(centerX+width*.24,centerY-open*.52,centerX+width*.52,centerY-open*.34,centerX+width,centerY);
+  this.strokeAdaptivePath(context,hue+16,.38+energy*.32,lightEnvironment,.72+energy*.38);
+  context.beginPath();context.moveTo(centerX-width,centerY);context.bezierCurveTo(centerX-width*.5,centerY+open*.72,centerX-width*.24,centerY+open*.92,centerX,centerY+open*.86);context.bezierCurveTo(centerX+width*.24,centerY+open*.92,centerX+width*.5,centerY+open*.72,centerX+width,centerY);
+  this.strokeAdaptivePath(context,hue-12,.4+energy*.35,lightEnvironment,.78+energy*.42);
   context.font=`${Math.max(5.5,fw*.018)}px monospace`;
-  for(let i=0;i<9;i++){const progress=i/8,x=centerX-width+progress*width*2,arch=Math.sin(progress*Math.PI),y=centerY+(i%2?-1:1)*open*arch;this.drawAdaptiveGlyph(context,i%2?'1':'0',x,y,hue+i*5,.24+energy*.34,lightEnvironment);}
+  for(let i=0;i<10;i++){const progress=i/9,x=centerX-width+progress*width*2,arch=Math.sin(progress*Math.PI),lower=i%2===1,y=centerY+(lower ? .78 : -.34)*open*arch;this.drawAdaptiveGlyph(context,lower?'1':'0',x,y,hue+i*5,.2+energy*.32,lightEnvironment,undefined,false);}
   context.restore();
  }
 
@@ -285,6 +326,11 @@ export class BinaryAvatar {
   const cx=width/2+floatX,cy=height/2-size*.045+floatY;
   const quietTarget=this.speaking? .34:0;if(time-this.speechBeat>170)this.speechTarget=quietTarget;
   this.speechEnergy+=(this.speechTarget-this.speechEnergy)*(this.reducedMotion? .08:.2);
+  const syllable=.5+.5*Math.sin(time*.0076+Math.sin(time*.0019)*.72);
+  this.visemeTarget=this.speaking?clamp((.12+this.speechEnergy*.88)*(.48+syllable*.52),0,1):0;
+  const visemeEase=this.visemeTarget>this.viseme ? .14 : .085;
+  this.viseme+=(this.visemeTarget-this.viseme)*visemeEase;
+  if(!this.speaking&&this.viseme<.002)this.viseme=0;
   const gaze=this.gazeActive?this.gazePointer:this.pointer,gazeEase=this.reducedMotion?.11:.055;
   this.rotation.x+=((this.track?gaze.x:0)-this.rotation.x)*gazeEase;this.rotation.y+=((this.track?gaze.y:0)-this.rotation.y)*gazeEase;
   const maxYaw=Math.PI/6;
@@ -311,6 +357,7 @@ export class BinaryAvatar {
   this.drawNeuralRoots(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
   this.drawNeck(context,size,cx,cy,faceWidth,faceHeight,hue,clock,lightEnvironment,rx);
   this.drawNeuralField(context,size,cx,cy,hue,clock,lightEnvironment);
+  this.drawHeadStructure(context,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,ry,close);
   this.drawTransitionRibbons(context,size,cx,cy,hue,clock,lightEnvironment,transition);
 
   context.font=`${Math.max(4,faceWidth/110*1.28)}px monospace`;
@@ -322,9 +369,14 @@ export class BinaryAvatar {
    const leftEye=((px+.196)/.113)**2+((py+.06)/.038)**2,rightEye=((px-.19)/.12)**2+((py+.06)/.038)**2;
    if(leftEye<1||rightEye<1){if(close>.15){py=-.06+(py+.06)*(1-close);lum*=1-close*.42;}else{px+=rx*.026;py+=ry*.045;lum*=1.22;}}
    const mouthCenter=.265;
-   if(this.speaking&&Math.abs(px)<.205&&Math.abs(py-mouthCenter)<.068){const viseme=.22+.78*Math.abs(Math.sin(time/(60+Math.abs(px)*105)+point.seed*2.4)),open=viseme*(.34+this.speechEnergy*.88)*(1-Math.abs(px)/.205);py+=Math.sign(py-mouthCenter||1)*open*(py>mouthCenter? .034:.016);px*=1-open*.035;lum*=.8+open*.2;}
+   if(this.speaking&&Math.abs(px)<.205&&Math.abs(py-mouthCenter)<.074){const open=this.viseme*(.3+this.speechEnergy*.7)*(1-Math.abs(px)/.205);py+=Math.sign(py-mouthCenter||1)*open*(py>mouthCenter? .04:.018);px*=1-open*.03;lum*=.82+open*.18;}
+   if(this.speaking&&py>mouthCenter-.01){const jawWeight=clamp((py-mouthCenter+.01)/.24,0,1);py+=this.viseme*this.speechEnergy*.021*jawWeight;}
    const depth=Math.sqrt(Math.max(0,1-(px*1.95)**2-(py*1.65)**2));
-   let x=cx+px*faceWidth*Math.cos(rx)+depth*faceWidth*Math.sin(rx)*.38,y=cy+py*faceHeight*Math.cos(ry)+depth*faceHeight*ry*.4;
+   const modelX=px*faceWidth,modelY=py*faceHeight,modelZ=depth*faceWidth*.38;
+   const rotatedX=modelX*Math.cos(rx)+modelZ*Math.sin(rx),yawDepth=modelZ*Math.cos(rx)-modelX*Math.sin(rx);
+   const rotatedY=modelY*Math.cos(ry)-yawDepth*Math.sin(ry)*.38,rotatedDepth=yawDepth*Math.cos(ry)+modelY*Math.sin(ry)*.18;
+   const perspective=clamp(1+rotatedDepth/(faceWidth*3.7),.84,1.18);
+   let x=cx+rotatedX*perspective,y=cy+rotatedY*perspective;
    const fracture=Math.sin(py*31+clock*.0012+point.seed*7)*abstractStrength;x+=fracture*size*.01*(.35+Math.abs(px)*1.4);y+=Math.sin(px*24-clock*.001+point.seed*11)*size*.004*abstractStrength;
    const magnetic=this.magneticOffset(x,y,size,clock,point.seed,.48);x=magnetic.x;y=magnetic.y;
    let localPresence=1;
@@ -343,13 +395,13 @@ export class BinaryAvatar {
     if(localPresence<=.01)continue;
    }
    const edge=Math.sqrt((px*2)**2+(py*2)**2),wave=Math.max(0,Math.sin(clock*.0007+point.seed*20)-.65);if(auto&&edge>.78){x+=px*wave*24;y+=py*wave*21;}
-   const intensity=Math.min(1,lum*1.7),scan=auto? .9+.1*Math.sin(py*7-clock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*(this.thinking?1.13:1))*localPresence;
+   const depthLight=clamp(.68+rotatedDepth/(faceWidth*.72),.38,1.14),intensity=Math.min(1,lum*1.7),scan=auto? .9+.1*Math.sin(py*7-clock*.0014):1,alpha=Math.min(.99,intensity*1.9*scan*depthLight*(this.thinking?1.13:1))*localPresence;
    const spectralShift=Math.sin(point.seed*25+clock*.00023)*(spectral?72:18),glyph=auto&&Math.sin(clock/700+point.seed*90)>.988?(point.glyph==='0'?'1':'0'):point.glyph;
-   const livingHue=hue+spectralShift+abstractStrength*Math.sin(point.seed*19)*24+magnetic.force*48;
+   const livingHue=hue+spectralShift+abstractStrength*Math.sin(point.seed*19)*24+magnetic.force*48+rotatedDepth/faceWidth*18;
    this.drawAdaptiveGlyph(context,glyph,x,y,livingHue,alpha,lightEnvironment,undefined,sampleIndex%3===0||alpha>.9);
    if(abstractStrength>.5&&Math.abs(fracture)>.72)this.drawAdaptiveGlyph(context,glyph,x+fracture*size*.018,y-fracture*size*.006,hue+spectralShift+28,alpha*.18*abstractStrength,lightEnvironment);
   }
-  if(assembly>.08)this.drawMouthSignal(context,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,clock);
+  if(assembly>.08)this.drawMouthSignal(context,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,ry);
   this.drawMagneticField(context,size,hue,clock,lightEnvironment);
   context.restore();
  }

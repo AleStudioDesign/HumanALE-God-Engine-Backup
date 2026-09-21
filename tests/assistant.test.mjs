@@ -21,7 +21,7 @@ test('bridge reads model response, not tool output or progress',()=>{const resul
 test('bridge identifies failed turns even if partial text exists',()=>{assert.equal(parseEvents('{"type":"turn.failed"}').failure,true);});
 test('transparent desktop and popup surfaces are applied before the first paint',async()=>{const [html,surface,css]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8')]);assert.match(html,/<script src="\/surface\.js"><\/script><link rel="stylesheet"/);assert.match(surface,/transparent-surface/);assert.match(css,/\.transparent-surface body/);});
 test('neural stream mode and floating desktop layer stay wired',async()=>{const [html,app,avatar,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/data-mode="neural"/);assert.match(app,/HOLD_TO_SUMMON_MS/);assert.match(app,/setMode\('neural'\)/);assert.match(avatar,/drawNeuralField/);assert.match(avatar,/globalCompositeOperation='source-over'/);assert.match(desktop,/setVisibleOnAllWorkspaces/);});
-test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="spectrum" selected/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(avatar,/prefers-color-scheme: light/);assert.match(avatar,/adaptiveColors/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/if\(this\.speaking\)\{/);assert.match(avatar,/const viseme=/);});
+test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="spectrum" selected/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(avatar,/prefers-color-scheme: light/);assert.match(avatar,/adaptiveColors/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/if\(this\.speaking\)\{/);assert.match(avatar,/this\.viseme/);});
 test('real audio energy is normalized for mouth and head motion',()=>{assert.equal(normalizedAudioLevel(new Uint8Array(32).fill(128)),0);assert.ok(normalizedAudioLevel(Uint8Array.from({length:32},(_,i)=>i%2?208:48))>.5);});
 test('microphone, music and Windows loopback controls remain wired',async()=>{const [html,app,audio,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/audio-reactor.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/id="audioMic"/);assert.match(html,/id="musicFile"/);assert.match(app,/getDisplayMedia/);assert.match(audio,/createAnalyser/);assert.match(desktop,/audio:'loopback'/);});
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
@@ -109,6 +109,20 @@ test('avatar size, full-desktop gaze and smooth brain-bound light pulses stay wi
  assert.match(avatar,/shadowBlur/);
  assert.match(avatar,/rawProgress/);
  assert.doesNotMatch(desktop,/globalHook|keylogger/i);
+});
+
+test('human head uses 3D perspective and a single smoothed speech viseme',async()=>{
+ const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
+ assert.match(avatar,/drawHeadStructure/);
+ assert.match(avatar,/const perspective=clamp/);
+ assert.match(avatar,/rotatedDepth/);
+ assert.match(avatar,/depthLight/);
+ assert.match(avatar,/this\.visemeTarget/);
+ assert.match(avatar,/visemeEase/);
+ assert.match(avatar,/this\.viseme\+=/);
+ assert.match(avatar,/jawWeight/);
+ assert.doesNotMatch(avatar,/time\/\(60\+Math\.abs\(px\)/);
+ assert.doesNotMatch(avatar,/Math\.abs\(Math\.sin\(clock\*\.011\)\)/);
 });
 
 test('cinematic avatar assembles and dissolves without a permanent particle swarm',async()=>{
