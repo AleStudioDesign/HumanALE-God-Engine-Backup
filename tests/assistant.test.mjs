@@ -160,3 +160,20 @@ test('Copilot programmatic run is hardened without broad permissions',async()=>{
  assert.doesNotMatch(hub,/--allow-all-paths/);
  assert.match(hub,/trust the files in/);
 });
+
+
+test('Indonesian TTS voice selection stays wired',async()=>{
+ const [html,app]=await Promise.all([
+  readFile(new URL('../public/index.html',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8')
+ ]);
+ assert.match(html,/id="voiceSelect"/);
+ assert.match(html,/Voice Indonesia/);
+ assert.match(app,/getIndonesianVoices/);
+ assert.match(app,/\^id\(\?:-\|\$\)/);
+ assert.match(app,/u\.lang=chosen\?\.lang\|\|'id-ID'/);
+ assert.match(app,/dudidam-voice-uri/);
+ assert.match(app,/voiceschanged/);
+ assert.match(app,/current\.lang='id-ID'/);
+ assert.match(app,/recognition\.lang='id-ID'/);
+});
