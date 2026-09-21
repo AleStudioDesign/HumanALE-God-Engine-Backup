@@ -36,6 +36,28 @@ test('microphone, music and Windows loopback controls remain wired',async()=>{co
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
 test('desktop popup is recoverable and preserves position without overwriting the repository',async()=>{const [desktop,preload]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(desktop,/new Tray/);assert.match(desktop,/window-state\.json/);assert.match(desktop,/skipTaskbar:true/);assert.match(desktop,/setIgnoreMouseEvents/);assert.match(desktop,/getDisplayNearestPoint/);assert.match(preload,/passthrough/);});
 test('compact window, automatic transparent hit testing and media permission checks stay wired',async()=>{const [desktop,preload,app,css,html]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8')]);assert.match(desktop,/width=Math\.min\(420/);assert.match(desktop,/height=Math\.min\(480/);assert.match(desktop,/setPermissionCheckHandler/);assert.match(desktop,/passthroughLocked/);assert.match(preload,/passthroughLock/);assert.match(app,/pointInAvatarFace/);assert.match(app,/document\.addEventListener\('mousemove',syncPassthrough/);assert.match(css,/--avatar-size:420px/);assert.match(css,/#avatarArea\{width:min\(var\(--avatar-size\)/);assert.match(css,/dialog\{width:min\(330px/);assert.match(html,/Tembus klik penuh/);});
+test('developer work visibly drives particle self-repair evolution',async()=>{
+ const [avatar,app]=await Promise.all([
+  readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
+  readFile(new URL('../public/app.js',import.meta.url),'utf8')
+ ]);
+ assert.match(avatar,/this\.evolving=false/);
+ assert.match(avatar,/setEvolving\(value=false\)/);
+ assert.match(avatar,/completeEvolution\(\)/);
+ assert.match(avatar,/drawEvolutionField/);
+ assert.match(avatar,/if\(!this\.evolving&&!completing\)return/);
+ assert.match(avatar,/repairBand/);
+ assert.match(avatar,/evolutionLight/);
+ assert.match(app,/function setEvolutionVisual/);
+ assert.match(app,/EVOLVING · memperbaiki diri/);
+ assert.match(app,/EVOLUTION COMPLETE/);
+ assert.match(app,/type:'evolution'/);
+ assert.match(app,/setEvolutionVisual\('start'\)/);
+ assert.match(app,/setEvolutionVisual\(workSucceeded\?'complete':'stop'\)/);
+ assert.doesNotMatch(avatar,/context\.stroke\(\)/);
+ assert.doesNotMatch(avatar,/\.lineTo\(/);
+});
+
 test('avatar adds particle depth and listening ear frequency waves',async()=>{
  const [avatar,app,html]=await Promise.all([
   readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),
