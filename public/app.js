@@ -5,6 +5,7 @@ import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,popup=new URLSearchParams(location.search).get('popup')==='1',avatar=new BinaryAvatar($('#avatar'));
 const apiProviders=['openai','grok','gemini','claude','deepseek','askcodi'];
 const SUMMON_DURATION_MS=4200;
+let panelZoomFactor=1;
 let aiReady=false,savedProvider=desktop?localStorage.getItem('dudidam-provider'):'',aiProvider=apiProviders.includes(savedProvider)?savedProvider:'chatgpt',busy=false,voice=true,listening=false,recognition,cameraStream,cameraPending=false,history=[],toastTimer,bubbleTimer,speechTimer,drag,offset={x:0,y:0},ttsActive=false,ttsEnergy=0,audioEnergy=0,audioMode='',musicUrl='',wakeRecognition,wakeListening=false,wakeEnabled=true,wakeRestartTimer,wakeHealthVerified=false,wakeRetryBlocked=false,wakeNetworkFailures=0,summoning=false,hold5Timer,hold5Fired=false;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();});
@@ -22,11 +23,13 @@ function applyAvatarSize(value){
 applyAvatarSize(desktop?localStorage.getItem('dudidam-avatar-size')||380:380);
 function applyPanelZoom(value){
  const zoom=Math.max(75,Math.min(145,Number(value)||100));
- document.documentElement.style.setProperty('--panel-zoom',String(zoom/100));
+ panelZoomFactor=zoom/100;
+ document.documentElement.style.setProperty('--panel-zoom',String(panelZoomFactor));
  const slider=$('#panelZoom'),output=$('#panelZoomValue');
  if(slider)slider.value=String(zoom);
  if(output)output.textContent=zoom+'%';
  if(desktop)localStorage.setItem('dudidam-panel-zoom',String(zoom));
+ desktop?.panelViewport?.({zoom:panelZoomFactor,open:Boolean(document.querySelector('dialog[open]'))});
  requestAnimationFrame(()=>document.querySelectorAll('dialog[open]').forEach(clampDialog));
 }
 function applyPanelTransparency(value){
@@ -48,7 +51,7 @@ function setPassthrough(ignore){if(!desktop)return;const now=performance.now();i
 function pointInElement(element,x,y){if(!element||element.hidden)return false;const rect=element.getBoundingClientRect();return x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom;}
 function pointInAvatarFace(x,y){const canvas=$('#avatar');if(!canvas)return false;const rect=canvas.getBoundingClientRect(),rx=rect.width*.36,ry=rect.height*.43;if(!rx||!ry)return false;const dx=(x-(rect.left+rect.width/2))/rx,dy=(y-(rect.top+rect.height/2))/ry;return dx*dx+dy*dy<=1;}
 function syncPassthrough(event){if(!desktop)return;if(summoning){setPassthrough(true);return;}if(document.querySelector('dialog[open]')){setPassthrough(false);return;}const x=event?.clientX,y=event?.clientY;if(!Number.isFinite(x)||!Number.isFinite(y)){setPassthrough(true);return;}const interactive=pointInAvatarFace(x,y)||['#reveal','#bubble','#toast'].some(selector=>pointInElement($(selector),x,y));setPassthrough(!interactive);}
-function showDialog(id){if(summoning)return;setPassthrough(false);document.querySelectorAll('dialog[open]').forEach(d=>d.close());$(id).showModal();if(id==='#chatDialog')$('#prompt').focus();}
+function showDialog(id){if(summoning)return;setPassthrough(false);document.querySelectorAll('dialog[open]').forEach(d=>d.close());desktop?.panelViewport?.({zoom:panelZoomFactor,open:true});$(id).showModal();requestAnimationFrame(()=>clampDialog($(id)));if(id==='#chatDialog')$('#prompt').focus();}
 function clampDialog(dialog){
  const rect=dialog.getBoundingClientRect(),left=Math.max(0,Math.min(innerWidth-rect.width,rect.left)),top=Math.max(0,Math.min(innerHeight-rect.height,rect.top));
  dialog.style.left=left+'px';dialog.style.top=top+'px';
@@ -180,7 +183,7 @@ async function startWakeListening(){
    if(wakeNetworkFailures>=2){
     wakeRetryBlocked=true;
     setWakeStatus('ALE · layanan wake tidak tersedia · tahan tombol 5',false);
-    setMicStatus('Mikrofon terdeteksi, tetapi layanan SpeechRecognition Electron gagal terhubung. Wake ALE dijeda; tahan tombol 5 untuk memanggil ALE.');
+    setMicStatus('Mikrofon terdeteksi, tetapi layanan SpeechRecognition Electron gagal terhubung. Wake ALE dijeda; gunakan Ctrl+Alt+5 dari aplikasi mana pun, atau tahan tombol 5 saat Dudidam fokus.');
     return;
    }
    setWakeStatus('ALE · layanan wake gagal · mencoba sekali lagi…',false);
@@ -244,9 +247,9 @@ $('#popup').onclick=()=>{const pop=window.open(location.origin+'/?popup=1','dudi
 $('#login').onclick=async()=>{if(!desktop){location.href='/signin-with-chatgpt?return_to=%2F';return;}$('#login').disabled=true;try{const r=await desktop.login();if(r.error)toast(r.error);else toast('Login selesai.');await checkAI();}catch{toast('Login belum selesai. Coba lagi.');}finally{$('#login').disabled=false;}};
 $('#clickThrough').onclick=()=>{document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());desktop?.passthroughLock(true);toast('Tembus klik penuh aktif. Matikan dari ikon Dudidam di tray Windows.');};$('#minimize').onclick=()=>desktop?.minimize();$('#closeApp').onclick=()=>desktop?.close();
 $('#chatForm').onsubmit=e=>{e.preventDefault();const text=$('#prompt').value.trim();if(text&&!busy){$('#prompt').value='';submit(text);}};$('#prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#chatForm').requestSubmit();}};$('#clear').onclick=()=>{if(busy)return;history=[];$('#messages').replaceChildren();$('#bubble').hidden=true;stopSpeech();};
-$('#chatDialog').addEventListener('close',()=>{stopCamera();setPassthrough(true);});
-$('#controls').addEventListener('close',()=>setPassthrough(true));
-$('#agentDialog').addEventListener('close',()=>setPassthrough(true));
+$('#chatDialog').addEventListener('close',()=>{stopCamera();setPassthrough(true);desktop?.panelViewport?.({zoom:panelZoomFactor,open:false});});
+$('#controls').addEventListener('close',()=>{setPassthrough(true);desktop?.panelViewport?.({zoom:panelZoomFactor,open:false});});
+$('#agentDialog').addEventListener('close',()=>{setPassthrough(true);desktop?.panelViewport?.({zoom:panelZoomFactor,open:false});});
 document.addEventListener('mousemove',syncPassthrough,{passive:true});
 document.addEventListener('mouseleave',()=>setPassthrough(true));
 document.addEventListener('keydown',e=>{
