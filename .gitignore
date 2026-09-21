@@ -12,3 +12,8 @@ out/
 .DS_Store
 Thumbs.db
 Dudidam-Desktop/
+Dudidam-Desktop-before-*/
+Dudidam-Desktop-Avatar-*/
+avatar-smoke*.png
+__pycache__/
+*.pyc
