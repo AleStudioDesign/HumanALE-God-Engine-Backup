@@ -69,7 +69,7 @@ export function parseCodexJsonOutput(stdout=''){
 }
 export function agentTimeoutMs(mode='analyze',env=process.env){
  const fallback=mode==='work'?600000:120000;
- const raw=Number(env.DUDIDAM_AGENT_TIMEOUT_MS);
+ const raw=Number(env.HUMANALE_AGENT_TIMEOUT_MS??env.DUDIDAM_AGENT_TIMEOUT_MS);
  if(!Number.isFinite(raw)||raw<=0)return fallback;
  return Math.max(30000,Math.min(900000,Math.round(raw)));
 }
@@ -100,7 +100,7 @@ function looksLikeCopilotTrustPrompt(text=''){
 export class DeveloperAgentHub{
  constructor(){this.child=null;this.pending=false;this.projectRoot='';}
  setProjectRoot(value=''){this.projectRoot=String(value||'').trim();}
- getProjectRoot(){return (this.projectRoot||process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();}
+ getProjectRoot(){return (this.projectRoot||process.env.HUMANALE_PROJECT_ROOT||process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();}
  async projectRootReady(){
   const root=this.getProjectRoot();
   try{await access(root);await access(join(root,'.git'));return true;}catch{return false;}
