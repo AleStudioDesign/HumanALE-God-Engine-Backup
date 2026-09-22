@@ -20,7 +20,7 @@ const agents=[
  {id:'visual-copilot',name:'Visual Copilot',method:'Design-to-code external',external:true,url:'https://www.builder.io/c/docs/visual-copilot'},
  {id:'qodo',name:'Qodo',method:'IDE / review agent',commands:['qodo'],envPath:'QODO_CLI_PATH',url:'https://docs.qodo.ai/'},
  {id:'blackbox',name:'Blackbox AI',method:'IDE / external agent',external:true,url:'https://www.blackbox.ai/'},
- {id:'claude',name:'Claude / Claude Code',method:'CLI + Dudidam runtime API',commands:['claude'],envPath:'CLAUDE_CLI_PATH',runtime:true,configEnvs:['ANTHROPIC_API_KEY'],url:'https://docs.anthropic.com/en/docs/claude-code/overview'},
+ {id:'claude',name:'Claude Code · Fable 5',method:'Claude Code CLI + Fable 5 + Dudidam runtime API',commands:['claude'],envPath:'CLAUDE_CLI_PATH',runtime:true,configEnvs:['ANTHROPIC_API_KEY'],canRun:true,model:'claude-fable-5',url:'https://docs.anthropic.com/en/docs/claude-code/overview'},
  {id:'microsoft-copilot',name:'Microsoft Copilot',method:'External / IDE',external:true,url:'https://learn.microsoft.com/en-us/copilot/'},
  {id:'deepseek-coder',name:'DeepSeek Coder',method:'Dudidam runtime API provider',runtime:true,configEnvs:['DEEPSEEK_API_KEY'],url:'https://api-docs.deepseek.com/'},
  {id:'devin',name:'Devin AI',method:'Cloud software agent',external:true,url:'https://docs.devin.ai/'},
@@ -131,7 +131,7 @@ export class DeveloperAgentHub{
   if(!prompt||prompt.length>4000)throw new Error('Prompt agent harus berisi 1–4000 karakter.');
   const agent=agents.find(item=>item.id===id&&item.canRun);
   if(!agent)throw new Error('Agent ini belum mendukung pemanggilan langsung dari Dudidam.');
-  if(mode==='work'&&!['github-copilot','codex'].includes(id))throw new Error('Mode Kerja hanya tersedia untuk GitHub Copilot atau OpenAI Codex.');
+  if(mode==='work'&&!['github-copilot','codex','cursor','claude'].includes(id))throw new Error('Mode Kerja hanya tersedia untuk GitHub Copilot, OpenAI Codex, Cursor, atau Claude Code.');
   const executable=await locate(agent);
   if(!executable)throw new Error(agent.name+' belum ditemukan di PATH atau environment path khusus.');
   const cwd=this.getProjectRoot();
@@ -150,6 +150,10 @@ export class DeveloperAgentHub{
    :id==='github-copilot'?['-p',prompt,'-s','--available-tools=view,grep,glob','--disable-builtin-mcps','--no-ask-user','--no-auto-update','--disallow-temp-dir']
    :id==='codex'&&mode==='work'?['exec','--json','--sandbox','workspace-write','--ephemeral','--ignore-user-config',safeWorkPrompt]
    :id==='codex'?['exec','--json','--sandbox','read-only','--ephemeral','--ignore-user-config',prompt]
+   :id==='cursor'&&mode==='work'?['-p',safeWorkPrompt,'--sandbox','enabled','--output-format','text']
+   :id==='cursor'?['-p',prompt,'--mode=ask','--sandbox','enabled','--output-format','text']
+   :id==='claude'&&mode==='work'?['-p',safeWorkPrompt,'--model','claude-fable-5','--permission-mode','dontAsk','--tools','Read,Glob,Grep,Edit,Write,Bash','--allowedTools','Read,Glob,Grep,Edit,Write,Bash(npm test:*),Bash(npm run verify:*)','--output-format','text','--no-session-persistence']
+   :id==='claude'?['-p',prompt,'--model','claude-fable-5','--permission-mode','plan','--tools','Read,Glob,Grep','--output-format','text','--no-session-persistence']
    :['-p',prompt,'--mode=ask','--output-format','text'];
   const timeoutMs=agentTimeoutMs(mode);
   this.pending=true;

@@ -15,6 +15,7 @@ let passthroughLocked=false;
 let panelViewportOpen=false;
 const summonShortcut='CommandOrControl+Alt+5';
 const ciSmoke=process.argv.includes('--ci-smoke');
+if(process.platform==='win32')app.setAppUserModelId('id.my.aleprinting.dudidam');
 if(ciSmoke)app.setPath('userData',mkdtempSync(path.join(tmpdir(),'dudidam-ci-smoke-')));
 
 function statePath(){return path.join(app.getPath('userData'),'window-state.json');}

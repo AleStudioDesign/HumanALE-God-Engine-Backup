@@ -105,7 +105,7 @@ test('avatar structure uses binary and neural particles instead of continuous li
  assert.doesNotMatch(avatar,/context\.ellipse/);
 });
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
-test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pack,/Dudidam\.exe/);assert.match(pkg.scripts['package:desktop'],/install-electron --no/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(workflow,/npm run verify/);assert.match(workflow,/npm run package:desktop/);});
+test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow,builder,desktop]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8'),readFile(new URL('../electron-builder.yml',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.version,'2.3.0');assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pkg.scripts['package:installer'],/electron-builder@26\.16\.1/);assert.match(pack,/Dudidam\.exe/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(builder,/target: nsis/);assert.match(builder,/oneClick: false/);assert.match(builder,/allowToChangeInstallationDirectory: true/);assert.match(workflow,/npm run package:installer/);assert.match(workflow,/gh release upload/);assert.doesNotMatch(workflow,/actions\/upload-artifact/);assert.match(desktop,/app\.setAppUserModelId\('id\.my\.aleprinting\.dudidam'\)/);});
 test('safe launcher starts only the packaged Dudidam application',async()=>{const launcher=await readFile(new URL('../Jalankan-entitasale170925-SAFE.bat',import.meta.url),'utf8');assert.match(launcher,/Dudidam-Desktop\\Dudidam\.exe/);assert.match(launcher,/if not exist/);assert.doesNotMatch(launcher,/runas|powershell|reg add|taskkill/i);});
 test('desktop CI smoke mode verifies the packaged renderer',async()=>{const [desktop,workflow]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);assert.match(desktop,/--ci-smoke/);assert.match(desktop,/Dudidam CI smoke passed/);assert.match(desktop,/executeJavaScript/);assert.match(desktop,/app\.exit\(1\)/);assert.match(workflow,/Dudidam\.exe --ci-smoke/);});
 test('avatar surface stays transparent and the detached panel is opaque',async()=>{const [css,surface,main,preload]=await Promise.all([readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(css,/body\.desktop,body\.popup-widget\{background:transparent!important\}/);assert.match(css,/html\.panel-surface,html\.panel-surface body\{background:#081610!important/);assert.match(surface,/\(isDesktop && !isPanel\) \|\| isPopup/);assert.match(main,/panelWin=new BrowserWindow/);assert.match(preload,/openPanel:view/);});
@@ -126,7 +126,7 @@ test('OpenAI, Claude and DeepSeek API providers are wired without renderer secre
  assert.equal(parseClaudeResponse({content:[{type:'text',text:' Halo Claude '}]}),'Halo Claude');
  assert.equal(parseDeepSeekResponse({output:[{content:[{type:'output_text',text:' Halo DeepSeek '}]}]}),'Halo DeepSeek');
  assert.match(openai,/api\.openai\.com\/v1\/responses/);assert.match(openai,/OPENAI_API_KEY/);
- assert.match(claude,/api\.anthropic\.com\/v1\/messages/);assert.match(claude,/ANTHROPIC_API_KEY/);
+ assert.match(claude,/api\.anthropic\.com\/v1\/messages/);assert.match(claude,/ANTHROPIC_API_KEY/);assert.match(claude,/claude-fable-5/);assert.match(env,/ANTHROPIC_MODEL=claude-fable-5/);
  assert.match(deepseek,/api\.deepseek\.com\/responses/);assert.match(deepseek,/DEEPSEEK_API_KEY/);
  for(const id of ['openai','claude','deepseek'])assert.match(html,new RegExp('value="'+id+'"'));
  assert.match(desktop,/OpenAIBridge/);assert.match(desktop,/ClaudeBridge/);assert.match(desktop,/DeepSeekBridge/);
@@ -161,7 +161,29 @@ test('Dudidam project work requires a selected Git checkout and exposes a folder
  assert.match(app,/isExplicitProjectWorkRequest\(text\)/);
 });
 
-test('developer agent hub registers requested tools and exposes read-only CLI adapters only',async()=>{const defs=agentDefinitions();const ids=defs.map(x=>x.id);for(const id of ['continue','cody','pieces','askcodi','phind','amazonq','windsurf','tabnine','replit','cursor','github-copilot','agent-copilot','codex','openai-api','visual-copilot','qodo','blackbox','claude','microsoft-copilot','deepseek-coder','devin','codegeex','starcoder','tabbyml','grok','gemini'])assert.ok(ids.includes(id));const runnable=defs.filter(x=>x.canRun).map(x=>x.id).sort();assert.deepEqual(runnable,['codex','cody','continue','cursor','github-copilot']);const [hub,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(hub,/--readonly/);assert.match(hub,/--mode=ask/);assert.match(hub,/--available-tools=view,grep,glob/);assert.match(hub,/read-only/);assert.match(hub,/--ignore-user-config/);assert.doesNotMatch(hub,/--force/);assert.match(desktop,/dudidam:agent-run/);assert.match(preload,/runAgent/);assert.match(html,/id="agentDialog"/);assert.match(app,/desktop\.agents\(\)/);assert.match(app,/desktop\.runAgent/);});
+test('developer agent hub registers requested tools and exposes read-only CLI adapters only',async()=>{const defs=agentDefinitions();const ids=defs.map(x=>x.id);for(const id of ['continue','cody','pieces','askcodi','phind','amazonq','windsurf','tabnine','replit','cursor','github-copilot','agent-copilot','codex','openai-api','visual-copilot','qodo','blackbox','claude','microsoft-copilot','deepseek-coder','devin','codegeex','starcoder','tabbyml','grok','gemini'])assert.ok(ids.includes(id));const runnable=defs.filter(x=>x.canRun).map(x=>x.id).sort();assert.deepEqual(runnable,['claude','codex','cody','continue','cursor','github-copilot']);const [hub,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(hub,/--readonly/);assert.match(hub,/--mode=ask/);assert.match(hub,/--available-tools=view,grep,glob/);assert.match(hub,/read-only/);assert.match(hub,/--ignore-user-config/);assert.doesNotMatch(hub,/--force/);assert.match(desktop,/dudidam:agent-run/);assert.match(preload,/runAgent/);assert.match(html,/id="agentDialog"/);assert.match(app,/desktop\.agents\(\)/);assert.match(app,/desktop\.runAgent/);});
+
+
+test('Cursor and Claude work modes are bounded and use current model ids',async()=>{
+ const [hub,sandbox]=await Promise.all([
+  readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),
+  readFile(new URL('../.cursor/sandbox.json',import.meta.url),'utf8')
+ ]);
+ assert.match(hub,/\['github-copilot','codex','cursor','claude'\]/);
+ assert.match(hub,/id==='cursor'&&mode==='work'/);
+ assert.match(hub,/id==='cursor'\?\['-p',prompt,'--mode=ask','--sandbox','enabled'/);
+ assert.match(hub,/claude-fable-5/);
+ assert.match(hub,/--permission-mode','plan/);
+ assert.match(hub,/--permission-mode','dontAsk/);
+ assert.match(hub,/--tools','Read,Glob,Grep'/);
+ assert.match(hub,/Bash\(npm test:\*\)/);
+ assert.match(hub,/--no-session-persistence/);
+ assert.doesNotMatch(hub,/dangerously-skip-permissions|bypassPermissions/);
+ const policy=JSON.parse(sandbox);
+ assert.equal(policy.type,'workspace_readwrite');
+ assert.equal(policy.disableTmpWrite,true);
+ assert.equal(policy.networkPolicy.default,'deny');
+});
 
 
 test('Codex agent requires login, parses JSON events and uses bounded work timeout',async()=>{

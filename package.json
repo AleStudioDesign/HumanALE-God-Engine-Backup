@@ -1,7 +1,7 @@
 {
   "name": "dudidam-binary-assistant",
   "private": true,
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
@@ -9,7 +9,8 @@
     "test": "node --test tests/*.test.mjs",
     "desktop": "electron desktop/main.cjs",
     "verify": "npm test && npm run build",
-    "package:desktop": "install-electron --no && node package-desktop.mjs"
+    "package:desktop": "install-electron --no && node package-desktop.mjs",
+    "package:installer": "npx --yes electron-builder@26.16.1 --win nsis --x64"
   },
   "devDependencies": {
     "electron": "44.4.3"

@@ -1,0 +1,27 @@
+appId: id.my.aleprinting.dudidam
+productName: Dudidam
+directories:
+  output: release
+files:
+  - public/**/*
+  - desktop/**/*
+  - package.json
+asar: false
+extraResources:
+  - from: Setup-suara-Indonesia.ps1
+    to: Setup-suara-Indonesia.ps1
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "Dudidam-Setup-${version}-x64.${ext}"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Dudidam
+  uninstallDisplayName: Dudidam

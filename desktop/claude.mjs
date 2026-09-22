@@ -1,7 +1,7 @@
 import {validateChat} from './bridge.mjs';
 
 const endpoint='https://api.anthropic.com/v1/messages';
-const defaultModel='claude-sonnet-4-6';
+const defaultModel='claude-fable-5';
 
 function apiKey(){return (process.env.ANTHROPIC_API_KEY||'').trim();}
 function model(){return (process.env.ANTHROPIC_MODEL||defaultModel).trim()||defaultModel;}
