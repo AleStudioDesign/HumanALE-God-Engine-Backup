@@ -25,8 +25,13 @@ try{
  if(ended.id!==session.id)throw new Error('Sesi PTY yang selesai tidak cocok.');
  if(!/DUDIDAM CMD OK/i.test(output))throw new Error('Output echo PTY tidak ditemukan.');
  if(!/git(?:\.exe)?/i.test(output))throw new Error('Git tidak ditemukan melalui CMD PTY.');
- if(manager.list().length)throw new Error('Sesi PTY tidak dibersihkan setelah exit.');
- console.log('Dudidam terminal PTY smoke passed: CMD interactive input, realtime output, Git PATH, exit cleanup.');
+ const stopped=manager.list().find(item=>item.id===session.id);
+ if(!stopped||stopped.status!=='stopped')throw new Error('Sesi PTY yang selesai harus tetap tersedia untuk Restart.');
+ const restarted=await manager.restart(session.id);
+ if(!restarted?.pid||restarted.id===session.id||restarted.status!=='running')throw new Error('Restart PTY tidak membuat sesi baru yang aktif.');
+ manager.kill(restarted.id);
+ if(manager.list().length)throw new Error('Sesi PTY tidak bersih setelah ditutup eksplisit.');
+ console.log('Dudidam terminal PTY smoke passed: CMD interactive input, realtime output, Git PATH, stopped-session recovery, restart, and explicit cleanup.');
  manager.killAll();
  process.exit(0);
 }catch(error){
