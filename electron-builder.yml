@@ -1,6 +1,6 @@
 # Stable Windows app identity retained so existing installations can upgrade in place.
 appId: id.my.aleprinting.dudidam
-productName: HumanALE God Engine
+productName: HumanALE god egine
 directories:
   output: release
 files:
@@ -24,5 +24,5 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: HumanALE God Engine
-  uninstallDisplayName: HumanALE God Engine
+  shortcutName: HumanALE god egine
+  uninstallDisplayName: HumanALE god egine
