@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {tmpdir,homedir} from 'node:os';
 
 async function pythonPath(){
- const candidates=[process.env.DUDIDAM_PYTHON_PATH,join(homedir(),'.cache','codex-runtimes','codex-primary-runtime','dependencies','python','python.exe')].filter(Boolean);
+ const candidates=[process.env.HUMANALE_PYTHON_PATH,process.env.DUDIDAM_PYTHON_PATH,join(homedir(),'.cache','codex-runtimes','codex-primary-runtime','dependencies','python','python.exe')].filter(Boolean);
  for(const candidate of candidates){try{await access(candidate);return candidate;}catch{}}
  return process.platform==='win32'?'python.exe':'python3';
 }
