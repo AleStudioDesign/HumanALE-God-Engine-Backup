@@ -209,7 +209,13 @@ else{
   });
   ipcMain.handle('dudidam:agent-run',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.run(value);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:agent-open',async(e,id)=>{if(!trusted(e))return {error:'Akses ditolak.'};const url=agentLinks[String(id||'')];if(!url||!url.startsWith('https://'))return {error:'Tautan agent tidak valid.'};await shell.openExternal(url);return {ok:true};});
-  ipcMain.handle('dudidam:terminal-create',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await terminalManager.create(value||{});}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-create',async(e,value)=>{
+   if(!trusted(e))return {error:'Akses ditolak.'};
+   const shellId=['auto','pwsh','powershell','cmd'].includes(String(value?.shell||''))?String(value.shell):'auto';
+   const profileId=['claude','codex','cursor','gemini'].includes(String(value?.profile||''))?String(value.profile):undefined;
+   const options={shell:shellId,profile:profileId,title:String(value?.title||'').slice(0,80),cols:value?.cols,rows:value?.rows};
+   try{return await terminalManager.create(options);}catch(error){return {error:error.message};}
+  });
   ipcMain.handle('dudidam:terminal-write',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.write(value?.sessionId,value?.data);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:terminal-resize',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.resize(value?.sessionId,value?.cols,value?.rows);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:terminal-kill',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.kill(value?.sessionId);}catch(error){return {error:error.message};}});
@@ -224,7 +230,10 @@ else{
    if(!trusted(e))return {error:'Akses ditolak.'};
    const command=String(value?.command||'').trim(),decision=terminalPolicy.classifyCommand(command);
    if(decision.category==='BLOCK')return {error:decision.reason,category:'BLOCK'};
-   if(decision.category==='CONFIRM'&&!value?.confirmed)return {needsConfirmation:true,category:'CONFIRM',reason:decision.reason};
+   if(decision.category==='CONFIRM'){
+    const result=await dialog.showMessageBox(panelWin?.isVisible()?panelWin:win,{type:'warning',title:'Konfirmasi command Dudidam',message:'Command ini dapat mengubah project atau sistem.',detail:decision.reason+'\n\n'+command,buttons:['Jalankan','Batal'],defaultId:1,cancelId:1,noLink:true});
+    if(result.response!==0)return {cancelled:true,category:'CONFIRM',reason:decision.reason};
+   }
    try{terminalManager.write(value?.sessionId,command+'\r');return {ok:true,category:decision.category};}
    catch(error){return {error:error.message,category:decision.category};}
   });
