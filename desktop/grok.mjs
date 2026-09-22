@@ -25,7 +25,7 @@ export class GrokBridge{
   const data=validateChat(value);
   if(data.image)throw new Error('Foto belum diaktifkan untuk Grok. Pilih ChatGPT untuk menjelaskan foto.');
   const key=apiKey();
-  if(!key)throw new Error('XAI_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang Dudidam.');
+  if(!key)throw new Error('XAI_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE God Engine.');
   if(this.pending)throw new Error('Tunggu balasan Grok sebelumnya selesai.');
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
