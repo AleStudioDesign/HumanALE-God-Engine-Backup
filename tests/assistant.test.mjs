@@ -18,7 +18,7 @@ import {IndonesianTts} from '../desktop/indonesian-tts.mjs';
 import {HUMANALE_CORE_PROMPT,reasoningGuidance,humanaleSystemPrompt} from '../desktop/humanale-brain.mjs';
 test('commands do not mistake normal conversation for gestures',()=>{assert.equal(parseCommand('Tolong menggelengkan kepala'),'shake');assert.equal(parseCommand('Coba berkedip!'),'blink');assert.equal(parseCommand('Jelaskan mengapa manusia berkedip'),null);});
 
-test('HumanALE God Engine Brain Core uses bounded adaptive logical reasoning',()=>{
+test('HumanALE god egine Brain Core uses bounded adaptive logical reasoning',()=>{
  assert.match(HUMANALE_CORE_PROMPT,/Berpikir secara logis/);
  assert.match(HUMANALE_CORE_PROMPT,/pisahkan fakta dari asumsi/);
  assert.match(HUMANALE_CORE_PROMPT,/Jangan menampilkan chain-of-thought/);
@@ -31,14 +31,14 @@ test('HumanALE God Engine Brain Core uses bounded adaptive logical reasoning',()
  assert.match(prompt,/Jangan akses file/);
 });
 
-test('all HumanALE God Engine conversation providers share the Brain Core prompt',async()=>{
+test('all HumanALE god egine conversation providers share the Brain Core prompt',async()=>{
  const sources=await Promise.all([
   '../desktop/bridge.mjs','../desktop/copilot.mjs','../desktop/openai-api.mjs','../desktop/claude.mjs',
   '../desktop/grok.mjs','../desktop/gemini.mjs','../desktop/deepseek.mjs','../desktop/askcodi.mjs'
  ].map(url=>readFile(new URL(url,import.meta.url),'utf8')));
  for(const source of sources){
   assert.match(source,/humanaleSystemPrompt/);
-  assert.match(source,/dudidam-brain\.mjs/);
+  assert.match(source,/humanale-brain\\.mjs/);
  }
 });
 
@@ -131,9 +131,9 @@ test('avatar structure uses binary and neural particles instead of continuous li
  assert.doesNotMatch(avatar,/context\.ellipse/);
 });
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
-test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow,builder,desktop]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8'),readFile(new URL('../electron-builder.yml',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.name,'humanale-god-engine');assert.equal(pkg.version,'2.4.0');assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pkg.scripts['package:installer'],/electron-builder@26\.16\.1/);assert.match(pkg.scripts['package:installer'],/--publish never/);assert.match(pack,/HumanALE-God-Engine\.exe/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(builder,/productName: HumanALE God Engine/);assert.match(builder,/HumanALE-God-Engine-Setup/);assert.match(builder,/target: nsis/);assert.match(builder,/oneClick: false/);assert.match(builder,/allowToChangeInstallationDirectory: true/);assert.match(workflow,/npm run package:installer/);assert.match(workflow,/gh release upload/);assert.doesNotMatch(workflow,/actions\/upload-artifact/);assert.match(desktop,/app\.setAppUserModelId\('id\.my\.aleprinting\.dudidam'\)/);});
-test('safe launcher starts only the packaged HumanALE God Engine application',async()=>{const launcher=await readFile(new URL('../Jalankan-entitasale170925-SAFE.bat',import.meta.url),'utf8');assert.match(launcher,/HumanALE-God-Engine-Desktop\\HumanALE-God-Engine\.exe/);assert.match(launcher,/if not exist/);assert.doesNotMatch(launcher,/runas|powershell|reg add|taskkill/i);});
-test('desktop CI smoke mode verifies the packaged renderer',async()=>{const [desktop,workflow]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);assert.match(desktop,/--ci-smoke/);assert.match(desktop,/HumanALE God Engine CI smoke passed/);assert.match(desktop,/executeJavaScript/);assert.match(desktop,/app\.exit\(1\)/);assert.match(workflow,/HumanALE-God-Engine\.exe --ci-smoke/);});
+test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow,builder,desktop]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8'),readFile(new URL('../electron-builder.yml',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.name,'humanale-god-engine');assert.equal(pkg.version,'2.4.0');assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pkg.scripts['package:installer'],/electron-builder@26\.16\.1/);assert.match(pkg.scripts['package:installer'],/--publish never/);assert.match(pack,/HumanALE-God-Engine\.exe/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(builder,/productName: HumanALE god egine/);assert.match(builder,/HumanALE-God-Engine-Setup/);assert.match(builder,/target: nsis/);assert.match(builder,/oneClick: false/);assert.match(builder,/allowToChangeInstallationDirectory: true/);assert.match(workflow,/npm run package:installer/);assert.match(workflow,/gh release upload/);assert.doesNotMatch(workflow,/actions\/upload-artifact/);assert.match(desktop,/app\.setAppUserModelId\('id\.my\.aleprinting\.dudidam'\)/);});
+test('safe launcher starts only the packaged HumanALE god egine application',async()=>{const launcher=await readFile(new URL('../Jalankan-entitasale170925-SAFE.bat',import.meta.url),'utf8');assert.match(launcher,/HumanALE-God-Engine-Desktop\\HumanALE-God-Engine\.exe/);assert.match(launcher,/if not exist/);assert.doesNotMatch(launcher,/runas|powershell|reg add|taskkill/i);});
+test('desktop CI smoke mode verifies the packaged renderer',async()=>{const [desktop,workflow]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);assert.match(desktop,/--ci-smoke/);assert.match(desktop,/HumanALE god egine CI smoke passed/);assert.match(desktop,/executeJavaScript/);assert.match(desktop,/app\.exit\(1\)/);assert.match(workflow,/HumanALE-God-Engine\.exe --ci-smoke/);});
 test('avatar surface stays transparent and the detached panel is opaque',async()=>{const [css,surface,main,preload]=await Promise.all([readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(css,/body\.desktop,body\.popup-widget\{background:transparent!important\}/);assert.match(css,/html\.panel-surface,html\.panel-surface body\{background:#081610!important/);assert.match(surface,/\(isDesktop && !isPanel\) \|\| isPopup/);assert.match(main,/panelWin=new BrowserWindow/);assert.match(preload,/openPanel:view/);});
 test('Grok provider is wired through the xAI Responses API without renderer secrets',async()=>{const [grok,desktop,preload,html,app]=await Promise.all([readFile(new URL('../desktop/grok.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.equal(parseGrokResponse({output_text:' Halo '}),'Halo');assert.equal(parseGrokResponse({output:[{content:[{type:'output_text',text:'Hai'}]}]}),'Hai');assert.match(grok,/https:\/\/api\.x\.ai\/v1\/responses/);assert.match(grok,/XAI_API_KEY/);assert.match(grok,/Authorization':'Bearer '/);assert.match(desktop,/GrokBridge/);assert.match(preload,/dudidam:status/);assert.match(html,/value="grok"/);assert.match(app,/provider:aiProvider/);assert.doesNotMatch(html,/XAI_API_KEY\s*=/);});
 test('Gemini provider is wired securely with text and camera-image support',async()=>{const [gemini,desktop,html,app]=await Promise.all([readFile(new URL('../desktop/gemini.mjs',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.equal(parseGeminiResponse({candidates:[{content:{parts:[{text:' Halo '},{text:'Gemini'}]}}]}),'Halo \nGemini');assert.match(gemini,/generativelanguage\.googleapis\.com\/v1beta\/models/);assert.match(gemini,/x-goog-api-key/);assert.match(gemini,/GEMINI_API_KEY/);assert.match(gemini,/GOOGLE_API_KEY/);assert.match(gemini,/inline_data/);assert.match(gemini,/mime_type:'image\/jpeg'/);assert.match(desktop,/GeminiBridge/);assert.match(html,/value="gemini"/);assert.match(app,/gemini:\{label:'Gemini'/);assert.doesNotMatch(html,/GEMINI_API_KEY\s*=/);assert.doesNotMatch(html,/GOOGLE_API_KEY\s*=/);});
@@ -165,7 +165,7 @@ test('Copilot chat distinguishes conversation from explicit project work',()=>{
  for(const text of ['hay','apa kabar','bagaimana bentuk avatar','jelaskan rencana','bisa bantu?'])assert.equal(isExplicitProjectWorkRequest(text),false,text);
 });
 
-test('HumanALE God Engine project work requires a selected Git checkout and exposes a folder picker',async()=>{
+test('HumanALE god egine project work requires a selected Git checkout and exposes a folder picker',async()=>{
  const [hub,desktop,preload,html,app]=await Promise.all([
   readFile(new URL('../desktop/agent-hub.mjs',import.meta.url),'utf8'),
   readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),
@@ -251,7 +251,7 @@ test('ALE wake microphone is explicit opt-in and permission copy is accurate',as
  assert.match(app,/dudidam-wake-enabled/);
  assert.match(app,/if\(wakeEnabled\)startWakeListening\(\)/);
  assert.doesNotMatch(html,/id="wakeToggle" checked/);
- assert.match(html,/Tahan 5 sekitar 1,5 detik saat HumanALE God Engine fokus/);
+ assert.match(html,/Tahan 5 sekitar 1,5 detik saat HumanALE god egine fokus/);
  assert.match(html,/Ctrl\+Alt\+5/);
  assert.match(desktop,/Wake ALE, dikte, atau reaksi suara/);
 });
