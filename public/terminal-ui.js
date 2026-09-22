@@ -79,6 +79,7 @@
   for(const id of ['claude','codex','cursor','gemini']){const button=document.querySelector('[data-terminal-cli="'+id+'"]');if(button)button.disabled=data.registry?.[id]?.state!=='READY';}
  }
  async function openTerminal(kind='auto'){
+  desktop.openPanel?.('terminalDialog');
   if(!dialog.open){document.querySelectorAll('dialog[open]').forEach(item=>item.close());dialog.showModal();}
   if(kind==='claude')return newTerminal({startupCommand:'claude',title:'Claude',shell:'auto'});
   if(kind==='codex')return newTerminal({startupCommand:'codex',title:'Codex',shell:'auto'});
