@@ -11,7 +11,8 @@ export function validateChat(value){
 }
 export function parseEvents(stdout){let text='',failure=false;for(const line of stdout.split('\n')){try{const event=JSON.parse(line);if(event.type==='item.completed'&&event.item?.type==='agent_message')text=event.item.text;if(event.type==='turn.failed'||event.type==='error')failure=true;}catch{}}return {text,failure};}
 export async function findCodex(){
- if(process.env.DUDIDAM_CODEX_PATH){await stat(process.env.DUDIDAM_CODEX_PATH);return process.env.DUDIDAM_CODEX_PATH;}
+ const configuredCodexPath=process.env.HUMANALE_CODEX_PATH||process.env.DUDIDAM_CODEX_PATH;
+ if(configuredCodexPath){await stat(configuredCodexPath);return configuredCodexPath;}
  const base=join(process.env.LOCALAPPDATA||'', 'OpenAI','Codex','bin');try{const dirs=await readdir(base,{withFileTypes:true});const candidates=[];for(const d of dirs){if(d.isDirectory()){const p=join(base,d.name,'codex.exe');try{candidates.push({p,t:(await stat(p)).mtimeMs});}catch{}}}if(candidates.length)return candidates.sort((a,b)=>b.t-a.t)[0].p;}catch{}
  return 'codex';
 }
