@@ -42,11 +42,13 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(preload,/onTerminalData/);
  assert.doesNotMatch(preload,/require:\s*require|child_process|node-pty/);
  assert.match(html,/id="terminalDialog"/);
- assert.match(html,/\/vendor\/xterm\.js/);
+ assert.match(ui,/\/vendor\/xterm\.js/);
  assert.match(ui,/new window\.Terminal/);
  assert.match(ui,/FitAddon/);
  assert.match(ui,/terminalResize/);
  assert.match(ui,/\/run/);
+ assert.match(ui,/terminalExecute/);
+ assert.match(main,/terminalManager\?\.killAll/);
  assert.match(pkg,/"node-pty": "1\.1\.0"/);
  assert.match(pkg,/"@xterm\/xterm": "6\.0\.0"/);
  assert.match(portable,/node-pty/);
