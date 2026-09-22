@@ -25,6 +25,8 @@ jobs:
         run: npm ci
       - name: Verify
         run: npm run verify
+      - name: Smoke interactive Windows terminal
+        run: npm run smoke:terminal
       - name: Audit high severity
         run: npm audit --audit-level=high
       - name: Package portable desktop
