@@ -15,18 +15,18 @@ import {normalizedAudioLevel} from '../public/audio-reactor.js';
 import {isExplicitProjectWorkRequest} from '../public/work-intent.js';
 import {IndonesianStt} from '../desktop/indonesian-stt.mjs';
 import {IndonesianTts} from '../desktop/indonesian-tts.mjs';
-import {DUDIDAM_CORE_PROMPT,reasoningGuidance,dudidamSystemPrompt} from '../desktop/dudidam-brain.mjs';
+import {HUMANALE_CORE_PROMPT,reasoningGuidance,humanaleSystemPrompt} from '../desktop/humanale-brain.mjs';
 test('commands do not mistake normal conversation for gestures',()=>{assert.equal(parseCommand('Tolong menggelengkan kepala'),'shake');assert.equal(parseCommand('Coba berkedip!'),'blink');assert.equal(parseCommand('Jelaskan mengapa manusia berkedip'),null);});
 
 test('HumanALE God Engine Brain Core uses bounded adaptive logical reasoning',()=>{
- assert.match(DUDIDAM_CORE_PROMPT,/Berpikir secara logis/);
- assert.match(DUDIDAM_CORE_PROMPT,/pisahkan fakta dari asumsi/);
- assert.match(DUDIDAM_CORE_PROMPT,/Jangan menampilkan chain-of-thought/);
- assert.match(DUDIDAM_CORE_PROMPT,/koreksi eksplisit/);
- assert.match(DUDIDAM_CORE_PROMPT,/tidak boleh mengklaim dapat mengubah model dasarnya/);
+ assert.match(HUMANALE_CORE_PROMPT,/Berpikir secara logis/);
+ assert.match(HUMANALE_CORE_PROMPT,/pisahkan fakta dari asumsi/);
+ assert.match(HUMANALE_CORE_PROMPT,/Jangan menampilkan chain-of-thought/);
+ assert.match(HUMANALE_CORE_PROMPT,/koreksi eksplisit/);
+ assert.match(HUMANALE_CORE_PROMPT,/tidak boleh mengklaim dapat mengubah model dasarnya/);
  assert.match(reasoningGuidance('halo'),/ringan/);
  assert.match(reasoningGuidance('cek bug dan error secara mendalam lalu analisis risiko dan solusi'),/mendalam/);
- const prompt=dudidamSystemPrompt('mengapa ini error dan bagaimana solusi terbaik?','Jangan akses file.');
+ const prompt=humanaleSystemPrompt('mengapa ini error dan bagaimana solusi terbaik?','Jangan akses file.');
  assert.match(prompt,/Mode penalaran:/);
  assert.match(prompt,/Jangan akses file/);
 });
@@ -37,7 +37,7 @@ test('all HumanALE God Engine conversation providers share the Brain Core prompt
   '../desktop/grok.mjs','../desktop/gemini.mjs','../desktop/deepseek.mjs','../desktop/askcodi.mjs'
  ].map(url=>readFile(new URL(url,import.meta.url),'utf8')));
  for(const source of sources){
-  assert.match(source,/dudidamSystemPrompt/);
+  assert.match(source,/humanaleSystemPrompt/);
   assert.match(source,/dudidam-brain\.mjs/);
  }
 });
