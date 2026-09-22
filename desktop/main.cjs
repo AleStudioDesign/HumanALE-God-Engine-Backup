@@ -224,7 +224,7 @@ else{
   ipcMain.handle('dudidam:terminal-list',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};return {sessions:terminalManager.list()};});
   ipcMain.handle('dudidam:terminal-detect',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await terminalManager.detect();}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:terminal-recent',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};return {output:terminalManager.getRecentOutput(value?.sessionId,value?.limit)};});
-  ipcMain.handle('dudidam:terminal-cwd',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.setCwd(value?.sessionId,value?.cwd);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-cwd',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await terminalManager.setCwd(value?.sessionId,value?.cwd);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:terminal-policy',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};return terminalPolicy.classifyCommand(value?.command);});
   ipcMain.handle('dudidam:terminal-execute',async(e,value)=>{
    if(!trusted(e))return {error:'Akses ditolak.'};
