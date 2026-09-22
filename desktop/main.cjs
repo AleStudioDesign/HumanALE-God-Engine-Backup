@@ -5,7 +5,7 @@ const {mkdtempSync}=require('node:fs');
 const path=require('node:path');
 const {tmpdir}=require('node:os');
 
-let win,panelWin,server,origin,bridges,agentHub,indonesianStt,indonesianTts,tray,saveTimer,pointerTimer;
+let win,panelWin,server,origin,bridges,agentHub,terminalManager,terminalPolicy,indonesianStt,indonesianTts,tray,saveTimer,pointerTimer;
 let baseWindowSize={width:420,height:480};
 let panelZoomFactor=1;
 let quitting=false;
@@ -99,7 +99,7 @@ function resizeForAvatar(value=420){
 }
 async function openPanel(view='controls'){
  if(!win||win.isDestroyed())return;
- const allowed=['controls','chatDialog','agentDialog'];
+ const allowed=['controls','chatDialog','agentDialog','terminalDialog'];
  const target=allowed.includes(view)?view:'controls';
  if(panelWin&&!panelWin.isDestroyed()){
   panelWin.show();panelWin.focus();panelWin.webContents.send('dudidam:panel-view',target);return;
@@ -143,16 +143,35 @@ if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',showAvatar);
  app.whenReady().then(async()=>{
-  const [{ChatGPTBridge},{CopilotBridge},{OpenAIBridge},{GrokBridge},{GeminiBridge},{ClaudeBridge},{DeepSeekBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions},{IndonesianStt},{IndonesianTts}]=await Promise.all([import('./bridge.mjs'),import('./copilot.mjs'),import('./openai-api.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./claude.mjs'),import('./deepseek.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs'),import('./indonesian-stt.mjs'),import('./indonesian-tts.mjs')]);
+  const [{ChatGPTBridge},{CopilotBridge},{OpenAIBridge},{GrokBridge},{GeminiBridge},{ClaudeBridge},{DeepSeekBridge},{AskCodiBridge},{DeveloperAgentHub,agentDefinitions},{TerminalManager},policyModule,{IndonesianStt},{IndonesianTts}]=await Promise.all([import('./bridge.mjs'),import('./copilot.mjs'),import('./openai-api.mjs'),import('./grok.mjs'),import('./gemini.mjs'),import('./claude.mjs'),import('./deepseek.mjs'),import('./askcodi.mjs'),import('./agent-hub.mjs'),import('./terminal-manager.mjs'),import('./terminal-policy.mjs'),import('./indonesian-stt.mjs'),import('./indonesian-tts.mjs')]);
   bridges={chatgpt:new ChatGPTBridge(),copilot:new CopilotBridge(),openai:new OpenAIBridge(),grok:new GrokBridge(),gemini:new GeminiBridge(),claude:new ClaudeBridge(),deepseek:new DeepSeekBridge(),askcodi:new AskCodiBridge()};
   agentHub=new DeveloperAgentHub();
   const savedProjectRoot=await readProjectRoot();if(savedProjectRoot)agentHub.setProjectRoot(savedProjectRoot);
+  terminalPolicy=policyModule;
+  const emitTerminal=(channel,...args)=>{for(const target of [win,panelWin]){if(target&&!target.isDestroyed()&&!target.webContents.isLoading())target.webContents.send(channel,...args);}};
+  terminalManager=new TerminalManager({
+   workspace:agentHub.getProjectRoot(),
+   onData:(id,data)=>emitTerminal('dudidam:terminal-data',id,data),
+   onExit:(id,exitCode)=>emitTerminal('dudidam:terminal-exit',id,exitCode)
+  });
   indonesianStt=new IndonesianStt();
   indonesianTts=new IndonesianTts();
   const agentLinks=Object.fromEntries(agentDefinitions().map(item=>[item.id,item.url]));
   const root=path.resolve(__dirname,'../public');
   const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
-  server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);}catch{res.writeHead(404);res.end();}});
+  const vendorAssets={
+   '/vendor/xterm.js':{path:path.resolve(__dirname,'../node_modules/@xterm/xterm/lib/xterm.js'),type:'text/javascript; charset=utf-8'},
+   '/vendor/xterm.css':{path:path.resolve(__dirname,'../node_modules/@xterm/xterm/css/xterm.css'),type:'text/css; charset=utf-8'},
+   '/vendor/addon-fit.js':{path:path.resolve(__dirname,'../node_modules/@xterm/addon-fit/lib/addon-fit.js'),type:'text/javascript; charset=utf-8'}
+  };
+  server=http.createServer(async(req,res)=>{try{
+   const url=new URL(req.url,'http://localhost');
+   const vendor=vendorAssets[url.pathname];
+   if(vendor){const data=await readFile(vendor.path);res.writeHead(200,{'Content-Type':vendor.type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);return;}
+   const asset=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
+   if(!asset.startsWith(root+path.sep)||!types[path.extname(asset)]){res.writeHead(404);res.end();return;}
+   const data=await readFile(asset);res.writeHead(200,{'Content-Type':types[path.extname(asset)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);
+  }catch{res.writeHead(404);res.end();}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   origin='http://127.0.0.1:'+server.address().port;
   const workArea=screen.getPrimaryDisplay().workAreaSize,width=Math.min(420,workArea.width),height=Math.min(480,workArea.height);baseWindowSize={width,height};
@@ -179,12 +198,31 @@ else{
    const result=await dialog.showOpenDialog(panelWin?.isVisible()?panelWin:win,{title:'Pilih folder checkout proyek Dudidam',properties:['openDirectory']});
    if(result.canceled||!result.filePaths?.[0])return {canceled:true};
    const selected=path.resolve(result.filePaths[0]);
-   agentHub.setProjectRoot(selected);
+   agentHub.setProjectRoot(selected);terminalManager?.setWorkspace(selected);
    try{await writeFile(projectRootPath(),selected,'utf8');}catch(error){return {error:'Folder terpilih, tetapi pengaturan tidak dapat disimpan: '+error.message};}
    return {ok:true,...await agentHub.status()};
   });
   ipcMain.handle('dudidam:agent-run',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.run(value);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:agent-open',async(e,id)=>{if(!trusted(e))return {error:'Akses ditolak.'};const url=agentLinks[String(id||'')];if(!url||!url.startsWith('https://'))return {error:'Tautan agent tidak valid.'};await shell.openExternal(url);return {ok:true};});
+  ipcMain.handle('dudidam:terminal-create',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await terminalManager.create(value||{});}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-write',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.write(value?.sessionId,value?.data);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-resize',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.resize(value?.sessionId,value?.cols,value?.rows);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-kill',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.kill(value?.sessionId);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-restart',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await terminalManager.restart(value?.sessionId);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-clear',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.clear(value?.sessionId);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-list',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};return {sessions:terminalManager.list()};});
+  ipcMain.handle('dudidam:terminal-detect',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await terminalManager.detect();}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-recent',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};return {output:terminalManager.getRecentOutput(value?.sessionId,value?.limit)};});
+  ipcMain.handle('dudidam:terminal-cwd',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return terminalManager.setCwd(value?.sessionId,value?.cwd);}catch(error){return {error:error.message};}});
+  ipcMain.handle('dudidam:terminal-policy',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};return terminalPolicy.classifyCommand(value?.command);});
+  ipcMain.handle('dudidam:terminal-execute',async(e,value)=>{
+   if(!trusted(e))return {error:'Akses ditolak.'};
+   const command=String(value?.command||'').trim(),decision=terminalPolicy.classifyCommand(command);
+   if(decision.category==='BLOCK')return {error:decision.reason,category:'BLOCK'};
+   if(decision.category==='CONFIRM'&&!value?.confirmed)return {needsConfirmation:true,category:'CONFIRM',reason:decision.reason};
+   try{terminalManager.write(value?.sessionId,command+'\r');return {ok:true,category:decision.category};}
+   catch(error){return {error:error.message,category:decision.category};}
+  });
   ipcMain.on('dudidam:center',e=>{if(trusted(e)){win.center();savePositionSoon();}});
   ipcMain.on('dudidam:minimize',e=>{if(trusted(e))requestDismiss('hide');});
   ipcMain.on('dudidam:close',e=>{if(trusted(e))requestDismiss('hide');});
@@ -252,5 +290,5 @@ else{
   console.log('Dudidam desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
  }).catch(error=>{console.error('Dudidam startup failed:',error);app.exit(1);});
  app.on('window-all-closed',()=>{});
-  app.on('before-quit',()=>{quitting=true;globalShortcut.unregisterAll();clearTimeout(saveTimer);clearInterval(pointerTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();indonesianStt?.stop();indonesianTts?.stop();panelWin?.destroy();server?.close();tray?.destroy();});
+  app.on('before-quit',()=>{quitting=true;globalShortcut.unregisterAll();clearTimeout(saveTimer);clearInterval(pointerTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();terminalManager?.killAll?.();indonesianStt?.stop();indonesianTts?.stop();panelWin?.destroy();server?.close();tray?.destroy();});
 }
