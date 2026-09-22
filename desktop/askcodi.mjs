@@ -1,4 +1,5 @@
 import {validateChat} from './bridge.mjs';
+import {dudidamSystemPrompt} from './dudidam-brain.mjs';
 
 const baseURL='https://api.askcodi.com/v1';
 
@@ -26,7 +27,7 @@ export class AskCodiBridge{
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
   try{
    const messages=[
-    {role:'system',content:'Kamu Dudidam, asisten percakapan berbahasa Indonesia dalam avatar manusia biner. Jawab ramah dan ringkas, maksimal 3 paragraf kecuali pengguna meminta detail. Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.'},
+    {role:'system',content:dudidamSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.')},
     ...data.history.map(item=>({role:item.role,content:item.content})),
     {role:'user',content:data.message}
    ];

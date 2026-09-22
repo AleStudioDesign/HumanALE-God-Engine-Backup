@@ -15,7 +15,33 @@ import {normalizedAudioLevel} from '../public/audio-reactor.js';
 import {isExplicitProjectWorkRequest} from '../public/work-intent.js';
 import {IndonesianStt} from '../desktop/indonesian-stt.mjs';
 import {IndonesianTts} from '../desktop/indonesian-tts.mjs';
+import {DUDIDAM_CORE_PROMPT,reasoningGuidance,dudidamSystemPrompt} from '../desktop/dudidam-brain.mjs';
 test('commands do not mistake normal conversation for gestures',()=>{assert.equal(parseCommand('Tolong menggelengkan kepala'),'shake');assert.equal(parseCommand('Coba berkedip!'),'blink');assert.equal(parseCommand('Jelaskan mengapa manusia berkedip'),null);});
+
+test('Dudidam Brain Core uses bounded adaptive logical reasoning',()=>{
+ assert.match(DUDIDAM_CORE_PROMPT,/Berpikir secara logis/);
+ assert.match(DUDIDAM_CORE_PROMPT,/pisahkan fakta dari asumsi/);
+ assert.match(DUDIDAM_CORE_PROMPT,/Jangan menampilkan chain-of-thought/);
+ assert.match(DUDIDAM_CORE_PROMPT,/koreksi eksplisit/);
+ assert.match(DUDIDAM_CORE_PROMPT,/tidak boleh mengklaim dapat mengubah model dasarnya/);
+ assert.match(reasoningGuidance('halo'),/ringan/);
+ assert.match(reasoningGuidance('cek bug dan error secara mendalam lalu analisis risiko dan solusi'),/mendalam/);
+ const prompt=dudidamSystemPrompt('mengapa ini error dan bagaimana solusi terbaik?','Jangan akses file.');
+ assert.match(prompt,/Mode penalaran:/);
+ assert.match(prompt,/Jangan akses file/);
+});
+
+test('all Dudidam conversation providers share the Brain Core prompt',async()=>{
+ const sources=await Promise.all([
+  '../desktop/bridge.mjs','../desktop/copilot.mjs','../desktop/openai-api.mjs','../desktop/claude.mjs',
+  '../desktop/grok.mjs','../desktop/gemini.mjs','../desktop/deepseek.mjs','../desktop/askcodi.mjs'
+ ].map(url=>readFile(new URL(url,import.meta.url),'utf8')));
+ for(const source of sources){
+  assert.match(source,/dudidamSystemPrompt/);
+  assert.match(source,/dudidam-brain\.mjs/);
+ }
+});
+
 test('Sites login is never represented as model access',async()=>{const r=await handleAPI(new Request('https://example.test/api/status',{headers:{'oai-authenticated-user-email':'owner@example.test'}}));assert.deepEqual(await r.json(),{configured:false,mode:'sites-login',signedIn:true});});
 test('cloud chat explains the local login requirement',async()=>{const r=await handleAPI(new Request('https://example.test/api/chat',{method:'POST'}));assert.equal(r.status,409);});
 test('bridge rejects malformed, oversized and remote-image inputs',()=>{for(const data of [null,{message:''},{message:'a'.repeat(4001)},{message:'hi',image:'https://remote.test/image.jpg'}])assert.throws(()=>validateChat(data));});
