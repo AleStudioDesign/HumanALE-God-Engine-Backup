@@ -1,4 +1,4 @@
-# Codex Task — HumanALE God Engine / entitasale170925
+# Codex Task — HumanALE god egine / entitasale170925
 
 Repository: `Kmpsnr26/entitashuman`
 Target branch: `codex/entitasale170925`
@@ -112,7 +112,7 @@ Do not weaken:
 - It should feel like live data, neural signals, and frequencies flowing into the brain.
 
 ### 10. Speaking mouth animation
-- Improve mouth/lip motion while HumanALE God Engine speaks.
+- Improve mouth/lip motion while HumanALE god egine speaks.
 - Lip movement should react to speech activity/energy rather than only a static open/close loop.
 - Keep animation subtle enough to preserve the face shape.
 
@@ -154,9 +154,9 @@ Before finishing, report:
 ## Wake / summon interaction
 
 ### 13. Wake phrase "ALE"
-- Add an opt-in/visible continuous wake listener for the word "ALE" while HumanALE God Engine is running and the speech recognizer is available.
+- Add an opt-in/visible continuous wake listener for the word "ALE" while HumanALE god egine is running and the speech recognizer is available.
 - The UI must visibly indicate when wake listening is active. Do not hide microphone use.
-- Avoid self-triggering from HumanALE God Engine TTS: suspend wake recognition while HumanALE God Engine is speaking, then resume after speech ends.
+- Avoid self-triggering from HumanALE god egine TTS: suspend wake recognition while HumanALE god egine is speaking, then resume after speech ends.
 - When "ALE" is recognized, summon/awaken the avatar and then enter command dictation/listening.
 - If Electron SpeechRecognition is unavailable, report that limitation clearly and keep keyboard/text fallbacks.
 - Do not add credential capture, hidden recording, or a global keylogger.
