@@ -14,7 +14,7 @@ try{
    onExit:(id,exitCode)=>resolve({id,exitCode})
   });
  });
- session=await manager.create({shell:'cmd',cols:100,rows:30,title:'HumanALE God Engine CI CMD'});
+ session=await manager.create({shell:'cmd',cols:100,rows:30,title:'HumanALE god egine CI CMD'});
  if(session.shell!=='cmd'||!session.pid)throw new Error('CMD PTY tidak berjalan.');
  manager.write(session.id,'echo HUMANALE GOD ENGINE CMD OK\r');
  manager.write(session.id,'where git\r');
@@ -31,12 +31,12 @@ try{
  if(!restarted?.pid||restarted.id===session.id||restarted.status!=='running')throw new Error('Restart PTY tidak membuat sesi baru yang aktif.');
  manager.kill(restarted.id);
  if(manager.list().length)throw new Error('Sesi PTY tidak bersih setelah ditutup eksplisit.');
- console.log('HumanALE God Engine terminal PTY smoke passed: CMD interactive input, realtime output, Git PATH, stopped-session recovery, restart, and explicit cleanup.');
+ console.log('HumanALE god egine terminal PTY smoke passed: CMD interactive input, realtime output, Git PATH, stopped-session recovery, restart, and explicit cleanup.');
  manager.killAll();
  process.exit(0);
 }catch(error){
  clearTimeout(timer);
  try{manager?.killAll();}catch{}
- console.error('HumanALE God Engine terminal PTY smoke failed:',error);
+ console.error('HumanALE god egine terminal PTY smoke failed:',error);
  process.exit(1);
 }
