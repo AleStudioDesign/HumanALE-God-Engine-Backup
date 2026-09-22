@@ -43,7 +43,7 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(main,/sandbox:true/);
  assert.match(main,/dudidam:terminal-create/);
  assert.match(main,/dudidam:terminal-execute/);
- assert.match(main,/Konfirmasi command HumanALE God Engine/);
+ assert.match(main,/Konfirmasi command HumanALE god egine/);
  assert.doesNotMatch(main,/decision\.category==='CONFIRM'&&!value\?\.confirmed/);
  assert.match(main,/return await terminalManager\.setCwd/);
  assert.match(main,/vendor\/xterm\.js/);
