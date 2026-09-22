@@ -1,3 +1,4 @@
+# Stable Windows app identity retained so existing installations can upgrade in place.
 appId: id.my.aleprinting.dudidam
 productName: HumanALE God Engine
 directories:
