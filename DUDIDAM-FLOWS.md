@@ -1,10 +1,10 @@
-# Alur Dudidam yang Disatukan
+# Alur HumanALE God Engine yang Disatukan
 
-Repository ini menyatukan dua riwayat Dudidam tanpa menimpa salah satunya.
+Repository ini menyatukan dua riwayat HumanALE God Engine tanpa menimpa salah satunya.
 
 ## Alur aktif
 
-Branch `codex/unify-dudidam-flows-20260921` adalah alur gabungan berbasis Dudidam 2.2.0. Alur ini mempertahankan desktop avatar dan panel terpisah, ChatGPT melalui login Codex, GitHub Copilot dan provider tambahan, Developer Agent Hub, ALE wake yang harus diaktifkan pengguna, animasi partikel-only terbaru, dikte lokal, serta suara balasan Piper Bahasa Indonesia.
+Branch `codex/unify-dudidam-flows-20260921` adalah alur gabungan berbasis HumanALE God Engine 2.2.0. Alur ini mempertahankan desktop avatar dan panel terpisah, ChatGPT melalui login Codex, GitHub Copilot dan provider tambahan, Developer Agent Hub, ALE wake yang harus diaktifkan pengguna, animasi partikel-only terbaru, dikte lokal, serta suara balasan Piper Bahasa Indonesia.
 
 ## Alur warisan
 
