@@ -101,13 +101,10 @@
   if(!sessions.size||kind!=='auto')await newTerminal({shell:kind});
   await refreshDetection();
  }
- async function runCommand(command,confirmed=false){
+ async function runCommand(command){
   if(!activeId){const created=await newTerminal({shell:'auto'});if(!created)return;}
-  const result=await desktop.terminalExecute({sessionId:activeId,command,confirmed});
-  if(result?.needsConfirmation){
-   if(confirm(result.reason+'\n\nJalankan command ini?\n'+command))return runCommand(command,true);
-   return {cancelled:true};
-  }
+  const result=await desktop.terminalExecute({sessionId:activeId,command});
+  if(result?.cancelled){setStatus('Command dibatalkan.');return result;}
   if(result?.error){alert(result.error);return result;}
   return result;
  }
