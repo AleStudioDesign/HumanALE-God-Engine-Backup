@@ -31,6 +31,7 @@ const BLOCK=[
 const CONFIRM=[
  /^\s*git\s+(?:push|reset|clean|checkout\s+--\s+\.)\b/i,
  /^\s*npm\s+publish\b/i,
+ /^\s*npm\s+(?:test|run\s+\S+)\b/i,
  /^\s*(?:Remove-Item|del|erase|rmdir|rd)\b/i,
  /^\s*(?:Stop-Process|taskkill)\b/i,
  /^\s*winget\s+(?:install|uninstall|upgrade)\b/i,
@@ -45,7 +46,6 @@ const SHELL_COMPOSITION=/(?:;|&&|\|\||(?<!\|)\|(?!\|)|(?<!&)\&(?!&)|[<>]|\$\(|`)
 const SAFE=[
  /^\s*git\s+(?:status|diff|log|show|branch(?:\s+--show-current)?|rev-parse)\b/i,
  /^\s*(?:node|npm|npx|python|py|pip|git|gh|claude|codex|agent|gemini)\s+--version\b/i,
- /^\s*npm\s+(?:test|run\s+(?:build|test|verify|lint|typecheck))\b/i,
  /^\s*(?:Get-ChildItem|Get-Location|Get-Content|Test-Path|Resolve-Path)\b/i,
  /^\s*(?:dir|where|echo|type|cd|pwd)\b/i
 ];
