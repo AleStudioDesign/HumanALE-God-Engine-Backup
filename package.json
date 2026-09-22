@@ -10,7 +10,7 @@
     "desktop": "electron desktop/main.cjs",
     "verify": "npm test && npm run build",
     "package:desktop": "install-electron --no && node package-desktop.mjs",
-    "package:installer": "npx --yes electron-builder@26.16.1 --win nsis --x64"
+    "package:installer": "npx --yes electron-builder@26.16.1 --win nsis --x64 --publish never"
   },
   "devDependencies": {
     "electron": "44.4.3"
