@@ -569,7 +569,7 @@ if(panelOnly){
  desktop.onPanelView?.(async view=>{showDialog('#'+view);if(view==='agentDialog')await loadAgents();});
  panelChannel?.postMessage({type:'panel-ready'});
  const initial=params.get('panel');
- if(['controls','chatDialog','agentDialog'].includes(initial))requestAnimationFrame(()=>showDialog('#'+initial));
+ if(['controls','chatDialog','agentDialog','terminalDialog'].includes(initial))requestAnimationFrame(()=>showDialog('#'+initial));
 }
 document.querySelectorAll('dialog').forEach(enableDialogDrag);window.addEventListener('resize',()=>document.querySelectorAll('dialog[open]').forEach(clampDialog));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){setPassthrough(true);suspendWakeListening('ALE · wake mic dijeda');stopListening(false);stopSpeech(false);stopCamera();stopReactiveAudio();}else resumeWakeSoon(500);});
