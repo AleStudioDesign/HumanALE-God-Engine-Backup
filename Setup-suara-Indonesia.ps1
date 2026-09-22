@@ -18,7 +18,7 @@ from pathlib import Path
 from faster_whisper import WhisperModel
 from huggingface_hub import hf_hub_download
 
-root = Path(os.environ['LOCALAPPDATA']) / 'HumanALE God Engine' / 'voice-models'
+root = Path(os.environ['LOCALAPPDATA']) / 'HumanALE god egine' / 'voice-models'
 root.mkdir(parents=True, exist_ok=True)
 WhisperModel('base', device='cpu', compute_type='int8', download_root=str(root))
 voice_dir = root / 'piper'
