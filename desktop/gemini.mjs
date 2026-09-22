@@ -19,7 +19,7 @@ export class GeminiBridge{
  async ask(value){
   const data=validateChat(value);
   const key=apiKey();
-  if(!key)throw new Error('GEMINI_API_KEY atau GOOGLE_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang Dudidam.');
+  if(!key)throw new Error('GEMINI_API_KEY atau GOOGLE_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE God Engine.');
   if(this.pending)throw new Error('Tunggu balasan Gemini sebelumnya selesai.');
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
