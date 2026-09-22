@@ -6,7 +6,7 @@ Avatar wajah biner mengambang di tengah layar. Saat ALE dipanggil, biner/neural/
 Riwayat aplikasi aktif dan proyek standalone lama sudah disatukan tanpa force-push atau penggantian source secara massal. Aplikasi 2.2.0 tetap menjadi alur aktif, sedangkan snapshot standalone dipertahankan pada branch `legacy/binary-assistant-v2`. Lihat [DUDIDAM-FLOWS.md](DUDIDAM-FLOWS.md) untuk hubungan branch dan aturan integrasi agar kedua alur tidak saling menimpa.
 
 ## Versi desktop Windows
-Jalankan HumanALE God Engine.exe dalam folder output HumanALE God Engine-Desktop. Jendela avatar 420×480 transparan tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Kontrol, percakapan, dan Developer Agent Hub membuka **jendela panel terpisah** yang dapat diseret melalui bilah judul Windows, dipindah jauh dari avatar atau ke monitor lain, serta diubah ukurannya. Mengklik kanan wajah atau menekan H membuka kontrol; Enter membuka percakapan. Avatar tetap terlihat ketika panel dipindah. HumanALE God Engine dapat dipulihkan dari ikon tray saat disembunyikan. Area kosong di sekitar wajah otomatis meneruskan klik ke aplikasi di bawahnya. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
+Jalankan HumanALE-God-Engine.exe dalam folder output HumanALE-God-Engine-Desktop. Jendela avatar 420×480 transparan tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Kontrol, percakapan, dan Developer Agent Hub membuka **jendela panel terpisah** yang dapat diseret melalui bilah judul Windows, dipindah jauh dari avatar atau ke monitor lain, serta diubah ukurannya. Mengklik kanan wajah atau menekan H membuka kontrol; Enter membuka percakapan. Avatar tetap terlihat ketika panel dipindah. HumanALE God Engine dapat dipulihkan dari ikon tray saat disembunyikan. Area kosong di sekitar wajah otomatis meneruskan klik ke aplikasi di bawahnya. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
 
 Klik kanan/dobel klik wajah atau H: kontrol. Enter: percakapan. B/N/G: kedip/angguk/geleng. 1–5: gaya partikel. M: mikrofon. R: tengahkan. Esc: tutup panel dan hentikan suara. Alt+F4 menutup aplikasi. Tombol minimalkan/tutup juga ada di kontrol.
 
@@ -65,9 +65,9 @@ Proyek yang sama dipertahankan pada .openai/hosting.json dan tetap memakai kebij
 
 
 ## Verifikasi dan paket Windows
-Jalankan `npm run verify` untuk menjalankan test dan build web dalam satu perintah. Di Windows, `npm run package:desktop` membuat folder portable `HumanALE God Engine-Desktop` dari runtime Electron yang sudah terpasang dan mengganti executable menjadi `HumanALE God Engine.exe`. Paket ini tidak memasukkan kredensial atau data login ChatGPT.
+Jalankan `npm run verify` untuk menjalankan test dan build web dalam satu perintah. Di Windows, `npm run package:desktop` membuat folder portable `HumanALE-God-Engine-Desktop` dari runtime Electron yang sudah terpasang dan mengganti executable menjadi `HumanALE-God-Engine.exe`. Paket ini tidak memasukkan kredensial atau data login ChatGPT.
 
-GitHub Actions menjalankan verifikasi pada pull request dan push ke `main`, membangun artefak Windows `HumanALE God Engine-Desktop-Windows`, lalu menjalankan smoke test startup pada paket `HumanALE God Engine.exe` untuk memastikan runtime dan renderer lokal dapat dimuat. Smoke test model nyata tetap dijalankan manual karena memerlukan akun ChatGPT yang sudah login.
+GitHub Actions menjalankan verifikasi pada pull request dan push ke `main`, membangun artefak Windows `HumanALE-God-Engine-Desktop-Windows`, lalu menjalankan smoke test startup pada paket `HumanALE-God-Engine.exe` untuk memastikan runtime dan renderer lokal dapat dimuat. Smoke test model nyata tetap dijalankan manual karena memerlukan akun ChatGPT yang sudah login.
 
 ## Develop / verify
 node server.mjs — http://127.0.0.1:4177
