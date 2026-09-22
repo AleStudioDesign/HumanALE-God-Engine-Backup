@@ -23,9 +23,9 @@ export class DeepSeekBridge{
  async status(){return {configured:Boolean(apiKey()),mode:'deepseek-api',model:model()};}
  async ask(value){
   const data=validateChat(value);
-  if(data.image)throw new Error('Foto belum diaktifkan untuk DeepSeek di Dudidam. Pilih OpenAI API, ChatGPT, atau Gemini untuk menjelaskan foto.');
+  if(data.image)throw new Error('Foto belum diaktifkan untuk DeepSeek di HumanALE God Engine. Pilih OpenAI API, ChatGPT, atau Gemini untuk menjelaskan foto.');
   const key=apiKey();
-  if(!key)throw new Error('DEEPSEEK_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang Dudidam.');
+  if(!key)throw new Error('DEEPSEEK_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE God Engine.');
   if(this.pending)throw new Error('Tunggu balasan DeepSeek sebelumnya selesai.');
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
