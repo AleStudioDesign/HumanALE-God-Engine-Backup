@@ -4,8 +4,8 @@ import {join} from 'node:path';
 import {tmpdir,homedir} from 'node:os';
 const modelName='id_ID-news_tts-medium.onnx';
 const appDataRoot=process.env.LOCALAPPDATA||homedir();
-const primaryModelFolder=join(appDataRoot,'HumanALE God Engine','voice-models','piper','id','id_ID','news_tts','medium');
-const legacyModelFolder=join(appDataRoot,'Dudidam','voice-models','piper','id','id_ID','news_tts','medium');
+const primaryModelFolder=join(appDataRoot,'HumanALE god egine','voice-models','piper','id','id_ID','news_tts','medium');
+const legacyModelFolder=join(appDataRoot,'HumanALE god egine','voice-models','piper','id','id_ID','news_tts','medium');
 
 async function modelFolder(){
  for(const folder of [primaryModelFolder,legacyModelFolder]){
