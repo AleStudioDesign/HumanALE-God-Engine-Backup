@@ -55,6 +55,21 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(portable,/@xterm/);
 });
 
+test('terminal startup is restricted to detected CLI profiles and cannot accept raw startup commands',async()=>{
+ const [manager,ui]=await Promise.all([
+  readFile(new URL('../desktop/terminal-manager.mjs',import.meta.url),'utf8'),
+  readFile(new URL('../public/terminal-ui.js',import.meta.url),'utf8')
+ ]);
+ assert.match(manager,/async resolveProfile\(profile\)/);
+ assert.match(manager,/if\(profile\)terminal\.write\(executableLine/);
+ assert.doesNotMatch(manager,/options\.startupCommand/);
+ assert.match(ui,/profile:kind/);
+ assert.doesNotMatch(ui,/startupCommand/);
+ assert.match(manager,/Set-Location -LiteralPath/);
+ assert.match(ui,/terminalRecent/);
+ assert.match(ui,/terminalList/);
+});
+
 test('TerminalManager detects Windows shell fallback and developer CLIs without failing',{skip:process.platform!=='win32'},async()=>{
  const manager=new TerminalManager({workspace:process.cwd()});
  const detection=await manager.detect();
