@@ -23,7 +23,7 @@ export class OpenAIBridge{
  async status(){return {configured:Boolean(apiKey()),mode:'openai-api',model:model()};}
  async ask(value){
   const data=validateChat(value),key=apiKey();
-  if(!key)throw new Error('OPENAI_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE God Engine.');
+  if(!key)throw new Error('OPENAI_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE god egine.');
   if(this.pending)throw new Error('Tunggu balasan OpenAI sebelumnya selesai.');
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
