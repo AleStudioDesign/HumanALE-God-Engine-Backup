@@ -105,7 +105,8 @@ async function openPanel(view='controls'){
   panelWin.show();panelWin.focus();panelWin.webContents.send('dudidam:panel-view',target);return;
  }
  const bounds=win.getBounds(),display=screen.getDisplayNearestPoint({x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}),area=display.workArea;
- const width=Math.min(460,area.width),height=Math.min(680,area.height);
+ const terminalView=target==='terminalDialog';
+ const width=Math.min(terminalView?900:460,area.width),height=Math.min(terminalView?720:680,area.height);
  const rightSpace=area.x+area.width-(bounds.x+bounds.width),leftSpace=bounds.x-area.x;
  let x;
  if(rightSpace>=width+16)x=bounds.x+bounds.width+16;
