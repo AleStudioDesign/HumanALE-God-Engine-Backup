@@ -24,8 +24,11 @@ function locateCommand(command){
 }
 async function isDirectory(path){try{return (await stat(path)).isDirectory();}catch{return false;}}
 async function readHubConfig(){
- const path=join(homedir(),'.dudiddam','cli-hub.json');
- try{const parsed=JSON.parse(await readFile(path,'utf8'));return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
+ const candidates=[join(homedir(),'.humanale','cli-hub.json'),join(homedir(),'.dudiddam','cli-hub.json')];
+ for(const path of candidates){
+  try{const parsed=JSON.parse(await readFile(path,'utf8'));if(parsed&&typeof parsed==='object')return parsed;}catch{}
+ }
+ return {};
 }
 function cleanTitle(value,fallback){const text=String(value||fallback).replace(/[\r\n\t]/g,' ').trim().slice(0,80);return text||fallback;}
 function cleanSize(value,fallback,min,max){const n=Math.round(Number(value));return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;}
