@@ -12,12 +12,17 @@ test('terminal policy separates SAFE CONFIRM and BLOCK commands',()=>{
  assert.equal(classifyCommand('Set-MpPreference -DisableRealtimeMonitoring $true').category,'BLOCK');
  assert.equal(classifyCommand('cmdkey /list').category,'BLOCK');
  assert.equal(classifyCommand('echo one\necho two').category,'BLOCK');
+ assert.equal(classifyCommand('git status; echo chained').category,'CONFIRM');
+ assert.equal(classifyCommand('git status && echo chained').category,'CONFIRM');
+ assert.equal(classifyCommand('git status | findstr main').category,'CONFIRM');
+ assert.equal(classifyCommand('git status > status.txt').category,'CONFIRM');
+ assert.equal(classifyCommand('git status $(echo injected)').category,'CONFIRM');
 });
 
 test('terminal redaction removes common credentials before AI or logs',()=>{
- const value='OPENAI_API_KEY=sk-test-secret Authorization: Bearer abc.def.ghi password=hunter2 token=abc123';
+ const value='OPENAI_API_KEY=sk-test-secret Authorization: Bearer abc.def.ghi password=hunter2 token=abc123 github_pat_1234567890abcdefghijklmnop sk-ant-abcdefghijklmnop';
  const redacted=redactSecrets(value);
- assert.doesNotMatch(redacted,/sk-test-secret|abc\.def\.ghi|hunter2|abc123/);
+ assert.doesNotMatch(redacted,/sk-test-secret|abc\.def\.ghi|hunter2|abc123|github_pat_|sk-ant-/);
  assert.match(redacted,/\[REDACTED\]/);
  assert.equal(shouldPersistHistory('git status'),true);
  assert.equal(shouldPersistHistory('set token=abc'),false);
@@ -37,6 +42,8 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(main,/sandbox:true/);
  assert.match(main,/dudidam:terminal-create/);
  assert.match(main,/dudidam:terminal-execute/);
+ assert.match(main,/Konfirmasi command Dudidam/);
+ assert.doesNotMatch(main,/decision\.category==='CONFIRM'&&!value\?\.confirmed/);
  assert.match(main,/vendor\/xterm\.js/);
  assert.match(preload,/terminalCreate/);
  assert.match(preload,/onTerminalData/);
@@ -48,6 +55,7 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(ui,/terminalResize/);
  assert.match(ui,/\/run/);
  assert.match(ui,/terminalExecute/);
+ assert.doesNotMatch(ui,/needsConfirmation|command,true/);
  assert.match(main,/terminalManager\?\.killAll/);
  assert.match(pkg,/"node-pty": "1\.1\.0"/);
  assert.match(pkg,/"@xterm\/xterm": "6\.0\.0"/);
