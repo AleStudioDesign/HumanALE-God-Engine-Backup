@@ -1,5 +1,5 @@
 import {validateChat} from './bridge.mjs';
-import {dudidamSystemPrompt} from './dudidam-brain.mjs';
+import {humanaleSystemPrompt} from './humanale-brain.mjs';
 
 const endpoint='https://api.deepseek.com/responses';
 const defaultModel='deepseek-flash';
@@ -30,7 +30,7 @@ export class DeepSeekBridge{
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
   try{
-   const instructions=dudidamSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.');
+   const instructions=humanaleSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.');
    const input='Percakapan sebelumnya dan pesan saat ini:\n'+JSON.stringify({history:data.history,message:data.message});
    const response=await this.fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:model(),instructions,input}),signal:this.controller.signal});
    let payload={};try{payload=await response.json();}catch{}
