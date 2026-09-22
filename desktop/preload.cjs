@@ -27,5 +27,19 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  onShow:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:show',handler);return()=>ipcRenderer.removeListener('dudidam:show',handler);},
  onSummon:callback=>{if(typeof callback!=='function')return()=>{};const handler=()=>callback();ipcRenderer.on('dudidam:summon',handler);return()=>ipcRenderer.removeListener('dudidam:summon',handler);},
  onDismiss:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,reason)=>callback(reason);ipcRenderer.on('dudidam:dismiss',handler);return()=>ipcRenderer.removeListener('dudidam:dismiss',handler);},
- onGlobalPointer:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,point)=>callback(point);ipcRenderer.on('dudidam:global-pointer',handler);return()=>ipcRenderer.removeListener('dudidam:global-pointer',handler);}
+ onGlobalPointer:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,point)=>callback(point);ipcRenderer.on('dudidam:global-pointer',handler);return()=>ipcRenderer.removeListener('dudidam:global-pointer',handler);},
+ terminalCreate:options=>ipcRenderer.invoke('dudidam:terminal-create',options),
+ terminalWrite:(sessionId,data)=>ipcRenderer.invoke('dudidam:terminal-write',{sessionId,data}),
+ terminalResize:(sessionId,cols,rows)=>ipcRenderer.invoke('dudidam:terminal-resize',{sessionId,cols,rows}),
+ terminalKill:sessionId=>ipcRenderer.invoke('dudidam:terminal-kill',{sessionId}),
+ terminalRestart:sessionId=>ipcRenderer.invoke('dudidam:terminal-restart',{sessionId}),
+ terminalClear:sessionId=>ipcRenderer.invoke('dudidam:terminal-clear',{sessionId}),
+ terminalList:()=>ipcRenderer.invoke('dudidam:terminal-list'),
+ terminalDetect:()=>ipcRenderer.invoke('dudidam:terminal-detect'),
+ terminalRecent:(sessionId,limit)=>ipcRenderer.invoke('dudidam:terminal-recent',{sessionId,limit}),
+ terminalSetCwd:(sessionId,cwd)=>ipcRenderer.invoke('dudidam:terminal-cwd',{sessionId,cwd}),
+ terminalPolicy:command=>ipcRenderer.invoke('dudidam:terminal-policy',{command}),
+ terminalExecute:payload=>ipcRenderer.invoke('dudidam:terminal-execute',payload),
+ onTerminalData:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,sessionId,data)=>callback(sessionId,data);ipcRenderer.on('dudidam:terminal-data',handler);return()=>ipcRenderer.removeListener('dudidam:terminal-data',handler);},
+ onTerminalExit:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,sessionId,exitCode)=>callback(sessionId,exitCode);ipcRenderer.on('dudidam:terminal-exit',handler);return()=>ipcRenderer.removeListener('dudidam:terminal-exit',handler);}
 }));
