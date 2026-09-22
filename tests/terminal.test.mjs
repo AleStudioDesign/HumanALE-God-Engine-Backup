@@ -70,8 +70,11 @@ test('TerminalManager runs an interactive Windows PTY and cleans it up',{skip:pr
  manager.write(session.id,'echo DUDIDAM CMD OK\r');
  manager.write(session.id,'where git\r');
  manager.write(session.id,'exit\r');
- const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('PTY Windows tidak selesai dalam 15 detik.')),15000));
- const ended=await Promise.race([exited,timeout]);
+ let timeoutId;
+ const timeout=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error('PTY Windows tidak selesai dalam 15 detik.')),15000);});
+ let ended;
+ try{ended=await Promise.race([exited,timeout]);}
+ finally{clearTimeout(timeoutId);}
  assert.equal(ended.id,session.id);
  assert.match(output,/DUDIDAM CMD OK/i);
  assert.match(output,/git(?:\.exe)?/i);
