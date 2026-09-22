@@ -4,7 +4,7 @@
  if(!desktop||!dialog)return;
  const loadScript=src=>new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src;script.onload=resolve;script.onerror=()=>reject(new Error('Gagal memuat '+src));document.head.append(script);});
  const style=document.createElement('link');style.rel='stylesheet';style.href='/vendor/xterm.css';document.head.append(style);
- try{await loadScript('/vendor/xterm.js');await loadScript('/vendor/addon-fit.js');}catch(error){console.error('HumanALE God Engine terminal vendor gagal:',error);return;}
+ try{await loadScript('/vendor/xterm.js');await loadScript('/vendor/addon-fit.js');}catch(error){console.error('HumanALE god egine terminal vendor gagal:',error);return;}
  if(typeof window.Terminal!=='function'||!window.FitAddon?.FitAddon)return;
 
  const tabs=document.querySelector('#terminalTabs');
@@ -114,7 +114,7 @@
   const item=sessions.get(id);if(!item)return;
   item.session.status='stopped';item.session.exitCode=exitCode;
   if(activeId===id)setStatus(sessionStatus(item.session));
-  item.term.write('\r\n\x1b[90m[HumanALE God Engine: terminal selesai · tekan Restart untuk menjalankan kembali]\x1b[0m\r\n');
+  item.term.write('\r\n\x1b[90m[HumanALE god egine: terminal selesai · tekan Restart untuk menjalankan kembali]\x1b[0m\r\n');
  });
  window.addEventListener('resize',()=>{const item=active();if(!item)return;requestAnimationFrame(()=>{try{item.fit.fit();if(item.session.status!=='stopped')desktop.terminalResize(activeId,item.term.cols,item.term.rows);}catch{}});});
 
