@@ -1,5 +1,5 @@
 appId: id.my.aleprinting.dudidam
-productName: Dudidam
+productName: HumanALE God Engine
 directories:
   output: release
 files:
@@ -15,7 +15,7 @@ win:
     - target: nsis
       arch:
         - x64
-  artifactName: "Dudidam-Setup-${version}-x64.${ext}"
+  artifactName: "HumanALE-God-Engine-Setup-${version}-x64.${ext}"
 nsis:
   oneClick: false
   perMachine: false
@@ -23,5 +23,5 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: Dudidam
-  uninstallDisplayName: Dudidam
+  shortcutName: HumanALE God Engine
+  uninstallDisplayName: HumanALE God Engine
