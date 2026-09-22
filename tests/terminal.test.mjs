@@ -6,7 +6,8 @@ import {TerminalManager} from '../desktop/terminal-manager.mjs';
 
 test('terminal policy separates SAFE CONFIRM and BLOCK commands',()=>{
  assert.equal(classifyCommand('git status').category,'SAFE');
- assert.equal(classifyCommand('npm run build').category,'SAFE');
+ assert.equal(classifyCommand('npm run build').category,'CONFIRM');
+ assert.equal(classifyCommand('npm test').category,'CONFIRM');
  assert.equal(classifyCommand('git push origin main').category,'CONFIRM');
  assert.equal(classifyCommand('winget install Example.App').category,'CONFIRM');
  assert.equal(classifyCommand('Set-MpPreference -DisableRealtimeMonitoring $true').category,'BLOCK');
@@ -44,6 +45,7 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(main,/dudidam:terminal-execute/);
  assert.match(main,/Konfirmasi command Dudidam/);
  assert.doesNotMatch(main,/decision\.category==='CONFIRM'&&!value\?\.confirmed/);
+ assert.match(main,/return await terminalManager\.setCwd/);
  assert.match(main,/vendor\/xterm\.js/);
  assert.match(preload,/terminalCreate/);
  assert.match(preload,/onTerminalData/);
