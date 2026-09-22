@@ -1,7 +1,11 @@
-(()=>{
+(async()=>{
  const desktop=window.dudidamDesktop;
  const dialog=document.querySelector('#terminalDialog');
- if(!desktop||!dialog||typeof window.Terminal!=='function'||!window.FitAddon?.FitAddon)return;
+ if(!desktop||!dialog)return;
+ const loadScript=src=>new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src;script.onload=resolve;script.onerror=()=>reject(new Error('Gagal memuat '+src));document.head.append(script);});
+ const style=document.createElement('link');style.rel='stylesheet';style.href='/vendor/xterm.css';document.head.append(style);
+ try{await loadScript('/vendor/xterm.js');await loadScript('/vendor/addon-fit.js');}catch(error){console.error('Dudidam terminal vendor gagal:',error);return;}
+ if(typeof window.Terminal!=='function'||!window.FitAddon?.FitAddon)return;
 
  const tabs=document.querySelector('#terminalTabs');
  const host=document.querySelector('#terminalViews');
