@@ -4,6 +4,7 @@ const {readFile,writeFile}=require('node:fs/promises');
 const {mkdtempSync}=require('node:fs');
 const path=require('node:path');
 const {tmpdir}=require('node:os');
+const {spawn}=require('node:child_process');
 
 let win,panelWin,server,origin,bridges,agentHub,indonesianStt,indonesianTts,tray,saveTimer,pointerTimer;
 let baseWindowSize={width:420,height:480};
@@ -185,6 +186,15 @@ else{
   });
   ipcMain.handle('dudidam:agent-run',async(e,value)=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.run(value);}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:agent-open',async(e,id)=>{if(!trusted(e))return {error:'Akses ditolak.'};const url=agentLinks[String(id||'')];if(!url||!url.startsWith('https://'))return {error:'Tautan agent tidak valid.'};await shell.openExternal(url);return {ok:true};});
+  ipcMain.handle('dudidam:terminal-open',async e=>{
+   if(!trusted(e))return {error:'Akses ditolak.'};
+   try{
+    const cwd=path.resolve(agentHub?.getProjectRoot?.()||process.env.DUDIDAM_PROJECT_ROOT||process.cwd());
+    const child=spawn('powershell.exe',['-NoLogo','-NoExit'],{cwd,detached:true,stdio:'ignore',windowsHide:false});
+    child.unref();
+    return {ok:true,cwd};
+   }catch(error){return {error:'Terminal gagal dibuka: '+error.message};}
+  });
   ipcMain.on('dudidam:center',e=>{if(trusted(e)){win.center();savePositionSoon();}});
   ipcMain.on('dudidam:minimize',e=>{if(trusted(e))requestDismiss('hide');});
   ipcMain.on('dudidam:close',e=>{if(trusted(e))requestDismiss('hide');});
@@ -215,7 +225,7 @@ else{
   await win.loadURL(origin+'/');
   pointerTimer=setInterval(publishGlobalPointer,50);
   if(ciSmoke){
-   const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && typeof window.dudidamDesktop?.onGlobalPointer === 'function' && typeof window.dudidamDesktop?.avatarViewport === 'function' && document.title.includes('Dudidam')");
+   const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && Boolean(document.querySelector('#assistantPopup')) && typeof window.dudidamAvatar?.setAvatarState === 'function' && typeof window.dudidamDesktop?.onGlobalPointer === 'function' && typeof window.dudidamDesktop?.avatarViewport === 'function' && typeof window.dudidamDesktop?.openTerminal === 'function' && document.title.includes('Dudidam')");
    if(!rendererReady)throw new Error('Renderer Dudidam tidak siap.');
    const wakeIdle=await win.webContents.executeJavaScript("Boolean(document.querySelector('#wakeToggle')) && !document.querySelector('#wakeToggle').checked && document.querySelector('#wakeIndicator')?.textContent?.includes('nonaktif')");
    if(!wakeIdle)throw new Error('Wake mic harus nonaktif saat Dudidam mulai.');
