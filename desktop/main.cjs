@@ -101,12 +101,16 @@ async function openPanel(view='controls'){
  if(!win||win.isDestroyed())return;
  const allowed=['controls','chatDialog','agentDialog','terminalDialog'];
  const target=allowed.includes(view)?view:'controls';
- if(panelWin&&!panelWin.isDestroyed()){
-  panelWin.show();panelWin.focus();panelWin.webContents.send('dudidam:panel-view',target);return;
- }
  const bounds=win.getBounds(),display=screen.getDisplayNearestPoint({x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}),area=display.workArea;
  const terminalView=target==='terminalDialog';
  const width=Math.min(terminalView?900:460,area.width),height=Math.min(terminalView?720:680,area.height);
+ if(panelWin&&!panelWin.isDestroyed()){
+  const current=panelWin.getBounds();
+  const x=Math.max(area.x,Math.min(area.x+area.width-width,current.x));
+  const y=Math.max(area.y,Math.min(area.y+area.height-height,current.y));
+  panelWin.setBounds({x,y,width,height},false);
+  panelWin.show();panelWin.focus();panelWin.webContents.send('dudidam:panel-view',target);return;
+ }
  const rightSpace=area.x+area.width-(bounds.x+bounds.width),leftSpace=bounds.x-area.x;
  let x;
  if(rightSpace>=width+16)x=bounds.x+bounds.width+16;
