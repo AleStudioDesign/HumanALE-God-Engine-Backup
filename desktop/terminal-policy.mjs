@@ -2,6 +2,8 @@ const SECRET_PATTERNS=[
   /(OPENAI_API_KEY|ANTHROPIC_API_KEY|GITHUB_TOKEN|GH_TOKEN|GEMINI_API_KEY|GOOGLE_API_KEY|XAI_API_KEY|DEEPSEEK_API_KEY)\s*[:=]\s*[^\s]+/gi,
   /(Authorization\s*:\s*Bearer\s+)[A-Za-z0-9._~+\/-]+/gi,
   /\b(sk-[A-Za-z0-9_-]{8,})\b/g,
+  /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g,
+  /\b(?:sk-ant-[A-Za-z0-9_-]{12,}|xai-[A-Za-z0-9_-]{12,}|AIza[A-Za-z0-9_-]{20,})\b/g,
   /\b(password|passwd|token|secret|api[_ -]?key)\s*[:=]\s*([^\s]+)/gi
 ];
 
@@ -38,6 +40,8 @@ const CONFIRM=[
  /^\s*(?:shutdown|restart-computer|stop-computer)\b/i
 ];
 
+const SHELL_COMPOSITION=/(?:;|&&|\|\||(?<!\|)\|(?!\|)|(?<!&)\&(?!&)|[<>]|\$\(|`)/;
+
 const SAFE=[
  /^\s*git\s+(?:status|diff|log|show|branch(?:\s+--show-current)?|rev-parse)\b/i,
  /^\s*(?:node|npm|npx|python|py|pip|git|gh|claude|codex|agent|gemini)\s+--version\b/i,
@@ -51,6 +55,7 @@ export function classifyCommand(command=''){
  if(!value||value.length>2000||/[\r\n]/.test(value))return {category:'BLOCK',reason:'Command harus satu baris dan tidak kosong.'};
  if(BLOCK.some(re=>re.test(value)))return {category:'BLOCK',reason:'Command berisiko terhadap credential, keamanan Windows, atau filesystem luas.'};
  if(CONFIRM.some(re=>re.test(value)))return {category:'CONFIRM',reason:'Command dapat mengubah project atau sistem dan memerlukan persetujuan pengguna.'};
+ if(SHELL_COMPOSITION.test(value))return {category:'CONFIRM',reason:'Command memakai chaining, pipe, redirection, atau ekspansi shell dan memerlukan persetujuan pengguna.'};
  if(SAFE.some(re=>re.test(value)))return {category:'SAFE',reason:'Command termasuk operasi baca, inspeksi, test, atau build yang diizinkan.'};
  return {category:'CONFIRM',reason:'Command belum termasuk daftar aman; minta konfirmasi sebelum menjalankan.'};
 }
