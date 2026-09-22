@@ -1,5 +1,5 @@
 import {validateChat} from './bridge.mjs';
-import {dudidamSystemPrompt} from './dudidam-brain.mjs';
+import {humanaleSystemPrompt} from './humanale-brain.mjs';
 
 const endpoint='https://api.anthropic.com/v1/messages';
 const defaultModel='claude-fable-5';
@@ -24,7 +24,7 @@ export class ClaudeBridge{
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
   try{
    const messages=[...data.history.map(item=>({role:item.role,content:item.content})),{role:'user',content:data.message}];
-   const system=dudidamSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.');
+   const system=humanaleSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.');
    const response=await this.fetch(endpoint,{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','Content-Type':'application/json'},body:JSON.stringify({model:model(),max_tokens:1200,system,messages}),signal:this.controller.signal});
    let payload={};try{payload=await response.json();}catch{}
    if(!response.ok){
