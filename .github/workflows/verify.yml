@@ -32,15 +32,15 @@ jobs:
       - name: Package portable desktop
         run: npm run package:desktop
       - name: Smoke packaged desktop
-        run: .\Dudidam-Desktop\Dudidam.exe --ci-smoke
+        run: .\HumanALE-God-Engine-Desktop\HumanALE-God-Engine.exe --ci-smoke
       - name: Build assisted Windows installer
         run: npm run package:installer
       - name: Validate installer output
         shell: pwsh
         run: |
-          $installer = Get-ChildItem release -Filter "Dudidam-Setup-*-x64.exe" | Select-Object -First 1
-          if (-not $installer) { throw "Installer Dudidam tidak ditemukan." }
-          if ($installer.Length -lt 1000000) { throw "Installer Dudidam terlalu kecil dan kemungkinan tidak lengkap." }
+          $installer = Get-ChildItem release -Filter "HumanALE-God-Engine-Setup-*-x64.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Installer HumanALE God Engine tidak ditemukan." }
+          if ($installer.Length -lt 1000000) { throw "Installer HumanALE God Engine terlalu kecil dan kemungkinan tidak lengkap." }
           Write-Host "Installer ready: $($installer.FullName) ($($installer.Length) bytes)"
 
   release:
@@ -68,8 +68,8 @@ jobs:
         shell: pwsh
         run: |
           $version = node -p "require('./package.json').version"
-          $zip = "release\Dudidam-Portable-$version-x64.zip"
-          Compress-Archive -Path "Dudidam-Desktop\*" -DestinationPath $zip -Force
+          $zip = "release\HumanALE-God-Engine-Portable-$version-x64.zip"
+          Compress-Archive -Path "HumanALE-God-Engine-Desktop\*" -DestinationPath $zip -Force
           Write-Host "Portable package: $zip"
       - name: Publish GitHub release
         shell: pwsh
@@ -78,11 +78,11 @@ jobs:
         run: |
           $version = node -p "require('./package.json').version"
           $tag = "v$version"
-          $installer = Get-ChildItem release -Filter "Dudidam-Setup-*-x64.exe" | Select-Object -First 1
-          $zip = Get-ChildItem release -Filter "Dudidam-Portable-*-x64.zip" | Select-Object -First 1
+          $installer = Get-ChildItem release -Filter "HumanALE-God-Engine-Setup-*-x64.exe" | Select-Object -First 1
+          $zip = Get-ChildItem release -Filter "HumanALE-God-Engine-Portable-*-x64.zip" | Select-Object -First 1
           if (-not $installer -or -not $zip) { throw "File rilis tidak lengkap." }
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --target $env:GITHUB_SHA --title "Dudidam $tag" --notes "Installer Windows x64 dan paket portable Dudidam yang sudah melewati test, audit dependency, packaging, dan smoke test Electron."
+            gh release create $tag --target $env:GITHUB_SHA --title "HumanALE God Engine $tag" --notes "Installer Windows x64 dan paket portable HumanALE God Engine yang sudah melewati test, audit dependency, packaging, dan smoke test Electron."
           }
           gh release upload $tag $installer.FullName $zip.FullName --clobber
