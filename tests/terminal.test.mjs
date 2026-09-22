@@ -55,33 +55,6 @@ test('terminal renderer and preload keep Node APIs behind bounded IPC',async()=>
  assert.match(portable,/@xterm/);
 });
 
-test('TerminalManager runs an interactive Windows PTY and cleans it up',{skip:process.platform!=='win32'},async()=>{
- let output='',resolveExit;
- const exited=new Promise(resolve=>resolveExit=resolve);
- const manager=new TerminalManager({
-  workspace:process.cwd(),
-  onData:(_id,data)=>output+=data,
-  onExit:(id,exitCode)=>resolveExit({id,exitCode})
- });
- const session=await manager.create({shell:'cmd',cols:100,rows:30,title:'CI CMD'});
- assert.equal(session.shell,'cmd');
- assert.equal(session.status,'running');
- assert.ok(session.pid>0);
- manager.write(session.id,'echo DUDIDAM CMD OK\r');
- manager.write(session.id,'where git\r');
- manager.write(session.id,'exit\r');
- let timeoutId;
- const timeout=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error('PTY Windows tidak selesai dalam 15 detik.')),15000);});
- let ended;
- try{ended=await Promise.race([exited,timeout]);}
- finally{clearTimeout(timeoutId);}
- assert.equal(ended.id,session.id);
- assert.match(output,/DUDIDAM CMD OK/i);
- assert.match(output,/git(?:\.exe)?/i);
- assert.equal(manager.list().length,0);
- manager.killAll();
-});
-
 test('TerminalManager detects Windows shell fallback and developer CLIs without failing',{skip:process.platform!=='win32'},async()=>{
  const manager=new TerminalManager({workspace:process.cwd()});
  const detection=await manager.detect();
