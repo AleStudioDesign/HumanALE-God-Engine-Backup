@@ -18,7 +18,8 @@ test('main Dudidam renderer is a procedural hologram with no static face image d
   assert.match(hologram,/drawBackdrop/);
   assert.match(hologram,/drawCenterCore/);
   assert.match(hologram,/drawEnergyFilaments/);
-  assert.match(hologram,/drawShoulders/);
+  assert.match(hologram,/drawBustBase/);
+  assert.match(hologram,/drawShoulderTiles/);
   assert.match(hologram,/ResizeObserver/);
   assert.match(index,/Entitas AI holografik procedural/);
 });

@@ -1,6 +1,8 @@
 const TAU=Math.PI*2;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+const gauss=(x,m,s)=>Math.exp(-((x-m)*(x-m))/(2*s*s));
 const hash=(x,y=0,s=0)=>{
   const n=Math.sin(x*12.9898+y*78.233+s*37.719)*43758.5453123;
   return n-Math.floor(n);
@@ -9,18 +11,33 @@ const hash=(x,y=0,s=0)=>{
 const VALID_STATES=new Set(['idle','listening','thinking','speaking','processing','error']);
 const VALID_EMOTIONS=new Set(['neutral','focused','happy','curious']);
 
+function faceHalfWidth(y){
+  const pts=[
+    [-1.00,.42],[-.86,.69],[-.62,.90],[-.34,1.00],[-.08,.99],
+    [.18,.95],[.42,.84],[.65,.68],[.84,.43],[1.00,.13]
+  ];
+  for(let i=0;i<pts.length-1;i++){
+    const [y0,w0]=pts[i],[y1,w1]=pts[i+1];
+    if(y>=y0&&y<=y1){
+      const t=(y-y0)/(y1-y0);
+      return lerp(w0,w1,t);
+    }
+  }
+  return y<pts[0][0]?pts[0][1]:pts.at(-1)[1];
+}
+
 function roundedRect(ctx,x,y,w,h,r){
-  const radius=Math.min(r,w/2,h/2);
+  const rr=Math.min(r,w/2,h/2);
   ctx.beginPath();
-  ctx.moveTo(x+radius,y);
-  ctx.lineTo(x+w-radius,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+radius);
-  ctx.lineTo(x+w,y+h-radius);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-radius,y+h);
-  ctx.lineTo(x+radius,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-radius);
-  ctx.lineTo(x,y+radius);
-  ctx.quadraticCurveTo(x,y,x+radius,y);
+  ctx.moveTo(x+rr,y);
+  ctx.lineTo(x+w-rr,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+rr);
+  ctx.lineTo(x+w,y+h-rr);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-rr,y+h);
+  ctx.lineTo(x+rr,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-rr);
+  ctx.lineTo(x,y+rr);
+  ctx.quadraticCurveTo(x,y,x+rr,y);
   ctx.closePath();
 }
 
@@ -57,7 +74,7 @@ export class HologramAvatar{
     this.action='';
     this.actionStart=0;
     this.blinkStart=-10000;
-    this.nextBlink=performance.now()+2100+Math.random()*3200;
+    this.nextBlink=performance.now()+2100+Math.random()*3300;
     this.pulseUntil=0;
     this.glitchUntil=0;
     this.transitionKind='';
@@ -74,11 +91,12 @@ export class HologramAvatar{
     this.theme='auto';
 
     this.faceTiles=this.buildFaceTiles();
+    this.edgeFragments=this.buildEdgeFragments();
     this.neckTiles=this.buildNeckTiles();
     this.shoulderTiles=this.buildShoulderTiles();
-    this.floaters=this.buildFloaters(104);
-    this.dust=this.buildDust(64);
-    this.flow=this.buildFlow(38);
+    this.floaters=this.buildFloaters(112);
+    this.dust=this.buildDust(58);
+    this.flow=this.buildFlow(42);
 
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(canvas);
@@ -89,85 +107,126 @@ export class HologramAvatar{
     this.raf=requestAnimationFrame(t=>this.frame(t));
   }
 
+  faceDepth(nx,ny){
+    const hw=faceHalfWidth(ny);
+    const xn=nx/Math.max(.05,hw);
+    const dome=Math.sqrt(Math.max(0,1-xn*xn))*gauss(ny,-.08,.96)*.58;
+    const center=gauss(nx,0,.43)*gauss(ny,.02,.8)*.19;
+    const noseRidge=gauss(nx,0,.075)*gauss(ny,.03,.32)*.58;
+    const noseTip=gauss(nx,0,.12)*gauss(ny,.23,.10)*.42;
+    const cheekL=gauss(nx,-.33,.17)*gauss(ny,.17,.18)*.23;
+    const cheekR=gauss(nx,.33,.17)*gauss(ny,.17,.18)*.23;
+    const browL=gauss(nx,-.27,.18)*gauss(ny,-.23,.095)*.15;
+    const browR=gauss(nx,.27,.18)*gauss(ny,-.23,.095)*.15;
+    const eyeL=gauss(nx,-.28,.16)*gauss(ny,-.13,.07)*.31;
+    const eyeR=gauss(nx,.28,.16)*gauss(ny,-.13,.07)*.31;
+    const mouthCut=gauss(nx,0,.24)*gauss(ny,.47,.06)*.10;
+    const philtrum=gauss(nx,0,.06)*gauss(ny,.36,.09)*.09;
+    return clamp(dome+center+noseRidge+noseTip+cheekL+cheekR+browL+browR-eyeL-eyeR-mouthCut-philtrum,0,1.35);
+  }
+
   buildFaceTiles(){
     const tiles=[];
-    for(let gy=-18;gy<=18;gy++){
-      for(let gx=-13;gx<=13;gx++){
-        const nx=gx/13;
-        const ny=gy/18;
-        const jaw=ny>0?1-ny*.23:1;
-        const crown=ny<-.5?1-(Math.abs(ny)-.5)*.22:1;
-        const sx=jaw*crown;
-        if((nx*nx)/(sx*sx)+ny*ny>1)continue;
+    const rows=44,cols=34;
+    for(let iy=0;iy<=rows;iy++){
+      const ny=-1+iy/rows*2;
+      const half=faceHalfWidth(ny);
+      for(let ix=0;ix<=cols;ix++){
+        const nx=-1+ix/cols*2;
+        if(Math.abs(nx)>half)continue;
 
-        const eyeL=((nx+.34)/.25)**2+((ny+.17)/.105)**2<1;
-        const eyeR=((nx-.34)/.25)**2+((ny+.17)/.105)**2<1;
-        const lipGap=Math.abs(nx)<.29&&Math.abs(ny-.43)<.038;
-        if(eyeL||eyeR||lipGap)continue;
+        const eyeL=((nx+.29)/.245)**2+((ny+.13)/.09)**2<1;
+        const eyeR=((nx-.29)/.245)**2+((ny+.13)/.09)**2<1;
+        const mouthGap=Math.abs(nx)<.28&&Math.abs(ny-.47)<.027;
+        if(eyeL||eyeR||mouthGap)continue;
 
-        const edge=Math.sqrt(nx*nx+ny*ny);
-        const seed=hash(gx,gy,1);
-        if(edge>.83&&seed<.18)continue;
+        const seed=hash(ix,iy,1);
+        const depth=this.faceDepth(nx,ny);
+        const edge=Math.abs(nx)/Math.max(.05,half);
+        const zone=ny<-.62?'crown':ny<-.27?'forehead':ny<.1?'eyes':ny<.38?'cheek':ny<.68?'mouth':'jaw';
+        const breakup=(zone==='crown'?smooth(.35,1,edge)+smooth(-.62,-1,ny):smooth(.7,1,edge));
+        if(breakup>.78&&seed<.18)continue;
 
         tiles.push({
-          nx,ny,seed,
-          phase:hash(gx,gy,2)*TAU,
-          depth:hash(gx,gy,3),
-          zone:ny<-.44?'crown':ny<-.19?'forehead':ny<.13?'mid':ny<.38?'cheek':'jaw'
+          nx,ny,seed,depth,edge,zone,
+          phase:hash(ix,iy,2)*TAU,
+          hue:hash(ix,iy,3),
+          lift:hash(ix,iy,4)
         });
       }
     }
     return tiles;
   }
 
+  buildEdgeFragments(){
+    const list=[];
+    for(let i=0;i<78;i++){
+      const seed=hash(i,5,11);
+      const crown=i<38;
+      const side=crown?(i%2?-1:1):(i%2?-1:1);
+      const ny=crown?(-1.06+seed*.42):(-.66+seed*1.35);
+      const half=faceHalfWidth(clamp(ny,-1,1));
+      const nx=crown
+        ?side*(.12+.82*hash(i,7,12))*half
+        :side*(half+.03+.16*hash(i,9,13));
+      list.push({nx,ny,seed,phase:hash(i,13,14)*TAU,size:.7+hash(i,17,15)*1.7,crown});
+    }
+    return list;
+  }
+
   buildNeckTiles(){
-    const tiles=[];
-    for(let gy=0;gy<13;gy++){
-      for(let gx=-6;gx<=6;gx++){
-        const y=gy/12;
-        const maxX=.62+y*.23;
-        const nx=gx/6;
-        if(Math.abs(nx)>maxX)continue;
-        tiles.push({nx,ny:y,seed:hash(gx,gy,9),phase:hash(gx,gy,10)*TAU,depth:hash(gx,gy,11)});
+    const list=[];
+    const rows=19,cols=15;
+    for(let iy=0;iy<=rows;iy++){
+      const ny=iy/rows;
+      for(let ix=0;ix<=cols;ix++){
+        const nx=-1+ix/cols*2;
+        const half=.58+.14*ny;
+        if(Math.abs(nx)>half)continue;
+        list.push({
+          nx,ny,seed:hash(ix,iy,21),phase:hash(ix,iy,22)*TAU,
+          depth:hash(ix,iy,23)
+        });
       }
     }
-    return tiles;
+    return list;
   }
 
   buildShoulderTiles(){
-    const tiles=[];
-    for(let gy=0;gy<8;gy++){
-      for(let gx=-16;gx<=16;gx++){
-        const nx=gx/16;
-        const ny=gy/7;
-        const edge=1-Math.abs(nx);
-        if(ny>.32+edge*.75)continue;
-        if(hash(gx,gy,17)<.08)continue;
-        tiles.push({nx,ny,seed:hash(gx,gy,18),phase:hash(gx,gy,19)*TAU,depth:hash(gx,gy,20)});
+    const list=[];
+    const rows=12,cols=48;
+    for(let iy=0;iy<=rows;iy++){
+      const ny=iy/rows;
+      for(let ix=0;ix<=cols;ix++){
+        const nx=-1+ix/cols*2;
+        const curve=.18+(1-Math.abs(nx))*.72;
+        if(ny>curve)continue;
+        if(hash(ix,iy,27)<.055)continue;
+        list.push({
+          nx,ny,seed:hash(ix,iy,28),phase:hash(ix,iy,29)*TAU,
+          depth:hash(ix,iy,30)
+        });
       }
     }
-    return tiles;
+    return list;
   }
 
   buildFloaters(count){
     return Array.from({length:count},(_,i)=>({
-      seed:hash(i,3,27),
-      phase:hash(i,7,28)*TAU,
-      speed:.28+hash(i,5,29)*.7,
-      side:i%2?-1:1,
-      zone:i%4
+      seed:hash(i,3,35),phase:hash(i,7,36)*TAU,speed:.25+hash(i,5,37)*.7,
+      side:i%2?-1:1,zone:i%5
     }));
   }
 
   buildDust(count){
     return Array.from({length:count},(_,i)=>({
-      x:hash(i,2,31),y:hash(i,4,32),seed:hash(i,6,33),speed:.04+hash(i,8,34)*.1
+      x:hash(i,2,41),y:hash(i,4,42),seed:hash(i,6,43),speed:.04+hash(i,8,44)*.1
     }));
   }
 
   buildFlow(count){
     return Array.from({length:count},(_,i)=>({
-      lane:(i%9-4)/4,seed:hash(i,9,35),phase:hash(i,11,36),speed:.14+hash(i,13,37)*.28
+      lane:(i%9-4)/4,seed:hash(i,9,47),phase:hash(i,11,48),speed:.12+hash(i,13,49)*.3
     }));
   }
 
@@ -179,7 +238,7 @@ export class HologramAvatar{
     this.canvas.width=Math.round(this.w*dpr);
     this.canvas.height=Math.round(this.h*dpr);
     this.ctx.setTransform(dpr,0,0,dpr,0,0);
-    this.detail=this.w<310||this.h<310?.58:this.w<430||this.h<430?.8:1;
+    this.detail=this.w<300||this.h<300?.56:this.w<430||this.h<430?.78:1;
   }
 
   resolvedTheme(){
@@ -191,7 +250,6 @@ export class HologramAvatar{
     this.theme=['auto','dark','light'].includes(value)?value:'auto';
     this.environment=this.theme;
   }
-
   setEnvironment(value='auto'){this.setTheme(value);}
 
   setState(value='idle'){
@@ -219,14 +277,33 @@ export class HologramAvatar{
   }
 
   setAudioLevel(level=0){this.audioTarget=clamp(Number(level)||0,0,1);}
-  setSpeechEnergy(level=.62){this.setAudioLevel(level);this.speaking=this.audioTarget>.025;if(this.speaking)this.setState('speaking');}
-  setListening(value=false){this.listening=Boolean(value);if(this.listening)this.setState('listening');else if(this.state==='listening')this.setState('idle');}
-  setEarSpectrum(value={}){for(const band of ['low','mid','high'])this.earSpectrum[band]=clamp(Number(value[band])||0,0,1);}
+  setSpeechEnergy(level=.62){
+    this.setAudioLevel(level);
+    this.speaking=this.audioTarget>.025;
+    if(this.speaking)this.setState('speaking');
+  }
+  setListening(value=false){
+    this.listening=Boolean(value);
+    if(this.listening)this.setState('listening');
+    else if(this.state==='listening')this.setState('idle');
+  }
+  setEarSpectrum(value={}){
+    for(const band of ['low','mid','high'])this.earSpectrum[band]=clamp(Number(value[band])||0,0,1);
+  }
   setPaused(value=false){this.paused=Boolean(value);}
-  setEvolving(value=false){this.evolving=Boolean(value);if(this.evolving)this.setState('processing');else if(this.state==='processing')this.setState('idle');}
-  completeEvolution(){this.evolving=false;this.pulse(1600);this.setState('processing');setTimeout(()=>{if(!this.destroyed&&this.state==='processing')this.setState('idle');},1350);}
+  setEvolving(value=false){
+    this.evolving=Boolean(value);
+    if(this.evolving)this.setState('processing');
+    else if(this.state==='processing')this.setState('idle');
+  }
+  completeEvolution(){
+    this.evolving=false;
+    this.pulse(1600);
+    this.setState('processing');
+    setTimeout(()=>{if(!this.destroyed&&this.state==='processing')this.setState('idle');},1350);
+  }
   activateAllEffects(value=true){if(value)this.pulse(1350);}
-  setAvatarVariant(){/* Compatibility: hologram is now the primary avatar renderer. */}
+  setAvatarVariant(){}
 
   pulse(duration=1000){this.pulseUntil=Math.max(this.pulseUntil,performance.now()+duration);}
   pulseAvatar(duration=1000){this.pulse(duration);}
@@ -241,9 +318,20 @@ export class HologramAvatar{
   }
 
   reveal(){this.transitionKind='';this.transitionStart=0;this.transitionDuration=0;}
-  awaken(duration=4200){this.transitionKind='assemble';this.transitionStart=performance.now();this.transitionDuration=Math.max(900,Number(duration)||4200);this.pulse(duration);}
-  dismiss(duration=3000){this.transitionKind='disassemble';this.transitionStart=performance.now();this.transitionDuration=Math.max(700,Number(duration)||3000);}
-  isAwakening(now=performance.now()){return Boolean(this.transitionKind)&&now-this.transitionStart<this.transitionDuration;}
+  awaken(duration=4200){
+    this.transitionKind='assemble';
+    this.transitionStart=performance.now();
+    this.transitionDuration=Math.max(900,Number(duration)||4200);
+    this.pulse(duration);
+  }
+  dismiss(duration=3000){
+    this.transitionKind='disassemble';
+    this.transitionStart=performance.now();
+    this.transitionDuration=Math.max(700,Number(duration)||3000);
+  }
+  isAwakening(now=performance.now()){
+    return Boolean(this.transitionKind)&&now-this.transitionStart<this.transitionDuration;
+  }
 
   transition(now){
     if(!this.transitionKind)return {presence:1,active:false};
@@ -259,49 +347,57 @@ export class HologramAvatar{
     const error=this.state==='error';
     return {
       light,
-      glow:light?.52:1,
-      faceFill:light?'rgba(34,80,122,.62)':'rgba(3,24,47,.88)',
-      tileFill:light?'46,106,158':'14,57,96',
-      tileDark:light?'24,69,109':'3,27,53',
-      cyan:error?'255,99,156':'80,218,255',
-      white:error?'255,183,211':'224,251,255',
-      blue:error?'215,91,255':'72,139,255',
-      violet:error?'255,111,210':'144,98,255',
-      outline:light?'rgba(28,110,170,.4)':'rgba(116,224,255,.5)',
-      halo:light?.15:.25
+      glow:light?.50:1,
+      faceBase:light?'rgba(51,102,151,.45)':'rgba(3,18,37,.92)',
+      tileBase:light?'63,132,190':'12,48,86',
+      tileBright:light?'82,162,220':'27,99,164',
+      tileDark:light?'28,79,126':'3,23,48',
+      cyan:error?'255,94,148':'73,221,255',
+      white:error?'255,193,217':'235,253,255',
+      blue:error?'203,93,255':'72,144,255',
+      violet:error?'255,113,204':'154,101,255',
+      outline:light?'rgba(25,109,168,.38)':'rgba(120,226,255,.55)',
+      halo:light?.14:.26
     };
   }
 
   stateEnergy(time){
     const activePulse=performance.now()<this.pulseUntil?.32+.68*(.5+.5*Math.sin(time*.006)):0;
-    const values={idle:.16,listening:.42,thinking:.56,speaking:.64,processing:.74,error:.82};
-    return clamp((values[this.state]||.16)+activePulse*.34+this.audioLevel*.36,0,1);
+    const map={idle:.16,listening:.42,thinking:.56,speaking:.64,processing:.74,error:.82};
+    return clamp((map[this.state]||.16)+activePulse*.34+this.audioLevel*.36,0,1);
+  }
+
+  tileColor(tile,style,alpha){
+    const z=tile.depth||0;
+    const h=tile.hue??tile.seed??.5;
+    let rgb=style.tileBase;
+    if(z>.78||h>.88)rgb=style.tileBright;
+    else if(z<.32||h<.18)rgb=style.tileDark;
+    if(h>.95)rgb=style.cyan;
+    return `rgba(${rgb},${alpha})`;
   }
 
   drawGlassCube(ctx,x,y,size,seed,alpha,style,rot=0){
-    if(alpha<.01||size<.7)return;
-    const rgb=seed>.7?style.cyan:seed>.4?style.blue:style.violet;
+    if(alpha<.01||size<.65)return;
+    const rgb=seed>.73?style.cyan:seed>.42?style.blue:style.violet;
     ctx.save();
     ctx.translate(x,y);
     ctx.rotate(rot);
     ctx.shadowColor=`rgba(${rgb},${alpha*style.glow})`;
-    ctx.shadowBlur=size*(style.light?.65:1.7);
-    ctx.fillStyle=`rgba(${rgb},${alpha*(style.light?.13:.18)})`;
+    ctx.shadowBlur=size*(style.light?.6:1.8);
+    ctx.fillStyle=`rgba(${rgb},${alpha*(style.light?.12:.18)})`;
     ctx.fillRect(-size/2,-size/2,size,size);
-    ctx.strokeStyle=`rgba(${style.white},${alpha*(style.light?.58:.82)})`;
-    ctx.lineWidth=Math.max(.55,size*.055);
+    ctx.strokeStyle=`rgba(${style.white},${alpha*(style.light?.52:.82)})`;
+    ctx.lineWidth=Math.max(.5,size*.052);
     ctx.strokeRect(-size/2,-size/2,size,size);
     if(size>5&&this.detail>.65){
-      ctx.strokeStyle=`rgba(${rgb},${alpha*.36})`;
+      const off=size*.28;
+      ctx.strokeStyle=`rgba(${rgb},${alpha*.34})`;
       ctx.beginPath();
-      ctx.moveTo(-size/2,-size/2);
-      ctx.lineTo(-size*.24,-size*.73);
-      ctx.lineTo(size*.76,-size*.73);
-      ctx.lineTo(size/2,-size/2);
-      ctx.moveTo(size/2,-size/2);
-      ctx.lineTo(size*.76,-size*.73);
-      ctx.lineTo(size*.76,size*.27);
-      ctx.lineTo(size/2,size/2);
+      ctx.moveTo(-size/2,-size/2);ctx.lineTo(-size/2+off,-size/2-off);
+      ctx.lineTo(size/2+off,-size/2-off);ctx.lineTo(size/2,-size/2);
+      ctx.moveTo(size/2,-size/2);ctx.lineTo(size/2+off,-size/2-off);
+      ctx.lineTo(size/2+off,size/2-off);ctx.lineTo(size/2,size/2);
       ctx.stroke();
     }
     ctx.restore();
@@ -309,218 +405,260 @@ export class HologramAvatar{
 
   drawBackdrop(ctx,cx,cy,fw,fh,time,energy,style){
     ctx.save();
-
-    const aura=ctx.createRadialGradient(cx,cy-fh*.03,fw*.08,cx,cy-fh*.03,fw*.83);
-    aura.addColorStop(0,`rgba(${style.cyan},${.08+.06*energy})`);
-    aura.addColorStop(.5,`rgba(${style.blue},${.025+.035*energy})`);
+    const aura=ctx.createRadialGradient(cx,cy-fh*.04,fw*.08,cx,cy-fh*.04,fw*.9);
+    aura.addColorStop(0,`rgba(${style.cyan},${.10+.07*energy})`);
+    aura.addColorStop(.48,`rgba(${style.blue},${.035+.035*energy})`);
     aura.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=aura;
-    ctx.beginPath();ctx.arc(cx,cy-fh*.03,fw*.82,0,TAU);ctx.fill();
+    ctx.beginPath();ctx.arc(cx,cy-fh*.04,fw*.9,0,TAU);ctx.fill();
 
-    const pulse=.5+.5*Math.sin(time*.00115);
+    const pulse=.5+.5*Math.sin(time*.0011);
     for(let ring=0;ring<3;ring++){
-      const radius=fw*(.58+ring*.08+pulse*.004);
+      const radius=fw*(.65+ring*.07+pulse*.004);
       ctx.beginPath();
-      ctx.arc(cx,cy-fh*.035,radius,(-.06+ring*.05)*Math.PI,1.56*Math.PI);
-      ctx.strokeStyle=`rgba(${ring===2?style.violet:style.cyan},${style.halo*(1-ring*.2)})`;
-      ctx.lineWidth=Math.max(.65,fw*.0023);
-      ctx.setLineDash([fw*.025+ring*2,fw*.017+ring*3]);
+      ctx.arc(cx,cy-fh*.04,radius,(-.07+ring*.04)*Math.PI,1.58*Math.PI);
+      ctx.strokeStyle=`rgba(${ring===2?style.violet:style.cyan},${style.halo*(1-ring*.22)})`;
+      ctx.lineWidth=Math.max(.65,fw*.002);
+      ctx.setLineDash([fw*.021+ring*2,fw*.014+ring*3]);
       ctx.lineDashOffset=-time*.012*(ring%2?1:-1);
       ctx.stroke();
     }
     ctx.setLineDash([]);
 
-    // Crosshair lines visible in the reference, kept subtle for UI use.
-    ctx.strokeStyle=`rgba(${style.cyan},${style.light?.07:.1})`;
-    ctx.lineWidth=Math.max(.45,fw*.0014);
+    ctx.strokeStyle=`rgba(${style.cyan},${style.light?.055:.085})`;
+    ctx.lineWidth=Math.max(.4,fw*.0013);
     ctx.beginPath();
-    ctx.moveTo(cx-fw*.9,cy-fh*.12);ctx.lineTo(cx+fw*.9,cy-fh*.12);
-    ctx.moveTo(cx,cy-fh*.85);ctx.lineTo(cx,Math.min(this.h,cy+fh*1.35));
+    ctx.moveTo(cx-fw*.95,cy-fh*.105);ctx.lineTo(cx+fw*.95,cy-fh*.105);
+    ctx.moveTo(cx,cy-fh*.87);ctx.lineTo(cx,Math.min(this.h,cy+fh*1.38));
     ctx.stroke();
 
     for(const d of this.dust){
       const yy=((d.y+time*.000018*d.speed)%1)*this.h;
-      const xx=d.x*this.w+Math.sin(time*.00033+d.seed*TAU)*fw*.02;
-      const alpha=(.04+d.seed*.08)*(style.light?.55:1);
-      ctx.fillStyle=`rgba(${d.seed>.58?style.cyan:style.violet},${alpha})`;
-      ctx.fillRect(xx,yy,1+d.seed*1.2,1+d.seed*1.2);
+      const xx=d.x*this.w+Math.sin(time*.00034+d.seed*TAU)*fw*.02;
+      const a=(.035+d.seed*.075)*(style.light?.55:1);
+      ctx.fillStyle=`rgba(${d.seed>.58?style.cyan:style.violet},${a})`;
+      ctx.fillRect(xx,yy,1+d.seed*1.15,1+d.seed*1.15);
     }
     ctx.restore();
   }
 
-  drawShoulders(ctx,cx,cy,fw,fh,time,energy,style,presence){
-    const baseY=cy+fh*.53;
-    const width=fw*1.65;
-    const shoulderH=fh*.48;
-
-    // Dark translucent bust volume.
+  drawBustBase(ctx,cx,cy,fw,fh,style){
     ctx.save();
-    const grad=ctx.createLinearGradient(cx,baseY,cx,baseY+shoulderH);
-    grad.addColorStop(0,style.faceFill);
-    grad.addColorStop(1,style.light?'rgba(65,124,169,.26)':'rgba(2,17,35,.36)');
-    ctx.fillStyle=grad;
+
+    const neckTop=cy+fh*.47;
+    const neckBottom=cy+fh*1.05;
+    const neckW=fw*.235;
+
+    const neckGrad=ctx.createLinearGradient(cx,neckTop,cx,neckBottom);
+    neckGrad.addColorStop(0,style.faceBase);
+    neckGrad.addColorStop(1,style.light?'rgba(65,124,169,.20)':'rgba(1,13,30,.58)');
+    ctx.fillStyle=neckGrad;
     ctx.beginPath();
-    ctx.moveTo(cx-fw*.23,baseY);
-    ctx.quadraticCurveTo(cx-fw*.45,baseY+fh*.08,cx-width,baseY+shoulderH*.62);
-    ctx.lineTo(cx-width,baseY+shoulderH);
-    ctx.lineTo(cx+width,baseY+shoulderH);
-    ctx.lineTo(cx+width,baseY+shoulderH*.62);
-    ctx.quadraticCurveTo(cx+fw*.45,baseY+fh*.08,cx+fw*.23,baseY);
+    ctx.moveTo(cx-neckW,neckTop);
+    ctx.lineTo(cx-neckW*.76,neckBottom);
+    ctx.lineTo(cx+neckW*.76,neckBottom);
+    ctx.lineTo(cx+neckW,neckTop);
     ctx.closePath();
     ctx.fill();
 
-    const tile=Math.max(3,fw*.035);
-    for(const p of this.shoulderTiles){
-      if(this.detail<.7&&hash(p.nx,p.ny,51)<.4)continue;
-      const x=cx+p.nx*width;
-      const y=baseY+fh*.05+p.ny*shoulderH*.76;
-      const sideFall=1-Math.abs(p.nx)*.42;
-      const wave=.5+.5*Math.sin(time*.001+p.phase);
-      const s=tile*(.76+p.depth*.4);
-      const rgb=p.seed>.7?style.cyan:p.seed>.35?style.blue:style.tileFill;
-      const alpha=clamp((.1+.24*p.depth+.05*energy)*sideFall*presence,0,.44);
-      ctx.fillStyle=`rgba(${rgb},${alpha})`;
-      ctx.fillRect(x-s/2,y-s/2,s,s);
-      ctx.strokeStyle=`rgba(${style.cyan},${alpha*.35})`;
-      ctx.lineWidth=.45;
-      ctx.strokeRect(x-s/2,y-s/2,s,s);
-      if(p.seed>.91)this.drawGlassCube(ctx,x,y,s*1.25,p.seed,.22+.2*wave,style,.08*Math.sin(time*.001+p.phase));
-    }
-    ctx.restore();
-  }
-
-  drawNeck(ctx,cx,cy,fw,fh,time,energy,style,presence){
-    const top=cy+fh*.42;
-    const height=fh*.66;
-    const half=fw*.22;
-    ctx.save();
-    ctx.fillStyle=style.faceFill;
+    const shoulderY=cy+fh*.86;
+    const shoulderW=fw*1.48;
+    const shoulderH=fh*.42;
+    const sh=ctx.createLinearGradient(cx,shoulderY,cx,shoulderY+shoulderH);
+    sh.addColorStop(0,style.light?'rgba(50,108,157,.38)':'rgba(3,24,49,.72)');
+    sh.addColorStop(1,style.light?'rgba(48,96,139,.10)':'rgba(1,10,23,.28)');
+    ctx.fillStyle=sh;
     ctx.beginPath();
-    ctx.moveTo(cx-half,top);
-    ctx.lineTo(cx-half*.78,top+height);
-    ctx.lineTo(cx+half*.78,top+height);
-    ctx.lineTo(cx+half,top);
+    ctx.moveTo(cx-neckW*.72,shoulderY);
+    ctx.bezierCurveTo(cx-fw*.44,shoulderY+fh*.03,cx-fw*.8,shoulderY+fh*.11,cx-shoulderW,shoulderY+shoulderH*.7);
+    ctx.lineTo(cx-shoulderW,shoulderY+shoulderH);
+    ctx.lineTo(cx+shoulderW,shoulderY+shoulderH);
+    ctx.lineTo(cx+shoulderW,shoulderY+shoulderH*.7);
+    ctx.bezierCurveTo(cx+fw*.8,shoulderY+fh*.11,cx+fw*.44,shoulderY+fh*.03,cx+neckW*.72,shoulderY);
     ctx.closePath();
     ctx.fill();
 
-    const tile=Math.max(2.6,fw*.031);
-    for(const p of this.neckTiles){
-      const y=top+p.ny*height;
-      const x=cx+p.nx*half*(1+p.ny*.18);
-      const pulse=.5+.5*Math.sin(time*.0012+p.phase);
-      const s=tile*(.82+p.depth*.28);
-      const alpha=(.2+p.depth*.3+.07*energy)*presence;
-      ctx.fillStyle=`rgba(${p.seed>.7?style.cyan:p.seed>.4?style.blue:style.tileFill},${alpha})`;
-      ctx.fillRect(x-s/2,y-s/2,s,s);
-      ctx.strokeStyle=`rgba(${style.cyan},${alpha*.28})`;
-      ctx.lineWidth=.4;ctx.strokeRect(x-s/2,y-s/2,s,s);
-      if(p.seed>.94)this.drawGlassCube(ctx,x,y,s*1.15,p.seed,.16+.2*pulse,style);
-    }
     ctx.restore();
   }
 
   drawFaceBase(ctx,cx,cy,fw,fh,style){
     ctx.save();
-    ctx.fillStyle=style.faceFill;
+    const grad=ctx.createRadialGradient(cx-fw*.08,cy-fh*.12,fw*.06,cx,cy,fw*.65);
+    grad.addColorStop(0,style.light?'rgba(85,154,207,.50)':'rgba(18,75,125,.48)');
+    grad.addColorStop(.46,style.faceBase);
+    grad.addColorStop(1,style.light?'rgba(33,77,117,.34)':'rgba(1,13,30,.88)');
+    ctx.fillStyle=grad;
     ctx.beginPath();
-    ctx.moveTo(cx,cy-fh*.51);
-    ctx.bezierCurveTo(cx+fw*.49,cy-fh*.49,cx+fw*.5,cy-fh*.11,cx+fw*.39,cy+fh*.27);
-    ctx.bezierCurveTo(cx+fw*.31,cy+fh*.47,cx+fw*.14,cy+fh*.54,cx,cy+fh*.57);
-    ctx.bezierCurveTo(cx-fw*.14,cy+fh*.54,cx-fw*.31,cy+fh*.47,cx-fw*.39,cy+fh*.27);
-    ctx.bezierCurveTo(cx-fw*.5,cy-fh*.11,cx-fw*.49,cy-fh*.49,cx,cy-fh*.51);
+    ctx.moveTo(cx,cy-fh*.54);
+    ctx.bezierCurveTo(cx+fw*.43,cy-fh*.53,cx+fw*.51,cy-fh*.22,cx+fw*.47,cy+fh*.08);
+    ctx.bezierCurveTo(cx+fw*.44,cy+fh*.34,cx+fw*.29,cy+fh*.52,cx+fw*.10,cy+fh*.62);
+    ctx.quadraticCurveTo(cx,cy+fh*.68,cx-fw*.10,cy+fh*.62);
+    ctx.bezierCurveTo(cx-fw*.29,cy+fh*.52,cx-fw*.44,cy+fh*.34,cx-fw*.47,cy+fh*.08);
+    ctx.bezierCurveTo(cx-fw*.51,cy-fh*.22,cx-fw*.43,cy-fh*.53,cx,cy-fh*.54);
     ctx.closePath();
     ctx.fill();
+
     ctx.strokeStyle=style.outline;
-    ctx.lineWidth=Math.max(.7,fw*.003);
+    ctx.lineWidth=Math.max(.7,fw*.0028);
     ctx.stroke();
     ctx.restore();
   }
 
   drawFaceTiles(ctx,cx,cy,fw,fh,time,energy,style,presence){
-    const error=performance.now()<this.glitchUntil||this.state==='error';
+    const error=this.state==='error'||performance.now()<this.glitchUntil;
     const thinking=this.state==='thinking'||this.state==='processing'||this.evolving;
     const speaking=this.state==='speaking'||this.speaking;
-    const tile=Math.max(2.6,fw*.034);
-    const energyY=cy+fh*.56-((time*.00017)%1)*fh*1.12;
+    const baseTile=Math.max(2.15,fw*.0215);
+    const pulseY=cy+fh*.62-((time*.00016)%1)*fh*1.22;
 
     for(let i=0;i<this.faceTiles.length;i++){
-      if(this.detail<.68&&i%2)continue;
+      if(this.detail<.62&&i%2)continue;
       const p=this.faceTiles[i];
-      const zoneBoost=(p.zone==='crown'||p.zone==='forehead')&&thinking?.85:
-        (p.zone==='cheek'||p.zone==='jaw')&&speaking?.75:.18;
-      const pulse=.5+.5*Math.sin(time*.0011*(.7+p.seed)+p.phase);
-      const protrude=zoneBoost*pulse*(2+14*p.seed);
+      const wave=.5+.5*Math.sin(time*.001*(.72+p.seed*.65)+p.phase);
+      const active=
+        (thinking&&(p.zone==='crown'||p.zone==='forehead'))||
+        (speaking&&(p.zone==='cheek'||p.zone==='mouth'||p.zone==='jaw'));
+      const pop=(active?.85:.16)*wave*(1.2+5.5*p.lift);
+      const half=faceHalfWidth(p.ny);
       const radial=Math.max(.18,Math.hypot(p.nx,p.ny));
-      let x=cx+p.nx*fw*.47+(p.nx/radial)*protrude;
-      let y=cy+p.ny*fh*.49+(p.ny/radial)*protrude*.45;
+      const edgePush=smooth(.72,1,p.edge)*wave*(2+6*p.lift);
+      const depthShift=p.depth*fw*.012;
 
-      if(error&&hash(i,Math.floor(time/70),62)>.87){
-        x+=(hash(i,2,63)-.5)*fw*.1;
-        y+=(hash(i,3,64)-.5)*fh*.03;
+      let x=cx+p.nx*fw*.46+(p.nx/radial)*(pop+edgePush);
+      let y=cy+p.ny*fh*.50-(p.depth-.45)*fh*.014+(p.ny/radial)*pop*.34;
+
+      // Slight pseudo-3D projection follows the head without losing the frontal symmetry.
+      x+=this.rotation.x*(fw*.012+depthShift*.2);
+      y+=this.rotation.y*fh*.006;
+
+      if(error&&hash(i,Math.floor(time/70),70)>.88){
+        x+=(hash(i,2,71)-.5)*fw*.08;
+        y+=(hash(i,3,72)-.5)*fh*.025;
       }
 
-      const scan=Math.exp(-((y-energyY)**2)/(2*(fh*.04)**2));
-      const s=tile*(.72+p.depth*.42);
-      const dark=p.seed<.38;
-      const rgb=dark?style.tileDark:p.seed>.82?style.cyan:p.seed>.58?style.blue:style.tileFill;
-      const alpha=clamp((.17+p.depth*.34+energy*.055+scan*.18)*presence,0,.74);
+      const scan=Math.exp(-((y-pulseY)**2)/(2*(fh*.035)**2));
+      const size=baseTile*(.83+p.depth*.28)*(p.zone==='crown'?1.03:1);
+      const alpha=clamp((.18+p.depth*.36+energy*.055+scan*.18)*presence,0,.76);
 
       ctx.save();
       ctx.translate(x,y);
-      ctx.rotate((pulse-.5)*.035*zoneBoost);
-      ctx.fillStyle=`rgba(${rgb},${alpha})`;
-      ctx.fillRect(-s/2,-s/2,s,s);
-      ctx.strokeStyle=`rgba(${style.cyan},${alpha*(style.light?.2:.3)})`;
-      ctx.lineWidth=Math.max(.32,s*.035);
-      ctx.strokeRect(-s/2,-s/2,s,s);
-      if(p.depth>.84){
-        ctx.fillStyle=`rgba(${style.white},${alpha*.08})`;
-        ctx.fillRect(-s*.34,-s*.34,s*.62,s*.1);
+      ctx.rotate((wave-.5)*.022*(active?1:.35));
+      ctx.fillStyle=this.tileColor(p,style,alpha);
+      ctx.fillRect(-size/2,-size/2,size,size);
+
+      ctx.strokeStyle=`rgba(${style.cyan},${alpha*(style.light?.19:.28)})`;
+      ctx.lineWidth=Math.max(.28,size*.032);
+      ctx.strokeRect(-size/2,-size/2,size,size);
+
+      if(p.depth>.76){
+        ctx.fillStyle=`rgba(${style.white},${alpha*.07})`;
+        ctx.fillRect(-size*.34,-size*.34,size*.62,Math.max(.45,size*.08));
       }
       ctx.restore();
     }
   }
 
+  drawEdgeFragments(ctx,cx,cy,fw,fh,time,energy,style){
+    for(let i=0;i<this.edgeFragments.length;i++){
+      if(this.detail<.72&&i%2)continue;
+      const p=this.edgeFragments[i];
+      const wave=.5+.5*Math.sin(time*.00085+p.phase);
+      const drift=(2+15*p.seed)*wave;
+      const x=cx+p.nx*fw*.46+(p.nx>=0?1:-1)*drift;
+      const y=cy+p.ny*fh*.50-(p.crown?drift*.45:0)+Math.sin(time*.0007+p.phase)*4;
+      const size=Math.max(2.2,fw*.017*p.size);
+      const alpha=(.12+.25*wave+.06*energy)*(style.light?.72:1);
+      this.drawGlassCube(ctx,x,y,size,p.seed,alpha,style,.18*Math.sin(time*.0007+p.phase));
+    }
+  }
+
+  drawNeckTiles(ctx,cx,cy,fw,fh,time,energy,style,presence){
+    const top=cy+fh*.49;
+    const height=fh*.62;
+    const half=fw*.235;
+    const tile=Math.max(2.15,fw*.0225);
+
+    for(let i=0;i<this.neckTiles.length;i++){
+      if(this.detail<.62&&i%2)continue;
+      const p=this.neckTiles[i];
+      const x=cx+p.nx*half*(1+p.ny*.14);
+      const y=top+p.ny*height;
+      const wave=.5+.5*Math.sin(time*.001+p.phase);
+      const size=tile*(.82+p.depth*.26);
+      const alpha=(.15+p.depth*.31+.05*energy)*presence;
+      const rgb=p.seed>.78?style.cyan:p.seed>.45?style.tileBright:style.tileBase;
+      ctx.fillStyle=`rgba(${rgb},${alpha})`;
+      ctx.fillRect(x-size/2,y-size/2,size,size);
+      ctx.strokeStyle=`rgba(${style.cyan},${alpha*.23})`;
+      ctx.lineWidth=.35;
+      ctx.strokeRect(x-size/2,y-size/2,size,size);
+      if(p.seed>.965)this.drawGlassCube(ctx,x,y,size*1.2,p.seed,.12+.16*wave,style);
+    }
+  }
+
+  drawShoulderTiles(ctx,cx,cy,fw,fh,time,energy,style,presence){
+    const baseY=cy+fh*.88;
+    const width=fw*1.47;
+    const height=fh*.37;
+    const tile=Math.max(2.3,fw*.024);
+
+    for(let i=0;i<this.shoulderTiles.length;i++){
+      if(this.detail<.65&&i%2)continue;
+      const p=this.shoulderTiles[i];
+      const x=cx+p.nx*width;
+      const y=baseY+p.ny*height;
+      const fall=1-Math.abs(p.nx)*.32;
+      const wave=.5+.5*Math.sin(time*.0009+p.phase);
+      const size=tile*(.76+p.depth*.38);
+      const alpha=clamp((.10+.22*p.depth+.045*energy)*fall*presence,0,.42);
+      const rgb=p.seed>.82?style.cyan:p.seed>.49?style.tileBright:style.tileBase;
+      ctx.fillStyle=`rgba(${rgb},${alpha})`;
+      ctx.fillRect(x-size/2,y-size/2,size,size);
+      ctx.strokeStyle=`rgba(${style.cyan},${alpha*.2})`;
+      ctx.lineWidth=.34;
+      ctx.strokeRect(x-size/2,y-size/2,size,size);
+      if(p.seed>.95)this.drawGlassCube(ctx,x,y,size*1.3,p.seed,.14+.18*wave,style,.08*Math.sin(time*.001+p.phase));
+    }
+  }
+
   drawEyes(ctx,cx,cy,fw,fh,blink,energy,style){
-    const y=cy-fh*.105;
-    const width=fw*.215;
+    const y=cy-fh*.085;
+    const width=fw*.205;
     const close=clamp(blink,0,1);
-    const height=Math.max(1.2,fh*.042*(1-close*.94));
+    const height=Math.max(1.2,fh*.036*(1-close*.94));
     const focused=this.emotion==='focused'||this.state==='thinking';
 
     for(const side of [-1,1]){
       const x=cx+side*fw*.205;
       ctx.save();
       ctx.globalCompositeOperation='lighter';
-      ctx.shadowColor=`rgba(${style.cyan},${.78*style.glow})`;
-      ctx.shadowBlur=fw*(style.light?.035:.075);
+      ctx.shadowColor=`rgba(${style.cyan},${.84*style.glow})`;
+      ctx.shadowBlur=fw*(style.light?.035:.082);
 
-      // Almond/slit light from the reference — no iris, no eyeball.
       const g=ctx.createLinearGradient(x-width,y,x+width,y);
-      g.addColorStop(0,`rgba(${style.cyan},.08)`);
-      g.addColorStop(.25,`rgba(${style.cyan},${.48+.2*energy})`);
-      g.addColorStop(.5,`rgba(${style.white},${.88+.08*energy})`);
-      g.addColorStop(.75,`rgba(${style.cyan},${.5+.2*energy})`);
-      g.addColorStop(1,`rgba(${style.cyan},.06)`);
+      g.addColorStop(0,`rgba(${style.cyan},0)`);
+      g.addColorStop(.18,`rgba(${style.cyan},${.38+.24*energy})`);
+      g.addColorStop(.50,`rgba(${style.white},${.93+.05*energy})`);
+      g.addColorStop(.82,`rgba(${style.cyan},${.42+.24*energy})`);
+      g.addColorStop(1,`rgba(${style.cyan},0)`);
       ctx.fillStyle=g;
 
       ctx.beginPath();
       ctx.moveTo(x-width,y);
-      ctx.quadraticCurveTo(x,y-height*1.45,x+width,y);
-      ctx.quadraticCurveTo(x,y+height*.66,x-width,y);
+      ctx.quadraticCurveTo(x,y-height*1.55,x+width,y);
+      ctx.quadraticCurveTo(x,y+height*.58,x-width,y);
       ctx.closePath();
       ctx.fill();
 
-      ctx.shadowBlur=0;
-      ctx.strokeStyle=`rgba(${style.white},${style.light?.35:.64})`;
-      ctx.lineWidth=Math.max(.7,fw*.003);
+      ctx.strokeStyle=`rgba(${style.white},${style.light?.36:.72})`;
+      ctx.lineWidth=Math.max(.75,fw*.003);
       ctx.stroke();
 
       if(focused){
-        ctx.strokeStyle=`rgba(${style.violet},${.26+.18*energy})`;
+        ctx.strokeStyle=`rgba(${style.violet},${.24+.18*energy})`;
         ctx.beginPath();
-        ctx.moveTo(x-width*.95,y-height*1.7);
-        ctx.quadraticCurveTo(x,y-height*2.15,x+width*.95,y-height*1.68);
+        ctx.moveTo(x-width*.96,y-height*1.65);
+        ctx.quadraticCurveTo(x,y-height*2.08,x+width*.96,y-height*1.63);
         ctx.stroke();
       }
       ctx.restore();
@@ -530,34 +668,30 @@ export class HologramAvatar{
   drawEars(ctx,cx,cy,fw,fh,time,energy,style){
     const level=Math.max(this.earSpectrum.low,this.earSpectrum.mid,this.earSpectrum.high,this.state==='listening'?.22:0);
     for(const side of [-1,1]){
-      const ex=cx+side*fw*.515;
-      const ey=cy+fh*.02;
+      const x=cx+side*fw*.505;
+      const y=cy+fh*.045;
       ctx.save();
-      ctx.strokeStyle=`rgba(${style.cyan},${style.light?.25:.42})`;
-      ctx.lineWidth=Math.max(1,fw*.009);
-      ctx.beginPath();
-      ctx.ellipse(ex,ey,fw*.075,fh*.135,0,0,TAU);
-      ctx.stroke();
-      ctx.strokeStyle=`rgba(${style.blue},${style.light?.18:.3})`;
-      ctx.lineWidth=Math.max(.7,fw*.004);
-      ctx.beginPath();
-      ctx.ellipse(ex,ey+fh*.005,fw*.035,fh*.078,0,0,TAU);
-      ctx.stroke();
+      ctx.strokeStyle=`rgba(${style.cyan},${style.light?.25:.45})`;
+      ctx.lineWidth=Math.max(1,fw*.007);
+      ctx.beginPath();ctx.ellipse(x,y,fw*.066,fh*.13,0,0,TAU);ctx.stroke();
+      ctx.strokeStyle=`rgba(${style.blue},${style.light?.17:.30})`;
+      ctx.lineWidth=Math.max(.7,fw*.0037);
+      ctx.beginPath();ctx.ellipse(x,y+fh*.008,fw*.033,fh*.074,0,0,TAU);ctx.stroke();
 
-      for(let i=0;i<8;i++){
-        const a=-1.95+i/7*3.9;
-        const x=ex+Math.cos(a)*fw*.066;
-        const y=ey+Math.sin(a)*fh*.125;
-        this.drawGlassCube(ctx,x,y,Math.max(2,fw*.024),.35+i*.08,.26+.08*energy,style,.08*Math.sin(time*.001+i));
+      for(let i=0;i<9;i++){
+        const a=-1.9+i/8*3.8;
+        const px=x+Math.cos(a)*fw*.058;
+        const py=y+Math.sin(a)*fh*.116;
+        this.drawGlassCube(ctx,px,py,Math.max(1.8,fw*.019),.31+i*.073,.22+.08*energy,style,.06*Math.sin(time*.001+i));
       }
 
       if(level>.02){
-        for(let wave=0;wave<3;wave++){
-          const travel=(time*.00038+wave*.25)%1;
+        for(let w=0;w<3;w++){
+          const travel=(time*.0004+w*.26)%1;
           ctx.beginPath();
-          ctx.arc(ex,ey,fw*(.08+travel*.15),side<0?Math.PI*.55:-Math.PI*.45,side<0?Math.PI*1.45:Math.PI*.45,side>0);
-          ctx.strokeStyle=`rgba(${style.cyan},${(1-travel)*(.14+level*.4)})`;
-          ctx.lineWidth=Math.max(.65,fw*.003);
+          ctx.arc(x,y,fw*(.07+travel*.14),side<0?Math.PI*.55:-Math.PI*.45,side<0?Math.PI*1.45:Math.PI*.45,side>0);
+          ctx.strokeStyle=`rgba(${style.cyan},${(1-travel)*(.13+level*.4)})`;
+          ctx.lineWidth=Math.max(.65,fw*.0028);
           ctx.stroke();
         }
       }
@@ -568,88 +702,84 @@ export class HologramAvatar{
   drawNoseMouth(ctx,cx,cy,fw,fh,time,energy,style){
     ctx.save();
     ctx.globalCompositeOperation='lighter';
-    ctx.shadowColor=`rgba(${style.cyan},${.3*style.glow})`;
-    ctx.shadowBlur=fw*(style.light?.012:.025);
 
-    // Geometric luminous nose bridge.
-    ctx.strokeStyle=`rgba(${style.cyan},${style.light?.36:.62})`;
-    ctx.lineWidth=Math.max(.75,fw*.004);
+    ctx.shadowColor=`rgba(${style.cyan},${.3*style.glow})`;
+    ctx.shadowBlur=fw*(style.light?.012:.027);
+    ctx.strokeStyle=`rgba(${style.cyan},${style.light?.34:.60})`;
+    ctx.lineWidth=Math.max(.8,fw*.0038);
+
     ctx.beginPath();
-    ctx.moveTo(cx,cy-fh*.045);
-    ctx.lineTo(cx-fw*.005,cy+fh*.17);
-    ctx.quadraticCurveTo(cx-fw*.055,cy+fh*.205,cx-fw*.075,cy+fh*.19);
-    ctx.moveTo(cx,cy+fh*.17);
-    ctx.quadraticCurveTo(cx+fw*.055,cy+fh*.205,cx+fw*.075,cy+fh*.19);
+    ctx.moveTo(cx,cy-fh*.02);
+    ctx.lineTo(cx-fw*.004,cy+fh*.205);
+    ctx.quadraticCurveTo(cx-fw*.045,cy+fh*.235,cx-fw*.066,cy+fh*.215);
+    ctx.moveTo(cx,cy+fh*.205);
+    ctx.quadraticCurveTo(cx+fw*.045,cy+fh*.235,cx+fw*.066,cy+fh*.215);
     ctx.stroke();
 
     const level=(this.state==='speaking'||this.speaking)?this.audioLevel:0;
-    const mouthY=cy+fh*.305;
-    const half=fw*(.18+level*.018);
-    const mood=this.emotion==='happy'?-fh*.012:this.emotion==='curious'?fh*.006:0;
-    const open=fh*(.006+level*.038);
+    const mouthY=cy+fh*.405;
+    const half=fw*(.17+level*.016);
+    const mood=this.emotion==='happy'?-fh*.009:this.emotion==='curious'?fh*.004:0;
+    const open=fh*(.003+level*.026);
 
-    ctx.shadowColor=`rgba(${style.white},${.35+.35*level})`;
-    ctx.shadowBlur=fw*(style.light?.012:.03);
-    ctx.strokeStyle=`rgba(${style.white},${style.light?.42:.72})`;
-    ctx.lineWidth=Math.max(1,fw*.006);
+    ctx.shadowColor=`rgba(${style.white},${.25+.30*level})`;
+    ctx.shadowBlur=fw*(style.light?.009:.022);
+    ctx.strokeStyle=`rgba(${style.white},${style.light?.36:.63})`;
+    ctx.lineWidth=Math.max(.95,fw*.0048);
     ctx.beginPath();
     ctx.moveTo(cx-half,mouthY+mood);
     ctx.quadraticCurveTo(cx,mouthY+open+mood,cx+half,mouthY+mood);
     ctx.stroke();
 
-    if(level>.06){
-      ctx.strokeStyle=`rgba(${style.cyan},${.3+.36*level})`;
-      ctx.lineWidth=Math.max(.8,fw*.004);
+    if(level>.08){
+      ctx.strokeStyle=`rgba(${style.cyan},${.25+.33*level})`;
+      ctx.lineWidth=Math.max(.75,fw*.0036);
       ctx.beginPath();
-      ctx.moveTo(cx-half*.75,mouthY+mood);
-      ctx.quadraticCurveTo(cx,mouthY-open*.7+mood,cx+half*.75,mouthY+mood);
+      ctx.moveTo(cx-half*.72,mouthY+mood);
+      ctx.quadraticCurveTo(cx,mouthY-open*.65+mood,cx+half*.72,mouthY+mood);
       ctx.stroke();
     }
     ctx.restore();
-
-    if(level>.03){
-      for(let i=0;i<8;i++){
-        const u=i/7;
-        const x=cx+(u-.5)*fw*.4;
-        const arch=Math.sin(u*Math.PI);
-        this.drawGlassCube(ctx,x,mouthY+open*.95*arch,Math.max(2,fw*.02),.32+u*.6,.12+.28*level,style,.04*Math.sin(time*.009+i));
-      }
-    }
   }
 
   drawCenterCore(ctx,cx,cy,fw,fh,time,energy,style){
     ctx.save();
     ctx.globalCompositeOperation='lighter';
 
-    const beam=ctx.createLinearGradient(cx,cy-fh*.72,cx,cy+fh*1.05);
+    const beam=ctx.createLinearGradient(cx,cy-fh*.78,cx,cy+fh*1.24);
     beam.addColorStop(0,`rgba(${style.cyan},0)`);
-    beam.addColorStop(.16,`rgba(${style.cyan},${.26*style.glow})`);
-    beam.addColorStop(.47,`rgba(${style.white},${.52*style.glow})`);
-    beam.addColorStop(.72,`rgba(${style.cyan},${.34*style.glow})`);
+    beam.addColorStop(.13,`rgba(${style.cyan},${.28*style.glow})`);
+    beam.addColorStop(.43,`rgba(${style.white},${.60*style.glow})`);
+    beam.addColorStop(.73,`rgba(${style.cyan},${.38*style.glow})`);
     beam.addColorStop(1,`rgba(${style.cyan},0)`);
     ctx.strokeStyle=beam;
-    ctx.shadowColor=`rgba(${style.cyan},${.62*style.glow})`;
-    ctx.shadowBlur=fw*(style.light?.025:.052);
-    ctx.lineWidth=Math.max(1,fw*.006);
-    ctx.beginPath();ctx.moveTo(cx,cy-fh*.72);ctx.lineTo(cx,cy+fh*1.05);ctx.stroke();
+    ctx.shadowColor=`rgba(${style.cyan},${.70*style.glow})`;
+    ctx.shadowBlur=fw*(style.light?.027:.058);
+    ctx.lineWidth=Math.max(1,fw*.0054);
+    ctx.beginPath();ctx.moveTo(cx,cy-fh*.78);ctx.lineTo(cx,cy+fh*1.24);ctx.stroke();
 
-    const foreheadY=cy-fh*.345;
-    const square=Math.max(2.3,fw*.03);
+    const glyphY=cy-fh*.34;
+    const cell=Math.max(2.2,fw*.024);
     const pulse=.72+.28*Math.sin(time*.004);
     const glyph=[[0,0],[-1,0],[1,0],[0,-1],[0,1]];
     for(const [gx,gy] of glyph){
-      ctx.fillStyle=`rgba(${style.white},${(.55+.32*energy)*pulse})`;
-      ctx.fillRect(cx+gx*square-square*.34,foreheadY+gy*square-square*.34,square*.68,square*.68);
+      ctx.fillStyle=`rgba(${style.white},${(.62+.28*energy)*pulse})`;
+      ctx.fillRect(cx+gx*cell-cell*.34,glyphY+gy*cell-cell*.34,cell*.68,cell*.68);
     }
 
-    // Bright chin and sternum nodes from the illustration.
-    for(const [x,y,a] of [[cx,cy+fh*.49,.52],[cx,cy+fh*.98,.48]]){
-      const r=fw*.016*(1+.24*Math.sin(time*.004+y));
-      const grad=ctx.createRadialGradient(x,y,0,x,y,r*4);
-      grad.addColorStop(0,`rgba(${style.white},${a+.18*energy})`);
-      grad.addColorStop(.22,`rgba(${style.cyan},${a*.8})`);
-      grad.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=grad;ctx.beginPath();ctx.arc(x,y,r*4,0,TAU);ctx.fill();
+    const nodes=[
+      [cx,cy-fh*.12,.42,1.0],
+      [cx,cy+fh*.16,.28,.72],
+      [cx,cy+fh*.61,.44,1.0],
+      [cx,cy+fh*1.07,.46,1.1]
+    ];
+    for(const [x,y,a,s] of nodes){
+      const rr=fw*.012*s*(1+.22*Math.sin(time*.004+y));
+      const g=ctx.createRadialGradient(x,y,0,x,y,rr*4.5);
+      g.addColorStop(0,`rgba(${style.white},${a+.18*energy})`);
+      g.addColorStop(.2,`rgba(${style.cyan},${a*.86})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rr*4.5,0,TAU);ctx.fill();
     }
     ctx.restore();
   }
@@ -658,26 +788,24 @@ export class HologramAvatar{
     ctx.save();
     ctx.globalCompositeOperation='lighter';
     ctx.lineCap='round';
-    const flicker=.6+.4*Math.sin(time*.0018);
-    ctx.shadowColor=`rgba(${style.violet},${.45*style.glow})`;
-    ctx.shadowBlur=fw*(style.light?.018:.04);
-    ctx.strokeStyle=`rgba(${style.violet},${(.18+.13*energy)*flicker})`;
-    ctx.lineWidth=Math.max(.7,fw*.004);
+    const flick=.62+.38*Math.sin(time*.0018);
+    ctx.shadowColor=`rgba(${style.violet},${.48*style.glow})`;
+    ctx.shadowBlur=fw*(style.light?.017:.044);
+    ctx.strokeStyle=`rgba(${style.violet},${(.19+.14*energy)*flick})`;
+    ctx.lineWidth=Math.max(.7,fw*.0037);
 
-    // Left forehead -> cheek filament.
     ctx.beginPath();
-    ctx.moveTo(cx-fw*.28,cy-fh*.46);
-    ctx.bezierCurveTo(cx-fw*.12,cy-fh*.36,cx-fw*.38,cy-fh*.12,cx-fw*.26,cy+fh*.12);
-    ctx.bezierCurveTo(cx-fw*.16,cy+fh*.24,cx-fw*.34,cy+fh*.34,cx-fw*.18,cy+fh*.48);
+    ctx.moveTo(cx-fw*.28,cy-fh*.47);
+    ctx.bezierCurveTo(cx-fw*.10,cy-fh*.36,cx-fw*.37,cy-fh*.14,cx-fw*.25,cy+fh*.10);
+    ctx.bezierCurveTo(cx-fw*.15,cy+fh*.24,cx-fw*.34,cy+fh*.36,cx-fw*.17,cy+fh*.53);
+    ctx.bezierCurveTo(cx-fw*.06,cy+fh*.67,cx-fw*.16,cy+fh*.82,cx-fw*.02,cy+fh*1.06);
     ctx.stroke();
 
-    // Right cheek -> neck filament.
     ctx.beginPath();
-    ctx.moveTo(cx+fw*.3,cy-fh*.03);
-    ctx.bezierCurveTo(cx+fw*.16,cy+fh*.12,cx+fw*.34,cy+fh*.38,cx+fw*.16,cy+fh*.62);
-    ctx.bezierCurveTo(cx+fw*.04,cy+fh*.78,cx+fw*.18,cy+fh*.91,cx,cy+fh*1.02);
+    ctx.moveTo(cx+fw*.29,cy-fh*.02);
+    ctx.bezierCurveTo(cx+fw*.16,cy+fh*.13,cx+fw*.34,cy+fh*.39,cx+fw*.15,cy+fh*.60);
+    ctx.bezierCurveTo(cx+fw*.03,cy+fh*.78,cx+fw*.18,cy+fh*.92,cx,cy+fh*1.13);
     ctx.stroke();
-
     ctx.restore();
   }
 
@@ -685,13 +813,13 @@ export class HologramAvatar{
     for(let i=0;i<this.flow.length;i++){
       if(this.detail<.72&&i%2)continue;
       const p=this.flow[i];
-      const progress=(p.phase+time*.000075*p.speed)%1;
-      const y=cy+fh*.93-progress*fh*1.45;
-      const envelope=Math.sin(progress*Math.PI);
-      const x=cx+p.lane*fw*.43*envelope+Math.sin(time*.001+p.seed*TAU)*fw*.009;
-      const alpha=(.045+.11*energy)*envelope*(style.light?.65:1);
-      ctx.fillStyle=`rgba(${p.seed>.55?style.cyan:style.violet},${alpha})`;
-      ctx.fillRect(x,y,Math.max(.6,fw*.0017),fh*(.014+.025*p.seed));
+      const progress=(p.phase+time*.000074*p.speed)%1;
+      const y=cy+fh*1.02-progress*fh*1.58;
+      const env=Math.sin(progress*Math.PI);
+      const x=cx+p.lane*fw*.43*env+Math.sin(time*.001+p.seed*TAU)*fw*.008;
+      const a=(.042+.105*energy)*env*(style.light?.62:1);
+      ctx.fillStyle=`rgba(${p.seed>.55?style.cyan:style.violet},${a})`;
+      ctx.fillRect(x,y,Math.max(.55,fw*.0016),fh*(.012+.022*p.seed));
     }
   }
 
@@ -703,35 +831,38 @@ export class HologramAvatar{
     for(let i=0;i<this.floaters.length;i++){
       if(this.detail<.76&&i%2)continue;
       const p=this.floaters[i];
-      const crown=p.zone===0;
-      const side=p.zone===1;
-      const shoulder=p.zone>=2;
       const pulse=.5+.5*Math.sin(time*.001*(.55+p.speed)+p.phase);
+      let x,y;
 
-      let baseX,baseY;
-      if(crown){
-        baseX=cx+p.side*fw*(.12+.42*p.seed);
-        baseY=cy-fh*(.53+.17*p.seed);
-      }else if(side){
-        baseX=cx+p.side*fw*(.52+.25*p.seed);
-        baseY=cy+fh*(-.2+.5*p.seed);
+      if(p.zone===0){
+        x=cx+p.side*fw*(.12+.50*p.seed);
+        y=cy-fh*(.56+.21*p.seed);
+      }else if(p.zone===1){
+        x=cx+p.side*fw*(.49+.32*p.seed);
+        y=cy+fh*(-.28+.54*p.seed);
+      }else if(p.zone===2){
+        x=cx+p.side*fw*(.28+.80*p.seed);
+        y=cy+fh*(.65+.44*p.seed);
+      }else if(p.zone===3){
+        x=cx+p.side*fw*(.52+.44*p.seed);
+        y=cy+fh*(.22+.68*p.seed);
       }else{
-        baseX=cx+p.side*fw*(.32+.62*p.seed);
-        baseY=cy+fh*(.5+.44*p.seed);
+        x=cx+p.side*fw*(.20+.58*p.seed);
+        y=cy-fh*(.39+.26*p.seed);
       }
 
-      const orbit=fw*(.018+.055*p.seed)*(1+energy*.25);
-      let x=baseX+Math.sin(time*.001*p.speed+p.phase)*orbit*p.side;
-      let y=baseY+Math.cos(time*.0007*p.speed+p.phase)*orbit*.68;
+      const orbit=fw*(.016+.052*p.seed)*(1+energy*.22);
+      x+=Math.sin(time*.001*p.speed+p.phase)*orbit*p.side;
+      y+=Math.cos(time*.00072*p.speed+p.phase)*orbit*.65;
 
-      if(thinking&&crown){
-        x+=(cx-x)*.08*pulse;
-        y+=(cy-fh*.35-y)*.06*pulse;
+      if(thinking&&p.zone===0){
+        x+=(cx-x)*.06*pulse;
+        y+=(cy-fh*.38-y)*.05*pulse;
       }
 
-      const size=Math.max(2,fw*(.018+.034*p.seed));
-      const alpha=(.09+.26*pulse+.08*energy)*(style.light?.72:1);
-      this.drawGlassCube(ctx,x,y,size,.25+p.seed*.7,alpha,style,.18*Math.sin(time*.0008+p.phase));
+      const size=Math.max(1.9,fw*(.015+.031*p.seed));
+      const a=(.08+.25*pulse+.075*energy)*(style.light?.70:1);
+      this.drawGlassCube(ctx,x,y,size,.22+p.seed*.74,a,style,.18*Math.sin(time*.0008+p.phase));
     }
     ctx.restore();
   }
@@ -743,10 +874,10 @@ export class HologramAvatar{
     for(let i=0;i<16;i++){
       if(this.detail<.72&&i%2)continue;
       const a=time*.0007+i/16*TAU;
-      const radius=fw*(.62+.03*Math.sin(time*.001+i));
+      const radius=fw*(.69+.025*Math.sin(time*.001+i));
       const x=cx+Math.cos(a)*radius;
-      const y=cy-fh*.03+Math.sin(a)*fh*.55;
-      this.drawGlassCube(ctx,x,y,Math.max(1.8,fw*.018),i/16,.16+.2*energy,style,.2*Math.sin(a));
+      const y=cy-fh*.04+Math.sin(a)*fh*.57;
+      this.drawGlassCube(ctx,x,y,Math.max(1.7,fw*.016),i/16,.14+.20*energy,style,.2*Math.sin(a));
     }
     ctx.restore();
   }
@@ -766,42 +897,42 @@ export class HologramAvatar{
 
     if(time>this.nextBlink){
       this.blinkStart=time;
-      this.nextBlink=time+2400+Math.random()*3800;
+      this.nextBlink=time+2350+Math.random()*3900;
     }
-    const age=time-this.blinkStart;
-    const blink=age>=0&&age<205?Math.sin(age/205*Math.PI):0;
+    const blinkAge=time-this.blinkStart;
+    const blink=blinkAge>=0&&blinkAge<205?Math.sin(blinkAge/205*Math.PI):0;
 
     const ctx=this.ctx,w=this.w,h=this.h;
     if(!w||!h)return;
     ctx.clearRect(0,0,w,h);
 
-    // Match reference portrait proportions: head occupies upper/middle canvas; neck + shoulders visible.
     const size=Math.min(w,h);
-    const fw=Math.min(size*.5,w*.46);
-    const fh=fw*1.29;
-    const breathing=this.animate&&!this.reducedMotion?Math.sin(time*.00105)*fh*.004:0;
-    const float=this.animate&&!this.reducedMotion?Math.sin(time*.00072)*fh*.006:0;
+    const fw=Math.min(size*.52,w*.46);
+    const fh=fw*1.27;
+    const breathing=this.animate&&!this.reducedMotion?Math.sin(time*.00105)*fh*.0035:0;
+    const float=this.animate&&!this.reducedMotion?Math.sin(time*.00072)*fh*.0055:0;
 
     const target=this.coarsePointer||!this.track?{x:0,y:0}:(this.gazeActive?this.gazePointer:this.pointer);
-    const ease=this.reducedMotion?.12:.04;
+    const ease=this.reducedMotion?.12:.038;
     this.rotation.x=lerp(this.rotation.x,clamp(target.x,-1,1),ease);
     this.rotation.y=lerp(this.rotation.y,clamp(target.y,-1,1),ease);
-    let px=this.rotation.x*fw*.026;
-    let py=this.rotation.y*fh*.015;
+
+    let px=this.rotation.x*fw*.020;
+    let py=this.rotation.y*fh*.012;
 
     const actionAge=time-this.actionStart;
     if(actionAge<1200){
       const env=Math.sin(actionAge/1200*Math.PI);
-      if(this.action==='shake')px+=Math.sin(actionAge*.025)*fw*.034*env;
-      if(this.action==='nod')py+=Math.sin(actionAge*.018)*fh*.026*env;
+      if(this.action==='shake')px+=Math.sin(actionAge*.025)*fw*.03*env;
+      if(this.action==='nod')py+=Math.sin(actionAge*.018)*fh*.023*env;
     }
 
-    const transition=this.transition(time);
-    const presence=transition.presence;
+    const tr=this.transition(time);
+    const presence=tr.presence;
     const style=this.visualStyle();
     const energy=this.stateEnergy(time);
     const cx=w/2+px;
-    const cy=h*.37+float+breathing+py;
+    const cy=h*.355+float+breathing+py;
 
     ctx.save();
     if(presence<1){
@@ -813,11 +944,13 @@ export class HologramAvatar{
     }
 
     this.drawBackdrop(ctx,cx,cy,fw,fh,time,energy,style);
-    this.drawShoulders(ctx,cx,cy,fw,fh,time,energy,style,presence);
-    this.drawNeck(ctx,cx,cy,fw,fh,time,energy,style,presence);
+    this.drawBustBase(ctx,cx,cy,fw,fh,style);
+    this.drawShoulderTiles(ctx,cx,cy,fw,fh,time,energy,style,presence);
+    this.drawNeckTiles(ctx,cx,cy,fw,fh,time,energy,style,presence);
     this.drawFaceBase(ctx,cx,cy,fw,fh,style);
     this.drawFlow(ctx,cx,cy,fw,fh,time,energy,style);
     this.drawFaceTiles(ctx,cx,cy,fw,fh,time,energy,style,presence);
+    this.drawEdgeFragments(ctx,cx,cy,fw,fh,time,energy,style);
     this.drawEars(ctx,cx,cy,fw,fh,time,energy,style);
     this.drawEyes(ctx,cx,cy,fw,fh,blink,energy,style);
     this.drawNoseMouth(ctx,cx,cy,fw,fh,time,energy,style);
