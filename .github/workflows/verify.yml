@@ -39,8 +39,8 @@ jobs:
         shell: pwsh
         run: |
           $installer = Get-ChildItem release -Filter "HumanALE-God-Engine-Setup-*-x64.exe" | Select-Object -First 1
-          if (-not $installer) { throw "Installer HumanALE God Engine tidak ditemukan." }
-          if ($installer.Length -lt 1000000) { throw "Installer HumanALE God Engine terlalu kecil dan kemungkinan tidak lengkap." }
+          if (-not $installer) { throw "Installer HumanALE god egine tidak ditemukan." }
+          if ($installer.Length -lt 1000000) { throw "Installer HumanALE god egine terlalu kecil dan kemungkinan tidak lengkap." }
           Write-Host "Installer ready: $($installer.FullName) ($($installer.Length) bytes)"
 
   release:
@@ -83,6 +83,6 @@ jobs:
           if (-not $installer -or -not $zip) { throw "File rilis tidak lengkap." }
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --target $env:GITHUB_SHA --title "HumanALE God Engine $tag" --notes "Installer Windows x64 dan paket portable HumanALE God Engine yang sudah melewati test, audit dependency, packaging, dan smoke test Electron."
+            gh release create $tag --target $env:GITHUB_SHA --title "HumanALE god egine $tag" --notes "Installer Windows x64 dan paket portable HumanALE god egine yang sudah melewati test, audit dependency, packaging, dan smoke test Electron."
           }
           gh release upload $tag $installer.FullName $zip.FullName --clobber
