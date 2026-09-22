@@ -2,7 +2,7 @@ import {access,cp,mkdir,rename,rm} from 'node:fs/promises';
 import path from 'node:path';
 
 if(process.platform!=='win32'){
- throw new Error('Paket desktop HumanALE God Engine saat ini hanya dibangun di Windows.');
+ throw new Error('Paket desktop HumanALE god egine saat ini hanya dibangun di Windows.');
 }
 
 const electronDist=process.env.ELECTRON_DIST_PATH
@@ -12,7 +12,7 @@ const electronExe=path.join(electronDist,'electron.exe');
 await access(electronExe);
 
 const outputName=process.env.HUMANALE_PACKAGE_OUTPUT||process.env.DUDIDAM_PACKAGE_OUTPUT||'HumanALE-God-Engine-Desktop';
-if(!/^HumanALE-God-Engine-Desktop(?:-[A-Za-z0-9._-]+)?$/.test(outputName))throw new Error('Nama folder paket HumanALE God Engine tidak valid.');
+if(!/^HumanALE-God-Engine-Desktop(?:-[A-Za-z0-9._-]+)?$/.test(outputName))throw new Error('Nama folder paket HumanALE god egine tidak valid.');
 const output=path.resolve(outputName);
 await rm(output,{recursive:true,force:true});
 await cp(electronDist,output,{recursive:true});
