@@ -13,9 +13,12 @@ test('main Dudidam renderer is a procedural hologram with no static face image d
   assert.match(app,/import \{HologramAvatar\} from '\.\/hologram-avatar\.js'/);
   assert.match(app,/new HologramAvatar\(\$\('#avatar'\)\)/);
   assert.doesNotMatch(hologram,/reference\.png|new Image\(|drawImage\(/);
-  assert.match(hologram,/buildFaceVoxels/);
+  assert.match(hologram,/buildFaceTiles/);
   assert.match(hologram,/drawProcessingOrbit/);
   assert.match(hologram,/drawBackdrop/);
+  assert.match(hologram,/drawCenterCore/);
+  assert.match(hologram,/drawEnergyFilaments/);
+  assert.match(hologram,/drawShoulders/);
   assert.match(hologram,/ResizeObserver/);
   assert.match(index,/Entitas AI holografik procedural/);
 });
@@ -48,7 +51,7 @@ test('assistant popup is interactive, adaptive and connected to desktop terminal
 
 test('hologram includes responsive theme-aware motion and audio-reactive facial systems',async()=>{
   const hologram=await read('public/hologram-avatar.js');
-  for(const feature of ['drawEyes','drawMouth','drawEars','drawFlow','drawFloaters','stateEnergy','resolvedTheme','lowPowerUntil']){
+  for(const feature of ['drawEyes','drawNoseMouth','drawEars','drawFlow','drawFloatingCubes','stateEnergy','resolvedTheme','lowPowerUntil']){
     assert.match(hologram,new RegExp(feature),feature);
   }
   assert.match(hologram,/prefers-color-scheme: light/);

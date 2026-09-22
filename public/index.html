@@ -4,21 +4,20 @@
 <section id="assistantPopup" class="assistant-popup" data-state="idle" data-theme="dark" aria-label="Dudidam AI assistant popup">
   <div class="assistant-popup__header">
     <div class="assistant-popup__identity">
-      <span class="assistant-popup__mark" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span><strong>Dudidam</strong><small data-popup-status>Ready</small></span>
+      <span class="assistant-popup__voiceicon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="assistant-popup__name"><strong>Dudidam</strong><small><b></b><span data-popup-status>Ready</span></small></span>
     </div>
     <div class="assistant-popup__tools">
-      <span class="assistant-popup__wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
       <button type="button" data-popup-action="collapse" aria-expanded="true" title="Ciutkan">—</button>
       <button type="button" data-popup-action="close" aria-label="Tutup popup" title="Tutup">×</button>
     </div>
   </div>
   <div class="assistant-popup__body">
-    <p data-popup-message>Saya siap membantu.<br>Ada yang bisa saya lakukan<br>untuk Anda hari ini?</p>
+    <div class="assistant-popup__message" data-popup-message>Saya siap membantu.<br>Ada yang bisa saya lakukan<br>untuk Anda hari ini?</div>
     <div class="assistant-popup__actions">
-      <button type="button" data-popup-action="terminal"><span aria-hidden="true">⌘</span>Buka terminal</button>
-      <button type="button" data-popup-action="voice"><span aria-hidden="true">◉</span>Mulai suara</button>
-      <button type="button" data-popup-action="settings"><span aria-hidden="true">⚙</span>Pengaturan</button>
+      <button type="button" data-popup-action="terminal"><span class="assistant-popup__action-icon" aria-hidden="true">&gt;_</span><span>Buka terminal</span></button>
+      <button type="button" data-popup-action="voice"><span class="assistant-popup__action-icon" aria-hidden="true">●</span><span>Mulai suara</span></button>
+      <button type="button" data-popup-action="settings"><span class="assistant-popup__action-icon" aria-hidden="true">⚙</span><span>Pengaturan</span></button>
     </div>
   </div>
 </section>
