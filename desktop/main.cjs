@@ -58,7 +58,7 @@ function requestDismiss(reason='hide'){
 function rebuildTrayMenu(){
  if(!tray||tray.isDestroyed())return;
  tray.setContextMenu(Menu.buildFromTemplate([
-  {label:'Tampilkan HumanALE God Engine',click:showAvatar},
+  {label:'Tampilkan HumanALE god egine',click:showAvatar},
   {label:'Panggil ALE (Ctrl+Alt+5)',click:summonAvatar},
   {label:'Sembunyikan',click:()=>requestDismiss('hide')},
   {type:'separator'},
@@ -124,14 +124,14 @@ async function openPanel(view='controls'){
   x=putPanelLeft?area.x:avatarX+bounds.width+16;
  }else x=rightSpace>=leftSpace?area.x+area.width-width:area.x;
  const y=Math.max(area.y,Math.min(area.y+area.height-height,bounds.y));
- panelWin=new BrowserWindow({width,height,x,y,minWidth:350,minHeight:360,backgroundColor:'#081610',frame:true,resizable:true,alwaysOnTop:true,show:false,title:'HumanALE God Engine · Panel',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,spellcheck:false}});
+ panelWin=new BrowserWindow({width,height,x,y,minWidth:350,minHeight:360,backgroundColor:'#081610',frame:true,resizable:true,alwaysOnTop:true,show:false,title:'HumanALE god egine · Panel',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,spellcheck:false}});
  panelWin.setAlwaysOnTop(true,'floating');
  panelWin.webContents.setWindowOpenHandler(({url})=>{try{if(['https://chatgpt.com','https://github.com'].includes(new URL(url).origin))shell.openExternal(url);}catch{}return {action:'deny'};});
  panelWin.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith(origin+'/'))event.preventDefault();});
  panelWin.webContents.on('will-attach-webview',event=>event.preventDefault());
  panelWin.on('closed',()=>{panelWin=null;});
  try{await panelWin.loadURL(origin+'/?panel='+encodeURIComponent(target));panelWin?.show();panelWin?.focus();}
- catch(error){console.error('HumanALE God Engine panel failed:',error);throw error;}
+ catch(error){console.error('HumanALE god egine panel failed:',error);throw error;}
 }
 function publishGlobalPointer(){
  if(!win||win.isDestroyed()||!win.isVisible()||win.webContents.isLoading())return;
@@ -181,7 +181,7 @@ else{
   origin='http://127.0.0.1:'+server.address().port;
   const workArea=screen.getPrimaryDisplay().workAreaSize,width=Math.min(420,workArea.width),height=Math.min(480,workArea.height);baseWindowSize={width,height};
   const position=safePosition(await readWindowPosition(),width,height);
-  win=new BrowserWindow({width,height,x:position.x,y:position.y,frame:false,transparent:true,backgroundColor:'#00000000',hasShadow:false,resizable:false,alwaysOnTop:true,skipTaskbar:true,title:'HumanALE God Engine — Avatar Transparan',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,spellcheck:false}});
+  win=new BrowserWindow({width,height,x:position.x,y:position.y,frame:false,transparent:true,backgroundColor:'#00000000',hasShadow:false,resizable:false,alwaysOnTop:true,skipTaskbar:true,title:'HumanALE god egine — Avatar Transparan',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,spellcheck:false}});
   win.setAlwaysOnTop(true,'floating');
   win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   const trusted=e=>(e.sender===win?.webContents||e.sender===panelWin?.webContents)&&e.senderFrame?.url?.startsWith(origin+'/');
@@ -200,7 +200,7 @@ else{
   ipcMain.handle('dudidam:agents',async e=>{if(!trusted(e))return {error:'Akses ditolak.'};try{return await agentHub.status();}catch(error){return {error:error.message};}});
   ipcMain.handle('dudidam:project-root-choose',async e=>{
    if(!trusted(e))return {error:'Akses ditolak.'};
-   const result=await dialog.showOpenDialog(panelWin?.isVisible()?panelWin:win,{title:'Pilih folder checkout proyek HumanALE God Engine',properties:['openDirectory']});
+   const result=await dialog.showOpenDialog(panelWin?.isVisible()?panelWin:win,{title:'Pilih folder checkout proyek HumanALE god egine',properties:['openDirectory']});
    if(result.canceled||!result.filePaths?.[0])return {canceled:true};
    const selected=path.resolve(result.filePaths[0]);
    agentHub.setProjectRoot(selected);terminalManager?.setWorkspace(selected);
@@ -231,7 +231,7 @@ else{
    const command=String(value?.command||'').trim(),decision=terminalPolicy.classifyCommand(command);
    if(decision.category==='BLOCK')return {error:decision.reason,category:'BLOCK'};
    if(decision.category==='CONFIRM'){
-    const result=await dialog.showMessageBox(panelWin?.isVisible()?panelWin:win,{type:'warning',title:'Konfirmasi command HumanALE God Engine',message:'Command ini dapat mengubah project atau sistem.',detail:decision.reason+'\n\n'+command,buttons:['Jalankan','Batal'],defaultId:1,cancelId:1,noLink:true});
+    const result=await dialog.showMessageBox(panelWin?.isVisible()?panelWin:win,{type:'warning',title:'Konfirmasi command HumanALE god egine',message:'Command ini dapat mengubah project atau sistem.',detail:decision.reason+'\n\n'+command,buttons:['Jalankan','Batal'],defaultId:1,cancelId:1,noLink:true});
     if(result.response!==0)return {cancelled:true,category:'CONFIRM',reason:decision.reason};
    }
    try{terminalManager.write(value?.sessionId,command+'\r');return {ok:true,category:decision.category};}
@@ -252,28 +252,28 @@ else{
   win.webContents.on('will-attach-webview',e=>e.preventDefault());
   win.webContents.session.setPermissionCheckHandler((contents,permission,requestingOrigin)=>(contents===win.webContents||contents===panelWin?.webContents)&&permission==='media'&&typeof requestingOrigin==='string'&&requestingOrigin.startsWith(origin));
   win.webContents.session.setDisplayMediaRequestHandler(async(request,callback)=>{if(request.securityOrigin!==origin||!request.userGesture||!request.audioRequested){callback({});return;}try{const sources=await desktopCapturer.getSources({types:['screen']});if(!sources.length){callback({});return;}callback({video:sources[0],audio:'loopback'});}catch{callback({});}});
-  win.webContents.session.setPermissionRequestHandler(async(contents,permission,callback,details)=>{if((contents!==win.webContents&&contents!==panelWin?.webContents)||!contents.getURL().startsWith(origin+'/')||permission!=='media'){callback(false);return;}const mediaTypes=details.mediaTypes||[];const result=await dialog.showMessageBox(panelWin?.isVisible()?panelWin:win,{type:'question',title:'Izin perangkat HumanALE God Engine',message:'Izinkan '+(mediaTypes.includes('video')?'kamera':'mikrofon')+' untuk sesi ini?',detail:'Mikrofon dipakai hanya saat Wake ALE, dikte, atau reaksi suara yang kamu aktifkan; status Wake selalu terlihat di layar. Kamera hanya mengirim satu foto setelah tombol kirim foto ditekan.',buttons:['Izinkan','Batal'],defaultId:1,cancelId:1});callback(result.response===0);});
+  win.webContents.session.setPermissionRequestHandler(async(contents,permission,callback,details)=>{if((contents!==win.webContents&&contents!==panelWin?.webContents)||!contents.getURL().startsWith(origin+'/')||permission!=='media'){callback(false);return;}const mediaTypes=details.mediaTypes||[];const result=await dialog.showMessageBox(panelWin?.isVisible()?panelWin:win,{type:'question',title:'Izin perangkat HumanALE god egine',message:'Izinkan '+(mediaTypes.includes('video')?'kamera':'mikrofon')+' untuk sesi ini?',detail:'Mikrofon dipakai hanya saat Wake ALE, dikte, atau reaksi suara yang kamu aktifkan; status Wake selalu terlihat di layar. Kamera hanya mengirim satu foto setelah tombol kirim foto ditekan.',buttons:['Izinkan','Batal'],defaultId:1,cancelId:1});callback(result.response===0);});
 
   const trayIcon=nativeImage.createFromPath(path.join(root,'reference.png')).resize({width:20,height:20,quality:'best'});
   tray=new Tray(trayIcon);
-  tray.setToolTip('HumanALE God Engine — asisten mengambang');
+  tray.setToolTip('HumanALE god egine — asisten mengambang');
   tray.on('click',()=>win?.isVisible()?requestDismiss('hide'):showAvatar());
   rebuildTrayMenu();
   const shortcutRegistered=globalShortcut.register(summonShortcut,summonAvatar);
-  if(!shortcutRegistered)console.warn('HumanALE God Engine global summon shortcut unavailable:',summonShortcut);
+  if(!shortcutRegistered)console.warn('HumanALE god egine global summon shortcut unavailable:',summonShortcut);
   win.on('move',()=>{if(!panelViewportOpen)savePositionSoon();});
   win.on('close',event=>{if(!quitting){event.preventDefault();requestDismiss('hide');}});
   win.once('ready-to-show',()=>win.show());
   await win.loadURL(origin+'/');
   pointerTimer=setInterval(publishGlobalPointer,50);
   if(ciSmoke){
-   const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && typeof window.dudidamDesktop?.onGlobalPointer === 'function' && typeof window.dudidamDesktop?.avatarViewport === 'function' && document.title.includes('HumanALE God Engine')");
-   if(!rendererReady)throw new Error('Renderer HumanALE God Engine tidak siap.');
+   const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && typeof window.dudidamDesktop?.onGlobalPointer === 'function' && typeof window.dudidamDesktop?.avatarViewport === 'function' && document.title.includes('HumanALE god egine')");
+   if(!rendererReady)throw new Error('Renderer HumanALE god egine tidak siap.');
    const wakeIdle=await win.webContents.executeJavaScript("Boolean(document.querySelector('#wakeToggle')) && !document.querySelector('#wakeToggle').checked && document.querySelector('#wakeIndicator')?.textContent?.includes('nonaktif')");
-   if(!wakeIdle)throw new Error('Wake mic harus nonaktif saat HumanALE God Engine mulai.');
+   if(!wakeIdle)throw new Error('Wake mic harus nonaktif saat HumanALE god egine mulai.');
    await openPanel('controls');
    const panelReady=await panelWin.webContents.executeJavaScript("new Promise(resolve=>{const deadline=Date.now()+2500;const check=()=>{const ready=document.body.classList.contains('detached-panel')&&document.querySelector('#controls')?.open&&document.documentElement.classList.contains('panel-surface');if(ready||Date.now()>deadline)resolve(Boolean(ready));else setTimeout(check,50);};check();})");
-   if(!panelReady)throw new Error('Panel terpisah HumanALE God Engine tidak siap.');
+   if(!panelReady)throw new Error('Panel terpisah HumanALE god egine tidak siap.');
    const avatarControls=await panelWin.webContents.executeJavaScript("Boolean(document.querySelector('#emotion')) && Boolean(document.querySelector('#voiceStyle')) && document.querySelector('#voiceStyle').value==='baby-robot'");
    if(!avatarControls)throw new Error('Kontrol emosi dan suara bayi robot tidak siap.');
    const avatarBounds=win.getBounds(),panelBounds=panelWin.getBounds(),workArea=screen.getDisplayNearestPoint({x:avatarBounds.x+avatarBounds.width/2,y:avatarBounds.y+avatarBounds.height/2}).workArea;
@@ -291,18 +291,18 @@ else{
    if(process.env.DUDIDAM_VOICE_SMOKE==='1'){
     const voiceReady=await panelWin.webContents.executeJavaScript("Promise.all([window.dudidamDesktop.sttStatus(),window.dudidamDesktop.ttsStatus()]).then(([stt,tts])=>stt.configured&&tts.configured)");
     if(!voiceReady)throw new Error('Runtime suara Indonesia lokal belum siap.');
-    const speechReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.synthesize({text:'Halo dari HumanALE God Engine.',style:'baby-robot'}).then(result=>result.mime==='audio/wav'&&result.audio?.length>1000)");
+    const speechReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.synthesize({text:'Halo dari HumanALE god egine.',style:'baby-robot'}).then(result=>result.mime==='audio/wav'&&result.audio?.length>1000)");
     if(!speechReady)throw new Error('Suara Indonesia lokal gagal dibuat lewat panel.');
    }
    if(process.env.DUDIDAM_COPILOT_SMOKE==='1'){
     const copilotReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.ask({provider:'copilot',message:'Jawab satu kata: siap',history:[]}).then(result=>Boolean(result.text)&&!result.error)");
     if(!copilotReady)throw new Error('Percakapan GitHub Copilot dari panel gagal.');
    }
-   console.log('HumanALE God Engine CI smoke passed: packaged runtime, renderer, and detached panel loaded.');
+   console.log('HumanALE god egine CI smoke passed: packaged runtime, renderer, and detached panel loaded.');
    quitting=true;app.quit();return;
   }
-  console.log('HumanALE God Engine desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
- }).catch(error=>{console.error('HumanALE God Engine startup failed:',error);app.exit(1);});
+  console.log('HumanALE god egine desktop ready: transparent=true; frame=false; alwaysOnTop=true; tray=true; systemAudio=loopback');
+ }).catch(error=>{console.error('HumanALE god egine startup failed:',error);app.exit(1);});
  app.on('window-all-closed',()=>{});
   app.on('before-quit',()=>{quitting=true;globalShortcut.unregisterAll();clearTimeout(saveTimer);clearInterval(pointerTimer);Object.values(bridges||{}).forEach(item=>item?.stop());agentHub?.stop();terminalManager?.killAll?.();indonesianStt?.stop();indonesianTts?.stop();panelWin?.destroy();server?.close();tray?.destroy();});
 }
