@@ -76,6 +76,8 @@ test('terminal startup is restricted to detected CLI profiles and cannot accept 
  assert.match(ui,/profile:kind/);
  assert.doesNotMatch(ui,/startupCommand/);
  assert.match(manager,/Set-Location -LiteralPath/);
+ assert.match(manager,/\.humanale','cli-hub\.json/);
+ assert.match(manager,/\.dudiddam','cli-hub\.json/);
  assert.match(ui,/terminalRecent/);
  assert.match(ui,/terminalList/);
 });
