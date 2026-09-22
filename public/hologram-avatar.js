@@ -127,7 +127,7 @@ export class HologramAvatar{
 
   buildFaceTiles(){
     const tiles=[];
-    const rows=44,cols=34;
+    const rows=58,cols=44;
     for(let iy=0;iy<=rows;iy++){
       const ny=-1+iy/rows*2;
       const half=faceHalfWidth(ny);
@@ -160,16 +160,16 @@ export class HologramAvatar{
 
   buildEdgeFragments(){
     const list=[];
-    for(let i=0;i<78;i++){
+    for(let i=0;i<118;i++){
       const seed=hash(i,5,11);
-      const crown=i<38;
+      const crown=i<64;
       const side=crown?(i%2?-1:1):(i%2?-1:1);
       const ny=crown?(-1.06+seed*.42):(-.66+seed*1.35);
       const half=faceHalfWidth(clamp(ny,-1,1));
       const nx=crown
         ?side*(.12+.82*hash(i,7,12))*half
         :side*(half+.03+.16*hash(i,9,13));
-      list.push({nx,ny,seed,phase:hash(i,13,14)*TAU,size:.7+hash(i,17,15)*1.7,crown});
+      list.push({nx,ny,seed,phase:hash(i,13,14)*TAU,size:.72+hash(i,17,15)*2.15,crown});
     }
     return list;
   }
@@ -194,7 +194,7 @@ export class HologramAvatar{
 
   buildShoulderTiles(){
     const list=[];
-    const rows=12,cols=48;
+    const rows=16,cols=58;
     for(let iy=0;iy<=rows;iy++){
       const ny=iy/rows;
       for(let ix=0;ix<=cols;ix++){
@@ -348,15 +348,15 @@ export class HologramAvatar{
     return {
       light,
       glow:light?.50:1,
-      faceBase:light?'rgba(51,102,151,.45)':'rgba(3,18,37,.92)',
-      tileBase:light?'63,132,190':'12,48,86',
-      tileBright:light?'82,162,220':'27,99,164',
-      tileDark:light?'28,79,126':'3,23,48',
+      faceBase:light?'rgba(58,119,174,.56)':'rgba(2,17,36,.96)',
+      tileBase:light?'70,151,213':'16,67,116',
+      tileBright:light?'111,189,238':'48,148,222',
+      tileDark:light?'35,91,139':'4,31,61',
       cyan:error?'255,94,148':'73,221,255',
       white:error?'255,193,217':'235,253,255',
       blue:error?'203,93,255':'72,144,255',
       violet:error?'255,113,204':'154,101,255',
-      outline:light?'rgba(25,109,168,.38)':'rgba(120,226,255,.55)',
+      outline:light?'rgba(35,127,190,.50)':'rgba(141,238,255,.72)',
       halo:light?.14:.26
     };
   }
@@ -405,7 +405,14 @@ export class HologramAvatar{
 
   drawBackdrop(ctx,cx,cy,fw,fh,time,energy,style){
     ctx.save();
-    const aura=ctx.createRadialGradient(cx,cy-fh*.04,fw*.08,cx,cy-fh*.04,fw*.9);
+    const vignette=ctx.createRadialGradient(cx,cy+fh*.02,fw*.08,cx,cy+fh*.08,fw*1.08);
+    vignette.addColorStop(0,style.light?'rgba(242,250,255,.16)':'rgba(0,8,22,.76)');
+    vignette.addColorStop(.62,style.light?'rgba(231,244,253,.07)':'rgba(0,7,18,.43)');
+    vignette.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=vignette;
+    ctx.beginPath();ctx.ellipse(cx,cy+fh*.16,fw*1.08,fh*1.28,0,0,TAU);ctx.fill();
+
+    const aura=ctx.createRadialGradient(cx,cy-fh*.04,fw*.08,cx,cy-fh*.04,fw*.98);
     aura.addColorStop(0,`rgba(${style.cyan},${.10+.07*energy})`);
     aura.addColorStop(.48,`rgba(${style.blue},${.035+.035*energy})`);
     aura.addColorStop(1,'rgba(0,0,0,0)');
@@ -462,7 +469,7 @@ export class HologramAvatar{
     ctx.fill();
 
     const shoulderY=cy+fh*.86;
-    const shoulderW=fw*1.48;
+    const shoulderW=fw*1.62;
     const shoulderH=fh*.42;
     const sh=ctx.createLinearGradient(cx,shoulderY,cx,shoulderY+shoulderH);
     sh.addColorStop(0,style.light?'rgba(50,108,157,.38)':'rgba(3,24,49,.72)');
@@ -504,11 +511,48 @@ export class HologramAvatar{
     ctx.restore();
   }
 
+  drawFaceContours(ctx,cx,cy,fw,fh,style,energy){
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    ctx.shadowColor=`rgba(${style.cyan},${.38*style.glow})`;
+    ctx.shadowBlur=fw*(style.light?.012:.030);
+    ctx.strokeStyle=`rgba(${style.cyan},${style.light?.20:.34})`;
+    ctx.lineWidth=Math.max(.55,fw*.0024);
+
+    // Brow / temple arcs make the voxel field read as a face rather than a flat mask.
+    for(const side of [-1,1]){
+      ctx.beginPath();
+      ctx.moveTo(cx+side*fw*.38,cy-fh*.22);
+      ctx.quadraticCurveTo(cx+side*fw*.24,cy-fh*.30,cx+side*fw*.09,cy-fh*.245);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx+side*fw*.42,cy-fh*.02);
+      ctx.bezierCurveTo(cx+side*fw*.40,cy+fh*.16,cx+side*fw*.30,cy+fh*.31,cx+side*fw*.18,cy+fh*.43);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx+side*fw*.12,cy+fh*.30);
+      ctx.quadraticCurveTo(cx+side*fw*.20,cy+fh*.36,cx+side*fw*.26,cy+fh*.35);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle=`rgba(${style.white},${style.light?.10:.18+.08*energy})`;
+    ctx.lineWidth=Math.max(.45,fw*.0018);
+    ctx.beginPath();
+    ctx.moveTo(cx-fw*.11,cy+fh*.49);
+    ctx.quadraticCurveTo(cx,cy+fh*.53,cx+fw*.11,cy+fh*.49);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   drawFaceTiles(ctx,cx,cy,fw,fh,time,energy,style,presence){
     const error=this.state==='error'||performance.now()<this.glitchUntil;
     const thinking=this.state==='thinking'||this.state==='processing'||this.evolving;
     const speaking=this.state==='speaking'||this.speaking;
-    const baseTile=Math.max(2.15,fw*.0215);
+    const baseTile=Math.max(1.7,fw*.0165);
     const pulseY=cy+fh*.62-((time*.00016)%1)*fh*1.22;
 
     for(let i=0;i<this.faceTiles.length;i++){
@@ -538,7 +582,7 @@ export class HologramAvatar{
 
       const scan=Math.exp(-((y-pulseY)**2)/(2*(fh*.035)**2));
       const size=baseTile*(.83+p.depth*.28)*(p.zone==='crown'?1.03:1);
-      const alpha=clamp((.18+p.depth*.36+energy*.055+scan*.18)*presence,0,.76);
+      const alpha=clamp((.26+p.depth*.42+energy*.07+scan*.22)*presence,0,.90);
 
       ctx.save();
       ctx.translate(x,y);
@@ -546,12 +590,12 @@ export class HologramAvatar{
       ctx.fillStyle=this.tileColor(p,style,alpha);
       ctx.fillRect(-size/2,-size/2,size,size);
 
-      ctx.strokeStyle=`rgba(${style.cyan},${alpha*(style.light?.19:.28)})`;
-      ctx.lineWidth=Math.max(.28,size*.032);
+      ctx.strokeStyle=`rgba(${style.cyan},${alpha*(style.light?.26:.42)})`;
+      ctx.lineWidth=Math.max(.32,size*.042);
       ctx.strokeRect(-size/2,-size/2,size,size);
 
       if(p.depth>.76){
-        ctx.fillStyle=`rgba(${style.white},${alpha*.07})`;
+        ctx.fillStyle=`rgba(${style.white},${alpha*.14})`;
         ctx.fillRect(-size*.34,-size*.34,size*.62,Math.max(.45,size*.08));
       }
       ctx.restore();
@@ -563,11 +607,11 @@ export class HologramAvatar{
       if(this.detail<.72&&i%2)continue;
       const p=this.edgeFragments[i];
       const wave=.5+.5*Math.sin(time*.00085+p.phase);
-      const drift=(2+15*p.seed)*wave;
+      const drift=(3+22*p.seed)*wave;
       const x=cx+p.nx*fw*.46+(p.nx>=0?1:-1)*drift;
       const y=cy+p.ny*fh*.50-(p.crown?drift*.45:0)+Math.sin(time*.0007+p.phase)*4;
-      const size=Math.max(2.2,fw*.017*p.size);
-      const alpha=(.12+.25*wave+.06*energy)*(style.light?.72:1);
+      const size=Math.max(2.4,fw*.019*p.size);
+      const alpha=(.18+.34*wave+.08*energy)*(style.light?.78:1);
       this.drawGlassCube(ctx,x,y,size,p.seed,alpha,style,.18*Math.sin(time*.0007+p.phase));
     }
   }
@@ -575,8 +619,8 @@ export class HologramAvatar{
   drawNeckTiles(ctx,cx,cy,fw,fh,time,energy,style,presence){
     const top=cy+fh*.49;
     const height=fh*.62;
-    const half=fw*.235;
-    const tile=Math.max(2.15,fw*.0225);
+    const half=fw*.255;
+    const tile=Math.max(1.8,fw*.0185);
 
     for(let i=0;i<this.neckTiles.length;i++){
       if(this.detail<.62&&i%2)continue;
@@ -585,7 +629,7 @@ export class HologramAvatar{
       const y=top+p.ny*height;
       const wave=.5+.5*Math.sin(time*.001+p.phase);
       const size=tile*(.82+p.depth*.26);
-      const alpha=(.15+p.depth*.31+.05*energy)*presence;
+      const alpha=(.20+p.depth*.36+.06*energy)*presence;
       const rgb=p.seed>.78?style.cyan:p.seed>.45?style.tileBright:style.tileBase;
       ctx.fillStyle=`rgba(${rgb},${alpha})`;
       ctx.fillRect(x-size/2,y-size/2,size,size);
@@ -598,9 +642,9 @@ export class HologramAvatar{
 
   drawShoulderTiles(ctx,cx,cy,fw,fh,time,energy,style,presence){
     const baseY=cy+fh*.88;
-    const width=fw*1.47;
+    const width=fw*1.61;
     const height=fh*.37;
-    const tile=Math.max(2.3,fw*.024);
+    const tile=Math.max(1.9,fw*.019);
 
     for(let i=0;i<this.shoulderTiles.length;i++){
       if(this.detail<.65&&i%2)continue;
@@ -610,7 +654,7 @@ export class HologramAvatar{
       const fall=1-Math.abs(p.nx)*.32;
       const wave=.5+.5*Math.sin(time*.0009+p.phase);
       const size=tile*(.76+p.depth*.38);
-      const alpha=clamp((.10+.22*p.depth+.045*energy)*fall*presence,0,.42);
+      const alpha=clamp((.16+.29*p.depth+.06*energy)*fall*presence,0,.56);
       const rgb=p.seed>.82?style.cyan:p.seed>.49?style.tileBright:style.tileBase;
       ctx.fillStyle=`rgba(${rgb},${alpha})`;
       ctx.fillRect(x-size/2,y-size/2,size,size);
@@ -623,17 +667,17 @@ export class HologramAvatar{
 
   drawEyes(ctx,cx,cy,fw,fh,blink,energy,style){
     const y=cy-fh*.085;
-    const width=fw*.205;
+    const width=fw*.174;
     const close=clamp(blink,0,1);
-    const height=Math.max(1.2,fh*.036*(1-close*.94));
+    const height=Math.max(1.1,fh*.028*(1-close*.95));
     const focused=this.emotion==='focused'||this.state==='thinking';
 
     for(const side of [-1,1]){
-      const x=cx+side*fw*.205;
+      const x=cx+side*fw*.215;
       ctx.save();
       ctx.globalCompositeOperation='lighter';
       ctx.shadowColor=`rgba(${style.cyan},${.84*style.glow})`;
-      ctx.shadowBlur=fw*(style.light?.035:.082);
+      ctx.shadowBlur=fw*(style.light?.040:.098);
 
       const g=ctx.createLinearGradient(x-width,y,x+width,y);
       g.addColorStop(0,`rgba(${style.cyan},0)`);
@@ -645,8 +689,8 @@ export class HologramAvatar{
 
       ctx.beginPath();
       ctx.moveTo(x-width,y);
-      ctx.quadraticCurveTo(x,y-height*1.55,x+width,y);
-      ctx.quadraticCurveTo(x,y+height*.58,x-width,y);
+      ctx.quadraticCurveTo(x-side*fw*.012,y-height*1.72,x+width,y);
+      ctx.quadraticCurveTo(x+side*fw*.010,y+height*.42,x-width,y);
       ctx.closePath();
       ctx.fill();
 
@@ -907,7 +951,7 @@ export class HologramAvatar{
     ctx.clearRect(0,0,w,h);
 
     const size=Math.min(w,h);
-    const fw=Math.min(size*.52,w*.46);
+    const fw=Math.min(size*.57,w*.50);
     const fh=fw*1.27;
     const breathing=this.animate&&!this.reducedMotion?Math.sin(time*.00105)*fh*.0035:0;
     const float=this.animate&&!this.reducedMotion?Math.sin(time*.00072)*fh*.0055:0;
@@ -932,7 +976,7 @@ export class HologramAvatar{
     const style=this.visualStyle();
     const energy=this.stateEnergy(time);
     const cx=w/2+px;
-    const cy=h*.355+float+breathing+py;
+    const cy=h*.342+float+breathing+py;
 
     ctx.save();
     if(presence<1){
@@ -950,6 +994,7 @@ export class HologramAvatar{
     this.drawFaceBase(ctx,cx,cy,fw,fh,style);
     this.drawFlow(ctx,cx,cy,fw,fh,time,energy,style);
     this.drawFaceTiles(ctx,cx,cy,fw,fh,time,energy,style,presence);
+    this.drawFaceContours(ctx,cx,cy,fw,fh,style,energy);
     this.drawEdgeFragments(ctx,cx,cy,fw,fh,time,energy,style);
     this.drawEars(ctx,cx,cy,fw,fh,time,energy,style);
     this.drawEyes(ctx,cx,cy,fw,fh,blink,energy,style);
