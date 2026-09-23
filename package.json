@@ -1,7 +1,7 @@
 {
-  "name": "dudidam-binary-assistant",
+  "name": "humanale-god-egine",
   "private": true,
-  "version": "2.3.0",
+  "version": "2.4.0",
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
@@ -10,10 +10,16 @@
     "desktop": "electron desktop/main.cjs",
     "verify": "npm test && npm run build",
     "package:desktop": "install-electron --no && node package-desktop.mjs",
-    "package:installer": "npx --yes electron-builder@26.16.1 --win nsis --x64 --publish never"
+    "package:installer": "npx --yes electron-builder@26.16.1 --win nsis --x64 --publish never",
+    "smoke:terminal": "node scripts/terminal-smoke.mjs"
   },
   "devDependencies": {
     "electron": "44.4.3"
   },
-  "main": "desktop/main.cjs"
+  "main": "desktop/main.cjs",
+  "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "node-pty": "1.1.0"
+  }
 }

@@ -16,19 +16,19 @@ const agents=[
  {id:'github-copilot',name:'GitHub Copilot',method:'CLI + custom agents',commands:['copilot'],envPath:'GITHUB_COPILOT_CLI_PATH',configEnvs:['COPILOT_GITHUB_TOKEN','GH_TOKEN','GITHUB_TOKEN'],canRun:true,url:'https://docs.github.com/en/copilot/how-tos/copilot-cli'},
  {id:'agent-copilot',name:'Agent / Copilot',method:'GitHub Copilot custom agent',commands:['copilot'],envPath:'GITHUB_COPILOT_CLI_PATH',url:'https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-custom-agents'},
  {id:'codex',name:'OpenAI Codex',method:'CLI + MCP',commands:['codex'],envPath:'CODEX_CLI_PATH',canRun:true,url:'https://developers.openai.com/codex/cli'},
- {id:'openai-api',name:'OpenAI API',method:'Dudidam runtime API provider',runtime:true,configEnvs:['OPENAI_API_KEY'],url:'https://developers.openai.com/api/'},
+ {id:'openai-api',name:'OpenAI API',method:'HumanALE god egine runtime API provider',runtime:true,configEnvs:['OPENAI_API_KEY'],url:'https://developers.openai.com/api/'},
  {id:'visual-copilot',name:'Visual Copilot',method:'Design-to-code external',external:true,url:'https://www.builder.io/c/docs/visual-copilot'},
  {id:'qodo',name:'Qodo',method:'IDE / review agent',commands:['qodo'],envPath:'QODO_CLI_PATH',url:'https://docs.qodo.ai/'},
  {id:'blackbox',name:'Blackbox AI',method:'IDE / external agent',external:true,url:'https://www.blackbox.ai/'},
- {id:'claude',name:'Claude Code · Fable 5',method:'Claude Code CLI + Fable 5 + Dudidam runtime API',commands:['claude'],envPath:'CLAUDE_CLI_PATH',runtime:true,configEnvs:['ANTHROPIC_API_KEY'],canRun:true,model:'claude-fable-5',url:'https://docs.anthropic.com/en/docs/claude-code/overview'},
+ {id:'claude',name:'Claude Code · Fable 5',method:'Claude Code CLI + Fable 5 + HumanALE god egine runtime API',commands:['claude'],envPath:'CLAUDE_CLI_PATH',runtime:true,configEnvs:['ANTHROPIC_API_KEY'],canRun:true,model:'claude-fable-5',url:'https://docs.anthropic.com/en/docs/claude-code/overview'},
  {id:'microsoft-copilot',name:'Microsoft Copilot',method:'External / IDE',external:true,url:'https://learn.microsoft.com/en-us/copilot/'},
- {id:'deepseek-coder',name:'DeepSeek Coder',method:'Dudidam runtime API provider',runtime:true,configEnvs:['DEEPSEEK_API_KEY'],url:'https://api-docs.deepseek.com/'},
+ {id:'deepseek-coder',name:'DeepSeek Coder',method:'HumanALE god egine runtime API provider',runtime:true,configEnvs:['DEEPSEEK_API_KEY'],url:'https://api-docs.deepseek.com/'},
  {id:'devin',name:'Devin AI',method:'Cloud software agent',external:true,url:'https://docs.devin.ai/'},
  {id:'codegeex',name:'CodeGeeX',method:'IDE coding assistant',external:true,url:'https://codegeex.cn/'},
  {id:'starcoder',name:'StarCoder',method:'Model / self-hosted endpoint',external:true,url:'https://huggingface.co/bigcode'},
  {id:'tabbyml',name:'TabbyML',method:'Self-hosted coding assistant',commands:['tabby'],envPath:'TABBY_CLI_PATH',url:'https://tabby.tabbyml.com/docs/'},
- {id:'grok',name:'Grok / xAI',method:'Dudidam runtime API provider',runtime:true,configEnvs:['XAI_API_KEY'],url:'https://docs.x.ai/'},
- {id:'gemini',name:'Gemini / Google AI',method:'Dudidam runtime API + CLI',runtime:true,commands:['gemini'],envPath:'GEMINI_CLI_PATH',configEnvs:['GEMINI_API_KEY','GOOGLE_API_KEY'],url:'https://github.com/google-gemini/gemini-cli'}
+ {id:'grok',name:'Grok / xAI',method:'HumanALE god egine runtime API provider',runtime:true,configEnvs:['XAI_API_KEY'],url:'https://docs.x.ai/'},
+ {id:'gemini',name:'Gemini / Google AI',method:'HumanALE god egine runtime API + CLI',runtime:true,commands:['gemini'],envPath:'GEMINI_CLI_PATH',configEnvs:['GEMINI_API_KEY','GOOGLE_API_KEY'],url:'https://github.com/google-gemini/gemini-cli'}
 ];
 
 async function exists(path){try{await access(path);return true;}catch{return false;}}
@@ -69,7 +69,7 @@ export function parseCodexJsonOutput(stdout=''){
 }
 export function agentTimeoutMs(mode='analyze',env=process.env){
  const fallback=mode==='work'?600000:120000;
- const raw=Number(env.DUDIDAM_AGENT_TIMEOUT_MS);
+ const raw=Number(env.HUMANALE_AGENT_TIMEOUT_MS??env.DUDIDAM_AGENT_TIMEOUT_MS);
  if(!Number.isFinite(raw)||raw<=0)return fallback;
  return Math.max(30000,Math.min(900000,Math.round(raw)));
 }
@@ -100,7 +100,7 @@ function looksLikeCopilotTrustPrompt(text=''){
 export class DeveloperAgentHub{
  constructor(){this.child=null;this.pending=false;this.projectRoot='';}
  setProjectRoot(value=''){this.projectRoot=String(value||'').trim();}
- getProjectRoot(){return (this.projectRoot||process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();}
+ getProjectRoot(){return (this.projectRoot||process.env.HUMANALE_PROJECT_ROOT||process.env.DUDIDAM_PROJECT_ROOT||process.cwd()).trim();}
  async projectRootReady(){
   const root=this.getProjectRoot();
   try{await access(root);await access(join(root,'.git'));return true;}catch{return false;}
@@ -113,11 +113,11 @@ export class DeveloperAgentHub{
    const configured=configNames.length?Boolean(configNames.some(name=>(process.env[name]||'').trim())&&(!agent.secondaryEnv||(process.env[agent.secondaryEnv]||'').trim())):false;
    const codexAuth=agent.id==='codex'&&executable?await codexLoginStatus(executable,projectRoot):null;
    let state='available',detail='';
-   if(agent.external){state='external';detail='Terdaftar di Agent Hub sebagai konektor eksternal; Dudidam tidak menjalankannya langsung.';}
-   else if(agent.runtime){state=configured?'configured':executable?'installed':'setup';detail=configured?'Kredensial provider runtime terdeteksi dari environment.':executable?'CLI lokal terdeteksi; provider runtime masih memerlukan kredensial environment.':'Provider tersedia di Dudidam tetapi belum dikonfigurasi di environment.';}
+   if(agent.external){state='external';detail='Terdaftar di Agent Hub sebagai konektor eksternal; HumanALE god egine tidak menjalankannya langsung.';}
+   else if(agent.runtime){state=configured?'configured':executable?'installed':'setup';detail=configured?'Kredensial provider runtime terdeteksi dari environment.':executable?'CLI lokal terdeteksi; provider runtime masih memerlukan kredensial environment.':'Provider tersedia di HumanALE god egine tetapi belum dikonfigurasi di environment.';}
    else if(agent.id==='replit'){state='mcp-client';detail='Replit Agent menerima remote MCP dari halaman Integrations.';}
    else if(agent.id==='pieces'){state=configured?'configured':executable?'installed':'setup';detail=configured?'PIECES_MCP_URL terdeteksi.':executable?'PiecesOS terdeteksi; salin URL MCP ke PIECES_MCP_URL bila ingin dipakai lintas agent.':'Install PiecesOS lalu ambil URL MCP lokal.';}
-   else if(agent.id==='askcodi'){state=configured?'configured':'setup';detail=configured?'AskCodi API siap dipakai dari provider Dudidam.':'Atur ASKCODI_API_KEY dan ASKCODI_MODEL.';}
+   else if(agent.id==='askcodi'){state=configured?'configured':'setup';detail=configured?'AskCodi API siap dipakai dari provider HumanALE god egine.':'Atur ASKCODI_API_KEY dan ASKCODI_MODEL.';}
    else if(agent.id==='codex'&&executable){state=codexAuth?.ready?'configured':'installed';detail=codexAuth?.ready?'Codex CLI terdeteksi dan login aktif.':'Codex CLI terdeteksi tetapi belum login. Jalankan codex login lalu coba lagi.';}
    else if(executable){state='installed';detail='CLI/aplikasi lokal terdeteksi.';}
    else{state='setup';detail=agent.method.includes('MCP')?'Belum terdeteksi lokal; integrasi MCP tetap didukung oleh produknya.':'Belum dikonfigurasi.';}
@@ -130,7 +130,7 @@ export class DeveloperAgentHub{
   const id=String(value?.id||''),prompt=String(value?.prompt||'').trim(),mode=value?.mode==='work'?'work':'analyze';
   if(!prompt||prompt.length>4000)throw new Error('Prompt agent harus berisi 1–4000 karakter.');
   const agent=agents.find(item=>item.id===id&&item.canRun);
-  if(!agent)throw new Error('Agent ini belum mendukung pemanggilan langsung dari Dudidam.');
+  if(!agent)throw new Error('Agent ini belum mendukung pemanggilan langsung dari HumanALE god egine.');
   if(mode==='work'&&!['github-copilot','codex','cursor','claude'].includes(id))throw new Error('Mode Kerja hanya tersedia untuk GitHub Copilot, OpenAI Codex, Cursor, atau Claude Code.');
   const executable=await locate(agent);
   if(!executable)throw new Error(agent.name+' belum ditemukan di PATH atau environment path khusus.');
@@ -167,7 +167,7 @@ export class DeveloperAgentHub{
      stdout+=data;
      if(id==='github-copilot'&&looksLikeCopilotTrustPrompt(stdout)){
       child.kill();
-      finish(new Error('GitHub Copilot meminta konfirmasi trust folder. Buka terminal di folder proyek, jalankan copilot sekali, trust folder tersebut, lalu jalankan lagi dari Dudidam.'));
+      finish(new Error('GitHub Copilot meminta konfirmasi trust folder. Buka terminal di folder proyek, jalankan copilot sekali, trust folder tersebut, lalu jalankan lagi dari HumanALE god egine.'));
       return;
      }
      if(stdout.length>400000){child.kill();finish(new Error('Output agent terlalu besar.'));}
@@ -176,7 +176,7 @@ export class DeveloperAgentHub{
      stderr=(stderr+data).slice(-16000);
      if(id==='github-copilot'&&looksLikeCopilotTrustPrompt(stderr)){
       child.kill();
-      finish(new Error('GitHub Copilot meminta konfirmasi trust folder. Buka terminal di folder proyek, jalankan copilot sekali, trust folder tersebut, lalu jalankan lagi dari Dudidam.'));
+      finish(new Error('GitHub Copilot meminta konfirmasi trust folder. Buka terminal di folder proyek, jalankan copilot sekali, trust folder tersebut, lalu jalankan lagi dari HumanALE god egine.'));
      }
     });
     child.on('error',()=>finish(new Error(agent.name+' tidak dapat dijalankan.')));

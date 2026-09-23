@@ -1,11 +1,12 @@
 $ErrorActionPreference = 'Stop'
 
-$voicePython = $env:DUDIDAM_PYTHON_PATH
+$voicePython = $env:HUMANALE_PYTHON_PATH
+if (-not $voicePython) { $voicePython = $env:DUDIDAM_PYTHON_PATH }
 if (-not $voicePython) {
     $voicePython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
 }
 if (-not (Test-Path -LiteralPath $voicePython)) {
-    throw 'Python 3.12 tidak ditemukan. Atur DUDIDAM_PYTHON_PATH ke python.exe lalu jalankan ulang.'
+    throw 'Python 3.12 tidak ditemukan. Atur HUMANALE_PYTHON_PATH (atau DUDIDAM_PYTHON_PATH lama) ke python.exe lalu jalankan ulang.'
 }
 
 & $voicePython -m pip install --user 'faster-whisper==1.2.1' 'piper-tts==1.4.1'
@@ -17,7 +18,7 @@ from pathlib import Path
 from faster_whisper import WhisperModel
 from huggingface_hub import hf_hub_download
 
-root = Path(os.environ['LOCALAPPDATA']) / 'Dudidam' / 'voice-models'
+root = Path(os.environ['LOCALAPPDATA']) / 'HumanALE god egine' / 'voice-models'
 root.mkdir(parents=True, exist_ok=True)
 WhisperModel('base', device='cpu', compute_type='int8', download_root=str(root))
 voice_dir = root / 'piper'

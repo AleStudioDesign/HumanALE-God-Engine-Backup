@@ -1,17 +1,17 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-set "DUDIDAM_APP=%CD%\Dudidam-Desktop\Dudidam.exe"
+set "HUMANALE_APP=%CD%\HumanALE-God-Engine-Desktop\HumanALE-God-Engine.exe"
 
-if not exist "%DUDIDAM_APP%" (
-  echo Dudidam belum dibangun. Jalankan proses package desktop terlebih dahulu.
+if not exist "%HUMANALE_APP%" (
+  echo HumanALE god egine belum dibangun. Jalankan proses package desktop terlebih dahulu.
   pause
   exit /b 1
 )
 
-start "Dudidam" "%DUDIDAM_APP%"
+start "HumanALE god egine" "%HUMANALE_APP%"
 if errorlevel 1 (
-  echo Dudidam gagal dijalankan.
+  echo HumanALE god egine gagal dijalankan.
   pause
   exit /b 1
 )

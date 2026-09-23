@@ -1,5 +1,5 @@
 import {validateChat} from './bridge.mjs';
-import {dudidamSystemPrompt} from './dudidam-brain.mjs';
+import {humanaleSystemPrompt} from './humanale-brain.mjs';
 
 const baseURL='https://api.askcodi.com/v1';
 
@@ -20,14 +20,14 @@ export class AskCodiBridge{
   const data=validateChat(value);
   if(data.image)throw new Error('Foto belum diaktifkan untuk AskCodi. Pilih ChatGPT atau Gemini untuk menjelaskan foto.');
   const key=apiKey(),selectedModel=model();
-  if(!key)throw new Error('ASKCODI_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang Dudidam.');
+  if(!key)throw new Error('ASKCODI_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE god egine.');
   if(!selectedModel)throw new Error('ASKCODI_MODEL belum diatur. Isi model AskCodi yang tersedia untuk workspace kamu.');
   if(this.pending)throw new Error('Tunggu balasan AskCodi sebelumnya selesai.');
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
   try{
    const messages=[
-    {role:'system',content:dudidamSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.')},
+    {role:'system',content:humanaleSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.')},
     ...data.history.map(item=>({role:item.role,content:item.content})),
     {role:'user',content:data.message}
    ];

@@ -1,5 +1,5 @@
 import {validateChat} from './bridge.mjs';
-import {dudidamSystemPrompt} from './dudidam-brain.mjs';
+import {humanaleSystemPrompt} from './humanale-brain.mjs';
 
 const endpoint='https://api.deepseek.com/responses';
 const defaultModel='deepseek-flash';
@@ -23,14 +23,14 @@ export class DeepSeekBridge{
  async status(){return {configured:Boolean(apiKey()),mode:'deepseek-api',model:model()};}
  async ask(value){
   const data=validateChat(value);
-  if(data.image)throw new Error('Foto belum diaktifkan untuk DeepSeek di Dudidam. Pilih OpenAI API, ChatGPT, atau Gemini untuk menjelaskan foto.');
+  if(data.image)throw new Error('Foto belum diaktifkan untuk DeepSeek di HumanALE god egine. Pilih OpenAI API, ChatGPT, atau Gemini untuk menjelaskan foto.');
   const key=apiKey();
-  if(!key)throw new Error('DEEPSEEK_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang Dudidam.');
+  if(!key)throw new Error('DEEPSEEK_API_KEY belum diatur. Tambahkan environment variable lalu buka ulang HumanALE god egine.');
   if(this.pending)throw new Error('Tunggu balasan DeepSeek sebelumnya selesai.');
   this.pending=true;this.controller=new AbortController();
   const timeout=setTimeout(()=>this.controller?.abort(),90000);
   try{
-   const instructions=dudidamSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.');
+   const instructions=humanaleSystemPrompt(data.message,'Jangan mengklaim dapat mengendalikan komputer atau membaca data pribadi.');
    const input='Percakapan sebelumnya dan pesan saat ini:\n'+JSON.stringify({history:data.history,message:data.message});
    const response=await this.fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:model(),instructions,input}),signal:this.controller.signal});
    let payload={};try{payload=await response.json();}catch{}
