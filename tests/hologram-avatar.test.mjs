@@ -4,25 +4,19 @@ import {readFile} from 'node:fs/promises';
 
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 
-test('main Dudidam renderer is a procedural hologram with no static face image dependency',async()=>{
-  const [app,hologram,webgl,index]=await Promise.all([
+test('main HumanALE renderer restores the PNG-guided green binary avatar',async()=>{
+  const [app,avatar,index]=await Promise.all([
     read('public/app.js'),
-    read('public/hologram-avatar.js'),
-    read('public/webgl-avatar.js'),
+    read('public/avatar.js'),
     read('public/index.html')
   ]);
-  assert.match(app,/import \{HologramAvatar\} from '\.\/hologram-avatar\.js'/);
-  assert.match(app,/new HologramAvatar\(\$\('#avatar'\)\)/);
-  assert.match(hologram,/webgl-avatar\.js/);
-  assert.doesNotMatch(webgl,/reference\.png|new Image\(|drawImage\(/);
-  assert.match(webgl,/getContext\('webgl2'/);
-  assert.match(webgl,/drawArraysInstanced/);
-  assert.match(webgl,/buildFaceTiles/);
-  assert.match(webgl,/buildNeckAndShoulders/);
-  assert.match(webgl,/buildFragmentsAndGlyph/);
-  assert.match(webgl,/buildOverlay/);
-  assert.match(webgl,/ResizeObserver/);
-  assert.match(index,/Entitas AI holografik procedural/);
+  assert.match(app,/import \\{BinaryAvatar\\} from '\\.\\/avatar\\.js'/);
+  assert.match(app,/new BinaryAvatar\\(\\$\\('#avatar'\\)\\)/);
+  assert.match(avatar,/reference\\.png/);
+  assert.match(avatar,/new Image\\(\\)/);
+  assert.match(avatar,/drawImage\\(/);
+  assert.match(avatar,/this\\.color='green'/);
+  assert.match(index,/Wajah manusia biner hijau/);
 });
 
 test('hologram public control API supports state, audio, emotion, theme, pulse and glitch',async()=>{
