@@ -1,0 +1,11 @@
+{
+  "appId": "id.my.aleprinting.humanale",
+  "appName": "HumanALE",
+  "webDir": "dist/client",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
