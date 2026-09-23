@@ -67,14 +67,6 @@ jobs:
           cp "$APK" "release/HumanALE-Android-$SHORT_SHA.apk"
           ls -lh release/*.apk
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: HumanALE-Android-APK
-          path: release/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
       - name: Publish rolling Android release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -84,3 +76,12 @@ jobs:
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --target "$GITHUB_SHA" --title "HumanALE Android APK" --notes "APK Android debug-installable terbaru HumanALE. Dibangun otomatis dari branch main."
           gh release edit "$TAG" --target "$GITHUB_SHA" --title "HumanALE Android APK" --notes "APK Android debug-installable terbaru HumanALE. Dibangun otomatis dari branch main."
           gh release upload "$TAG" "$APK#HumanALE-Android.apk" --clobber
+
+      - name: Upload APK artifact (optional)
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: HumanALE-Android-APK
+          path: release/*.apk
+          if-no-files-found: warn
+          retention-days: 30
