@@ -12,8 +12,8 @@ const VALID_EMOTIONS=new Set(['neutral','focused','happy','curious']);
 
 function faceHalfWidth(y){
   const pts=[
-    [-1,.44],[-.84,.72],[-.6,.91],[-.3,1],[-.05,.99],
-    [.22,.94],[.46,.82],[.68,.65],[.86,.40],[1,.12]
+    [-1,.50],[-.90,.68],[-.72,.88],[-.48,1.00],[-.20,1.04],
+    [.08,1.03],[.34,.96],[.56,.82],[.76,.62],[.92,.34],[1,.16]
   ];
   for(let i=0;i<pts.length-1;i++){
     const [y0,w0]=pts[i],[y1,w1]=pts[i+1];
@@ -25,14 +25,17 @@ function faceHalfWidth(y){
 function faceDepth(nx,ny){
   const half=faceHalfWidth(ny);
   const xn=nx/Math.max(.05,half);
-  const dome=Math.sqrt(Math.max(0,1-xn*xn))*gauss(ny,-.06,.96)*.54;
-  const center=gauss(nx,0,.45)*gauss(ny,.02,.82)*.18;
-  const nose=gauss(nx,0,.07)*gauss(ny,.05,.33)*.58+gauss(nx,0,.12)*gauss(ny,.23,.11)*.36;
-  const cheeks=(gauss(nx,-.33,.18)+gauss(nx,.33,.18))*gauss(ny,.18,.20)*.22;
-  const brow=(gauss(nx,-.28,.20)+gauss(nx,.28,.20))*gauss(ny,-.23,.10)*.14;
-  const eyes=(gauss(nx,-.29,.16)+gauss(nx,.29,.16))*gauss(ny,-.12,.075)*.30;
-  const mouth=gauss(nx,0,.25)*gauss(ny,.47,.065)*.11;
-  return clamp(dome+center+nose+cheeks+brow-eyes-mouth,0,1.35);
+  const dome=Math.sqrt(Math.max(0,1-xn*xn))*gauss(ny,-.04,.99)*.60;
+  const center=gauss(nx,0,.48)*gauss(ny,.02,.86)*.20;
+  const temples=(gauss(nx,-.62,.23)+gauss(nx,.62,.23))*gauss(ny,-.20,.35)*.07;
+  const nose=gauss(nx,0,.065)*gauss(ny,.04,.36)*.66+gauss(nx,0,.115)*gauss(ny,.24,.105)*.42;
+  const cheeks=(gauss(nx,-.34,.19)+gauss(nx,.34,.19))*gauss(ny,.17,.21)*.28;
+  const brow=(gauss(nx,-.29,.21)+gauss(nx,.29,.21))*gauss(ny,-.24,.105)*.17;
+  const eyes=(gauss(nx,-.30,.17)+gauss(nx,.30,.17))*gauss(ny,-.13,.060)*.38;
+  const philtrum=gauss(nx,0,.055)*gauss(ny,.36,.10)*.07;
+  const mouth=gauss(nx,0,.26)*gauss(ny,.48,.052)*.09;
+  const chin=gauss(nx,0,.22)*gauss(ny,.72,.15)*.10;
+  return clamp(dome+center+temples+nose+cheeks+brow+chin-eyes-philtrum-mouth,0,1.42);
 }
 
 function mat4Perspective(fovy,aspect,near,far){
@@ -340,110 +343,120 @@ export class WebGLAvatar{
   }
 
   buildFaceTiles(){
-    const rows=64,cols=50;
+    const rows=80,cols=62;
     for(let iy=0;iy<=rows;iy++){
       const ny=-1+iy/rows*2;
       const half=faceHalfWidth(ny);
       for(let ix=0;ix<=cols;ix++){
         const nx=-1+ix/cols*2;
         if(Math.abs(nx)>half)continue;
-        const eyeL=((nx+.29)/.235)**2+((ny+.13)/.082)**2<1;
-        const eyeR=((nx-.29)/.235)**2+((ny+.13)/.082)**2<1;
-        const mouthGap=Math.abs(nx)<.27&&Math.abs(ny-.47)<.024;
+
+        const eyeL=((nx+.30)/.255)**2+((ny+.13)/.060)**2<1;
+        const eyeR=((nx-.30)/.255)**2+((ny+.13)/.060)**2<1;
+        const mouthGap=Math.abs(nx)<.255&&Math.abs(ny-.48)<.018;
         if(eyeL||eyeR||mouthGap)continue;
 
         const seed=hash(ix,iy,1);
         const depth=faceDepth(nx,ny);
         const edge=Math.abs(nx)/Math.max(.05,half);
-        const zone=ny<-.62?0:ny<-.27?1:ny<.1?2:ny<.38?3:ny<.68?4:5;
-        const x=nx*1.03;
-        const y=-ny*1.34+.12;
-        const z=depth*.52-.30;
-        const scale=.032+depth*.010+(zone===0?.003:0);
-        const blue=.28+.24*depth+.08*seed;
-        const color=[
-          .025+.055*seed,
-          .18+.22*depth+.08*seed,
-          blue
+        const zone=ny<-.64?0:ny<-.28?1:ny<.08?2:ny<.38?3:ny<.68?4:5;
+
+        if(zone===0&&edge>.78&&seed<.10)continue;
+        if(zone===1&&edge>.91&&seed<.055)continue;
+
+        const x=nx*1.01;
+        const y=-ny*1.36+.12;
+        const z=depth*.56-.315;
+        const scale=.0255+depth*.0085+(zone===0?.0015:0);
+
+        let color=[
+          .018+.035*seed,
+          .115+.16*depth+.04*seed,
+          .23+.22*depth+.06*seed
         ];
-        const alpha=.36+.34*depth+.10*(1-edge);
+        if(seed>.94&&edge>.48)color=[.20,.16,.58];
+
+        const alpha=.48+.27*depth+.12*(1-edge);
         pushInstance(this.instances,x,y,z,scale,color,seed*TAU,zone,seed,alpha);
       }
     }
   }
 
   buildNeckAndShoulders(){
-    const nRows=22,nCols=18;
+    const nRows=28,nCols=22;
     for(let iy=0;iy<=nRows;iy++){
       const t=iy/nRows;
       for(let ix=0;ix<=nCols;ix++){
         const nx=-1+ix/nCols*2;
-        const half=.62+.12*t;
+        const half=.60+.14*t;
         if(Math.abs(nx)>half)continue;
         const seed=hash(ix,iy,11);
-        const x=nx*.43*(1+t*.12);
-        const y=-1.20-t*1.28;
-        const z=.05+.18*(1-nx*nx)-t*.10;
-        const scale=.035+seed*.010;
-        const color=[.035+.04*seed,.22+.18*seed,.38+.25*seed];
-        pushInstance(this.instances,x,y,z,scale,color,seed*TAU,6,seed,.42+.22*seed);
+        const x=nx*.41*(1+t*.13);
+        const y=-1.18-t*1.36;
+        const z=.075+.20*(1-nx*nx)-t*.11;
+        const scale=.029+seed*.009;
+        let color=[.025+.035*seed,.15+.15*seed,.30+.23*seed];
+        if(seed>.93)color=[.19,.16,.56];
+        pushInstance(this.instances,x,y,z,scale,color,seed*TAU,6,seed,.50+.24*seed);
       }
     }
 
-    const sRows=16,sCols=60;
+    const sRows=20,sCols=72;
     for(let iy=0;iy<=sRows;iy++){
       const t=iy/sRows;
       for(let ix=0;ix<=sCols;ix++){
         const nx=-1+ix/sCols*2;
-        const curve=.18+(1-Math.abs(nx))*.78;
+        const curve=.20+(1-Math.abs(nx))*.80;
         if(t>curve)continue;
         const seed=hash(ix,iy,18);
-        if(seed<.045)continue;
-        const x=nx*2.45;
-        const y=-2.22-t*.78;
-        const z=-.20+.24*(1-Math.abs(nx))+.10*seed;
-        const scale=.038+seed*.014;
-        const color=[.025+.05*seed,.20+.20*seed,.37+.30*seed];
-        pushInstance(this.instances,x,y,z,scale,color,seed*TAU,7,seed,.30+.24*seed);
+        if(seed<.032)continue;
+        const x=nx*2.58;
+        const y=-2.22-t*.86;
+        const z=-.22+.27*(1-Math.abs(nx))+.10*seed;
+        const scale=.031+seed*.012;
+        let color=[.020+.04*seed,.14+.17*seed,.29+.27*seed];
+        if(seed>.94)color=[.22,.15,.62];
+        pushInstance(this.instances,x,y,z,scale,color,seed*TAU,7,seed,.36+.28*seed);
       }
     }
   }
 
   buildFragmentsAndGlyph(){
-    for(let i=0;i<150;i++){
+    for(let i=0;i<188;i++){
       const seed=hash(i,2,24);
       const side=i%2?-1:1;
-      const crown=i<86;
+      const crown=i<108;
       let x,y,z;
       if(crown){
-        x=side*(.08+.92*hash(i,4,25));
-        y=1.32+.10+hash(i,6,26)*.68;
-        z=-.22+hash(i,8,27)*.70;
+        x=side*(.10+.88*hash(i,4,25));
+        y=1.40+hash(i,6,26)*.72;
+        z=-.24+hash(i,8,27)*.76;
       }else{
-        x=side*(1.05+.20+hash(i,4,28)*.72);
-        y=.95-hash(i,6,29)*2.25;
-        z=-.25+hash(i,8,30)*.72;
+        x=side*(1.03+.16+hash(i,4,28)*.62);
+        y=1.06-hash(i,6,29)*2.30;
+        z=-.28+hash(i,8,30)*.76;
       }
-      const s=.045+seed*.075;
-      const color=seed>.72?[.18,.70,1.0]:seed>.40?[.12,.45,.95]:[.38,.24,1.0];
-      pushInstance(this.instances,x,y,z,s,color,seed*TAU,8,seed,.34+.34*seed);
+      const s=.035+seed*.064;
+      const color=seed>.76?[.22,.76,1.0]:seed>.43?[.11,.42,.92]:[.39,.24,1.0];
+      pushInstance(this.instances,x,y,z,s,color,seed*TAU,8,seed,.30+.38*seed);
     }
 
-    for(let i=0;i<84;i++){
+    for(let i=0;i<96;i++){
       const seed=hash(i,3,33);
       const side=i%2?-1:1;
-      const x=side*(.38+.55*seed);
-      const y=-1.7-hash(i,5,34)*1.25;
-      const z=-.12+hash(i,7,35)*.62;
-      const s=.035+seed*.060;
-      const color=seed>.68?[.12,.65,1]:[.30,.20,.92];
-      pushInstance(this.instances,x,y,z,s,color,seed*TAU,9,seed,.24+.32*seed);
+      const x=side*(.34+.66*seed);
+      const y=-1.62-hash(i,5,34)*1.42;
+      const z=-.15+hash(i,7,35)*.66;
+      const s=.030+seed*.052;
+      const color=seed>.70?[.13,.66,1]:[.31,.19,.92];
+      pushInstance(this.instances,x,y,z,s,color,seed*TAU,9,seed,.22+.34*seed);
     }
 
     const glyph=[
-      [0,.78,.43],[.055,.78,.43],[-.055,.78,.43],[0,.835,.43],[0,.725,.43]
+      [0,.84,.49],[.047,.84,.49],[-.047,.84,.49],[0,.887,.49],[0,.793,.49],
+      [0,1.02,.46],[0,.66,.46]
     ];
-    for(const [x,y,z] of glyph)pushInstance(this.instances,x,y,z,.040,[.82,.98,1],0,10,.9,.92);
+    for(const [x,y,z] of glyph)pushInstance(this.instances,x,y,z,.030,[.88,1,1],0,10,.9,.96);
   }
 
   initWebGL(){
@@ -578,8 +591,8 @@ export class WebGLAvatar{
 
   vpMatrix(){
     const aspect=Math.max(.1,this.w/Math.max(1,this.h));
-    const projection=mat4Perspective(30*Math.PI/180,aspect,.1,30);
-    const view=mat4LookAt([0,-.62,10.4],[0,-.62,0],[0,1,0]);
+    const projection=mat4Perspective(29*Math.PI/180,aspect,.1,30);
+    const view=mat4LookAt([0,-.58,10.1],[0,-.58,0],[0,1,0]);
     return mat4Multiply(projection,view);
   }
 
@@ -605,9 +618,9 @@ export class WebGLAvatar{
       }
     };
 
-    circle(0,.12,-.72,1.70,96,cyan,.18+.07*energy,time*.00008);
-    circle(0,.12,-.74,1.92,96,[.20,.48,1],.10+.05*energy,-time*.00005);
-    circle(0,.12,-.76,2.10,96,violet,.055+.035*energy,time*.000035);
+    circle(0,.16,-.72,1.78,112,cyan,.16+.065*energy,time*.00007);
+    circle(0,.16,-.74,2.02,112,[.20,.48,1],.085+.045*energy,-time*.000045);
+    circle(0,.16,-.76,2.18,112,violet,.045+.030*energy,time*.000032);
 
     const earEnergy=Math.max(this.earSpectrum.low,this.earSpectrum.mid,this.earSpectrum.high,this.listening?.2:0);
     for(const side of [-1,1]){
@@ -619,10 +632,10 @@ export class WebGLAvatar{
     }
 
     const eye=(side,scale=1,alpha=.9)=>{
-      const cx=side*.29,cy=.29,cz=.52;
-      const half=.235*scale,h=.045*scale*(1-blink*.94);
+      const cx=side*.30,cy=.30,cz=.56;
+      const half=.265*scale,h=.027*scale*(1-blink*.95);
       const boundary=[];
-      const seg=22;
+      const seg=28;
       for(let i=0;i<=seg;i++){
         const t=i/seg;
         boundary.push([cx+lerp(-half,half,t),cy+Math.sin(t*Math.PI)*h,cz]);
@@ -638,8 +651,11 @@ export class WebGLAvatar{
         this.flatPush(triangles,...b,...cyan,.18*alpha);
       }
     };
-    eye(-1,1.55,.10);eye(1,1.55,.10);
-    eye(-1,1,.96);eye(1,1,.96);
+    eye(-1,1.72,.075);eye(1,1.72,.075);
+    eye(-1,1.18,.16);eye(1,1.18,.16);
+    eye(-1,1,.98);eye(1,1,.98);
+    line(lines,[-.565,.30,.585],[-.035,.30,.585],white,.70+.18*energy);
+    line(lines,[.035,.30,.585],[.565,.30,.585],white,.70+.18*energy);
 
     const quad=(x0,y0,x1,y1,z,color,a0,a1=a0)=>{
       this.flatPush(triangles,x0,y0,z,...color,a0);
@@ -649,13 +665,27 @@ export class WebGLAvatar{
       this.flatPush(triangles,x1,y1,z,...color,a1);
       this.flatPush(triangles,x0,y1,z,...color,a1);
     };
-    quad(-.025,1.78,.025,-2.95,.50,cyan,.05,.20+.20*energy);
-    quad(-.009,1.78,.009,-2.95,.53,white,.16,.58+.22*energy);
+    quad(-.022,1.92,.022,-3.02,.52,cyan,.035,.16+.18*energy);
+    quad(-.0065,1.92,.0065,-3.02,.57,white,.20,.68+.20*energy);
+
+    const diamond=(cx,cy,z,r,color,alpha)=>{
+      line(lines,[cx,cy+r,z],[cx+r,cy,z],color,alpha);
+      line(lines,[cx+r,cy,z],[cx,cy-r,z],color,alpha);
+      line(lines,[cx,cy-r,z],[cx-r,cy,z],color,alpha);
+      line(lines,[cx-r,cy,z],[cx,cy+r,z],color,alpha);
+    };
+    diamond(0,.84,.60,.095,cyan,.60+.18*energy);
+    diamond(0,.84,.61,.047,white,.72+.18*energy);
+    line(lines,[0,1.14,.59],[0,.96,.59],white,.50+.16*energy);
+    line(lines,[0,.72,.59],[0,.57,.59],cyan,.38+.12*energy);
+
+    line(lines,[-.055,.16,.55],[-.018,-.17,.60],cyan,.095);
+    line(lines,[.055,.16,.55],[.018,-.17,.60],cyan,.095);
 
     const level=this.speaking?this.audioLevel:0;
-    const mouthY=-.57,open=.008+.055*level;
-    line(lines,[-.19,mouthY,.51],[0,mouthY-open,.53],cyan,.34+.25*level);
-    line(lines,[0,mouthY-open,.53],[.19,mouthY,.51],cyan,.34+.25*level);
+    const mouthY=-.585,open=.006+.046*level;
+    line(lines,[-.205,mouthY,.555],[0,mouthY-open,.575],cyan,.25+.24*level);
+    line(lines,[0,mouthY-open,.575],[.205,mouthY,.555],cyan,.25+.24*level);
 
     if(this.state==='processing'||this.evolving){
       circle(0,.12,-.25,1.42,72,[.38,.62,1],.18+.10*energy,time*.00045);
