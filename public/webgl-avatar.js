@@ -732,7 +732,7 @@ export class WebGLAvatar{
       const seg=26;
       for(let i=0;i<=seg;i++){
         const t=-1+i/seg*2,x=.225*t,arch=1-t*t;
-        const cupid=.012*Math.exp(-(t/.22)**2);
+        const cupid=.012*Math.exp(-((t/.22)**2));
         upper.push([x,mouthY+.020*arch-cupid,.585+.018*arch]);
         lower.push([x,mouthY-.020*arch-open*arch,.590+.026*arch]);
         inner.push([x,mouthY-.002-open*.50*arch,.602]);
