@@ -21,7 +21,7 @@ export class BinaryAvatar {
   this.environmentQuery=matchMedia('(prefers-color-scheme: light)');
   this.environment='auto';
   this.animate=true;
-  this.color='spectrum';
+  this.color='green';
   this.persona='chatgpt';
   this.mode='mixed';
   this.allEffects=false;
@@ -100,7 +100,7 @@ export class BinaryAvatar {
   this.evolving=false;
   this.evolutionCompleteUntil=performance.now()+2200;
  }
- activateAllEffects(value=true){this.allEffects=Boolean(value);if(this.allEffects){this.mode='mixed';this.color='spectrum';this.animate=true;this.track=true;}}
+ activateAllEffects(value=true){this.allEffects=Boolean(value);if(this.allEffects){this.mode='mixed';this.color='green';this.animate=true;this.track=true;}}
   reveal(){this.transitionKind='';this.awakeningStart=0;this.awakeningDuration=0;}
   awaken(duration=4200){this.activateAllEffects(true);this.transitionKind='assemble';this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1800,Number(duration)||4200);}
   dismiss(duration=3000){this.transitionKind='disassemble';this.awakeningStart=performance.now();this.awakeningDuration=Math.max(1500,Number(duration)||3000);}
