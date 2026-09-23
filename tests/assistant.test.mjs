@@ -38,7 +38,7 @@ test('all HumanALE god egine conversation providers share the Brain Core prompt'
  ].map(url=>readFile(new URL(url,import.meta.url),'utf8')));
  for(const source of sources){
   assert.match(source,/humanaleSystemPrompt/);
-  assert.match(source,/humanale-brain\\.mjs/);
+  assert.match(source,/humanale-brain\.mjs/);
  }
 });
 
