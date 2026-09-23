@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 
-test('main HumanALE renderer restores the PNG-guided green binary avatar',async()=>{
+test('main HumanALE renderer uses a fully procedural green binary face with no PNG dependency',async()=>{
   const [app,avatar,index]=await Promise.all([
     read('public/app.js'),
     read('public/avatar.js'),
@@ -12,11 +12,11 @@ test('main HumanALE renderer restores the PNG-guided green binary avatar',async(
   ]);
   assert.match(app,/import \{BinaryAvatar\} from '\.\/avatar\.js'/);
   assert.match(app,/new BinaryAvatar\(\$\('#avatar'\)\)/);
-  assert.match(avatar,/reference\.png/);
-  assert.match(avatar,/new Image\(\)/);
-  assert.match(avatar,/drawImage\(/);
+  assert.match(avatar,/buildProceduralFaceSamples/);
+  assert.match(avatar,/proceduralSeed/);
   assert.match(avatar,/this\.color='green'/);
-  assert.match(index,/Wajah manusia biner hijau/);
+  assert.doesNotMatch(avatar,/reference\.png|new Image\(|drawImage\(/);
+  assert.match(index,/Wajah manusia biner hijau procedural/);
 });
 
 test('hologram public control API supports state, audio, emotion, theme, pulse and glitch',async()=>{
