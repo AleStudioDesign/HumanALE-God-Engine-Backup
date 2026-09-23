@@ -10,12 +10,12 @@ test('main HumanALE renderer restores the PNG-guided green binary avatar',async(
     read('public/avatar.js'),
     read('public/index.html')
   ]);
-  assert.match(app,/import \\{BinaryAvatar\\} from '\\.\\/avatar\\.js'/);
-  assert.match(app,/new BinaryAvatar\\(\\$\\('#avatar'\\)\\)/);
-  assert.match(avatar,/reference\\.png/);
-  assert.match(avatar,/new Image\\(\\)/);
-  assert.match(avatar,/drawImage\\(/);
-  assert.match(avatar,/this\\.color='green'/);
+  assert.match(app,/import \{BinaryAvatar\} from '\.\/avatar\.js'/);
+  assert.match(app,/new BinaryAvatar\(\$\('#avatar'\)\)/);
+  assert.match(avatar,/reference\.png/);
+  assert.match(avatar,/new Image\(\)/);
+  assert.match(avatar,/drawImage\(/);
+  assert.match(avatar,/this\.color='green'/);
   assert.match(index,/Wajah manusia biner hijau/);
 });
 
