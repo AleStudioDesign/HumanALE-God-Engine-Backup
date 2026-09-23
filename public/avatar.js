@@ -7,8 +7,55 @@ function cubicPoint(a,b,c,d,t){
  return u*u*u*a+3*u*u*t*b+3*u*t*t*c+t*t*t*d;
 }
 
+function proceduralSeed(x,y){
+ const value=Math.sin((x+17.13)*12.9898+(y+9.71)*78.233)*43758.5453;
+ return value-Math.floor(value);
+}
+
+function buildProceduralFaceSamples(){
+ const samples=[];
+ const rows=72,cols=62;
+ for(let row=0;row<rows;row++){
+  const y=row/(rows-1)-.5;
+  let halfWidth;
+  if(y<-.28)halfWidth=.335+(y+.5)*.42;
+  else if(y<.10)halfWidth=.425-Math.abs(y+.06)*.055;
+  else halfWidth=.416-(y-.10)*.47;
+  halfWidth=clamp(halfWidth,.205,.43);
+  for(let col=0;col<cols;col++){
+   const x=(col/(cols-1)-.5)*.9;
+   if(Math.abs(x)>halfWidth)continue;
+   const nx=x/halfWidth;
+   const edge=1-nx*nx;
+   const seed=proceduralSeed(col,row);
+
+   const forehead=Math.exp(-((x/.30)**2+((y+.31)/.19)**2));
+   const leftCheek=Math.exp(-(((x+.205)/.14)**2+((y-.09)/.19)**2));
+   const rightCheek=Math.exp(-(((x-.205)/.14)**2+((y-.09)/.19)**2));
+   const noseBridge=Math.exp(-((x/.072)**2+((y-.015)/.25)**2));
+   const noseTip=Math.exp(-((x/.105)**2+((y-.145)/.08)**2));
+   const leftEye=Math.exp(-(((x+.19)/.105)**2+((y+.065)/.047)**2));
+   const rightEye=Math.exp(-(((x-.19)/.105)**2+((y+.065)/.047)**2));
+   const mouthLine=Math.exp(-((x/.205)**2+((y-.267)/.035)**2));
+   const chin=Math.exp(-((x/.18)**2+((y-.39)/.11)**2));
+
+   let lum=.12+.31*edge+.14*forehead+.18*(leftCheek+rightCheek)+.28*noseBridge+.16*noseTip+.11*chin;
+   lum-=.22*(leftEye+rightEye)+.13*mouthLine;
+   lum+=.08*Math.sin((x*53+y*31)+seed*TAU)+.05*Math.sin((x-y)*79);
+   lum=clamp(lum,.045,.92);
+
+   // Thin a few points near the silhouette so the digital edge looks fragmented,
+   // while keeping the eyes/nose/mouth geometry generated entirely from code.
+   const edgeFade=clamp((edge-.03)/.28,0,1);
+   if(seed>edgeFade*.96+.035)continue;
+   samples.push({x,y,lum,seed,glyph:seed>.5?'1':'0'});
+  }
+ }
+ return samples;
+}
+
 export class BinaryAvatar {
- constructor(canvas,referenceSrc='/reference.png'){
+ constructor(canvas){
   this.canvas=canvas;
   this.ctx=canvas.getContext('2d');
   this.pointer={x:0,y:0};
@@ -48,31 +95,14 @@ export class BinaryAvatar {
   this.actionStart=0;
   this.blinkStart=-10000;
   this.nextBlink=performance.now()+3000;
-  this.samples=[];
+  this.samples=buildProceduralFaceSamples();
   this.last=0;
   this.neuralNodes=Array.from({length:42},(_,i)=>({angle:i*2.39996,orbit:.08+Math.random()*.2,lift:(Math.random()-.5)*.42,phase:Math.random()*TAU,speed:.18+Math.random()*.3,glyph:Math.random()>.5?'1':'0'}));
   this.dataFlows=Array.from({length:6},(_,i)=>({phase:i/6*TAU,tilt:(i%3-1)*.1,speed:.32+Math.random()*.28,glyph:i%2?'1':'0'}));
   this.rootStrands=Array.from({length:15},(_,i)=>({side:i%2?-1:1,spread:.22+(i%5)*.075,phase:i/15,speed:.11+(i%4)*.025,bend:(Math.random()-.5)*.18,targetY:-.1-(i%5)*.065,glyph:i%2?'1':'0'}));
   this.neckGlyphs=Array.from({length:96},(_,i)=>({x:(Math.random()-.5)*2,y:(i+Math.random())/96,phase:Math.random()*TAU,glyph:Math.random()>.5?'1':'0'}));
   new ResizeObserver(()=>this.resize()).observe(canvas);
-  const img=new Image();
-  img.onload=()=>{
-   const sampleCanvas=document.createElement('canvas');
-   sampleCanvas.width=110;sampleCanvas.height=142;
-   const sampleContext=sampleCanvas.getContext('2d',{willReadFrequently:true});
-   sampleContext.drawImage(img,120,0,322,393,0,0,110,142);
-   const data=sampleContext.getImageData(0,0,110,142).data;
-   for(let y=0;y<142;y+=2.05)for(let x=0;x<110;x+=1.85){
-    const dx=(x-55)/55,dy=(y-69)/70;
-    if(dx*dx+dy*dy>1)continue;
-    const index=(Math.floor(y)*110+Math.floor(x))*4;
-    const lum=(data[index]*.21+data[index+1]*.72+data[index+2]*.07)/255;
-    if(lum>.035)this.samples.push({x:x/110-.5,y:y/142-.5,lum,seed:Math.random(),glyph:Math.random()>.5?'1':'0'});
-   }
-   this.ready=true;
-  };
-  img.src=referenceSrc;
-  img.onerror=()=>document.dispatchEvent(new CustomEvent('avatar-error'));
+  this.ready=true;
   requestAnimationFrame(time=>this.frame(time));
  }
 
