@@ -68,7 +68,7 @@ test('hologram includes responsive theme-aware motion and audio-reactive facial 
 test('HumanALE v3 face keeps human-like proportions, lips, eyes and frequency-reactive ears',async()=>{
   const webgl=await read('public/webgl-avatar.js');
   assert.match(webgl,/const rows=88,cols=68/);
-  assert.match(webgl,/\[1,\.30\]/);
+  assert.match(webgl,/\[1,\.38\]/);
   assert.match(webgl,/drawEarContour/);
   assert.match(webgl,/earSpectrum\.low/);
   assert.match(webgl,/drawHumanMouth/);
