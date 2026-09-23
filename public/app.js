@@ -433,7 +433,7 @@ async function startWakeListening(){
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function activateAllEffects(){
  avatar.activateAllEffects?.(true);avatar.animate=true;avatar.track=true;avatar.color='green';
- $('#animate').checked=true;$('#track').checked=true;$('#color').value='spectrum';
+ $('#animate').checked=true;$('#track').checked=true;$('#color').value='green';
  document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed','true'));
 }
 function showAle(){
