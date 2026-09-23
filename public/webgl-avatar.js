@@ -12,8 +12,8 @@ const VALID_EMOTIONS=new Set(['neutral','focused','happy','curious']);
 
 function faceHalfWidth(y){
   const pts=[
-    [-1,.50],[-.90,.68],[-.72,.88],[-.48,1.00],[-.20,1.04],
-    [.08,1.03],[.34,.96],[.56,.82],[.76,.62],[.92,.34],[1,.16]
+    [-1,.48],[-.90,.66],[-.72,.86],[-.48,.98],[-.20,1.03],
+    [.06,1.02],[.30,.98],[.50,.90],[.68,.78],[.82,.63],[.93,.45],[1,.30]
   ];
   for(let i=0;i<pts.length-1;i++){
     const [y0,w0]=pts[i],[y1,w1]=pts[i+1];
@@ -25,17 +25,20 @@ function faceHalfWidth(y){
 function faceDepth(nx,ny){
   const half=faceHalfWidth(ny);
   const xn=nx/Math.max(.05,half);
-  const dome=Math.sqrt(Math.max(0,1-xn*xn))*gauss(ny,-.04,.99)*.60;
-  const center=gauss(nx,0,.48)*gauss(ny,.02,.86)*.20;
-  const temples=(gauss(nx,-.62,.23)+gauss(nx,.62,.23))*gauss(ny,-.20,.35)*.07;
-  const nose=gauss(nx,0,.065)*gauss(ny,.04,.36)*.66+gauss(nx,0,.115)*gauss(ny,.24,.105)*.42;
-  const cheeks=(gauss(nx,-.34,.19)+gauss(nx,.34,.19))*gauss(ny,.17,.21)*.28;
-  const brow=(gauss(nx,-.29,.21)+gauss(nx,.29,.21))*gauss(ny,-.24,.105)*.17;
-  const eyes=(gauss(nx,-.30,.17)+gauss(nx,.30,.17))*gauss(ny,-.13,.060)*.38;
-  const philtrum=gauss(nx,0,.055)*gauss(ny,.36,.10)*.07;
-  const mouth=gauss(nx,0,.26)*gauss(ny,.48,.052)*.09;
-  const chin=gauss(nx,0,.22)*gauss(ny,.72,.15)*.10;
-  return clamp(dome+center+temples+nose+cheeks+brow+chin-eyes-philtrum-mouth,0,1.42);
+  const dome=Math.sqrt(Math.max(0,1-xn*xn))*gauss(ny,-.03,1.02)*.61;
+  const center=gauss(nx,0,.50)*gauss(ny,.02,.88)*.19;
+  const temples=(gauss(nx,-.61,.24)+gauss(nx,.61,.24))*gauss(ny,-.18,.36)*.065;
+  const nose=gauss(nx,0,.060)*gauss(ny,.03,.37)*.72+gauss(nx,0,.115)*gauss(ny,.24,.105)*.44;
+  const cheeks=(gauss(nx,-.35,.20)+gauss(nx,.35,.20))*gauss(ny,.17,.22)*.31;
+  const brow=(gauss(nx,-.29,.21)+gauss(nx,.29,.21))*gauss(ny,-.25,.11)*.18;
+  const eyes=(gauss(nx,-.30,.18)+gauss(nx,.30,.18))*gauss(ny,-.13,.073)*.34;
+  const nasolabial=(gauss(nx,-.16,.10)+gauss(nx,.16,.10))*gauss(ny,.34,.17)*.045;
+  const philtrum=gauss(nx,0,.050)*gauss(ny,.36,.10)*.065;
+  const upperLip=gauss(nx,0,.24)*gauss(ny,.46,.055)*.055;
+  const lowerLip=gauss(nx,0,.23)*gauss(ny,.53,.060)*.075;
+  const jaw=(gauss(nx,-.43,.20)+gauss(nx,.43,.20))*gauss(ny,.63,.22)*.075;
+  const chin=gauss(nx,0,.24)*gauss(ny,.78,.17)*.14;
+  return clamp(dome+center+temples+nose+cheeks+brow+nasolabial+upperLip+lowerLip+jaw+chin-eyes-philtrum,0,1.48);
 }
 
 function mat4Perspective(fovy,aspect,near,far){
@@ -343,7 +346,7 @@ export class WebGLAvatar{
   }
 
   buildFaceTiles(){
-    const rows=80,cols=62;
+    const rows=88,cols=68;
     for(let iy=0;iy<=rows;iy++){
       const ny=-1+iy/rows*2;
       const half=faceHalfWidth(ny);
@@ -351,9 +354,10 @@ export class WebGLAvatar{
         const nx=-1+ix/cols*2;
         if(Math.abs(nx)>half)continue;
 
-        const eyeL=((nx+.30)/.255)**2+((ny+.13)/.060)**2<1;
-        const eyeR=((nx-.30)/.255)**2+((ny+.13)/.060)**2<1;
-        const mouthGap=Math.abs(nx)<.255&&Math.abs(ny-.48)<.018;
+        const eyeL=((nx+.30)/.245)**2+((ny+.13)/.082)**2<1;
+        const eyeR=((nx-.30)/.245)**2+((ny+.13)/.082)**2<1;
+        const mouthCurve=.48+.025*(1-(nx/.26)**2);
+        const mouthGap=Math.abs(nx)<.265&&Math.abs(ny-mouthCurve)<.025;
         if(eyeL||eyeR||mouthGap)continue;
 
         const seed=hash(ix,iy,1);
@@ -617,45 +621,84 @@ export class WebGLAvatar{
         );
       }
     };
+    const polyline=(points,color,alpha)=>{
+      for(let i=0;i<points.length-1;i++)line(lines,points[i],points[i+1],color,alpha);
+    };
+    const arc=(cx,cy,cz,rx,ry,a0,a1,segments,color,alpha)=>{
+      const pts=[];
+      for(let i=0;i<=segments;i++){
+        const a=lerp(a0,a1,i/segments);
+        pts.push([cx+Math.cos(a)*rx,cy+Math.sin(a)*ry,cz]);
+      }
+      polyline(pts,color,alpha);
+    };
 
     circle(0,.16,-.72,1.78,112,cyan,.16+.065*energy,time*.00007);
     circle(0,.16,-.74,2.02,112,[.20,.48,1],.085+.045*energy,-time*.000045);
     circle(0,.16,-.76,2.18,112,violet,.045+.030*energy,time*.000032);
 
     const earEnergy=Math.max(this.earSpectrum.low,this.earSpectrum.mid,this.earSpectrum.high,this.listening?.2:0);
-    for(const side of [-1,1]){
-      circle(side*1.07,.04,.02,.19,44,cyan,.28+.18*earEnergy);
-      circle(side*1.07,.04,.02,.11,36,[.24,.55,1],.18+.12*earEnergy);
-      if(earEnergy>.02){
-        circle(side*1.07,.04,-.02,.27+earEnergy*.06,40,cyan,.10+.12*earEnergy,time*.00025*side);
+    const drawEarContour=(side)=>{
+      const cx=side*1.045,cy=.035,cz=.10;
+      const outer=[];
+      for(let i=0;i<=34;i++){
+        const a=-Math.PI*.55+i/34*Math.PI*1.72;
+        const shape=1-.10*Math.cos(a*2);
+        outer.push([cx+side*Math.cos(a)*.145*shape,cy+Math.sin(a)*.285,cz+.02*Math.cos(a)]);
       }
-    }
+      polyline(outer,cyan,.34+.22*earEnergy);
+      const helix=[];
+      for(let i=0;i<=28;i++){
+        const a=-Math.PI*.48+i/28*Math.PI*1.42;
+        helix.push([cx+side*Math.cos(a)*.082,cy+.015+Math.sin(a)*.205,cz+.025]);
+      }
+      polyline(helix,[.48,.82,1],.25+.17*earEnergy);
+      arc(cx-side*.012,cy-.065,cz+.03,.055,.075,-Math.PI*.15,Math.PI*1.18,20,white,.16+.12*earEnergy);
+      line(lines,[cx,cy-.205,cz+.02],[cx-side*.035,cy-.255,cz],cyan,.24+.12*earEnergy);
+      if(earEnergy>.02){
+        const pulse=.018*Math.sin(time*.008)+earEnergy*.045;
+        for(let band=0;band<3;band++){
+          const spread=.20+band*.085+pulse;
+          const x=cx+side*(.06+band*.025);
+          arc(x,cy,cz-.05,spread*.72,spread,-Math.PI*.42,Math.PI*.42,26,cyan,.13+.09*earEnergy-band*.018);
+        }
+      }
+    };
+    drawEarContour(-1);drawEarContour(1);
 
     const eye=(side,scale=1,alpha=.9)=>{
-      const cx=side*.30,cy=.30,cz=.56;
-      const half=.265*scale,h=.027*scale*(1-blink*.95);
+      const cx=side*.30,cy=.30,cz=.565;
+      const half=.245*scale,h=.054*scale*(1-blink*.94);
       const boundary=[];
-      const seg=28;
+      const seg=32;
       for(let i=0;i<=seg;i++){
         const t=i/seg;
-        boundary.push([cx+lerp(-half,half,t),cy+Math.sin(t*Math.PI)*h,cz]);
+        const x=lerp(-half,half,t);
+        const arch=Math.sin(t*Math.PI);
+        boundary.push([cx+x,cy+arch*h*(1-.10*side*x/half),cz]);
       }
       for(let i=seg;i>=0;i--){
         const t=i/seg;
-        boundary.push([cx+lerp(-half,half,t),cy-Math.sin(t*Math.PI)*h*.42,cz]);
+        const x=lerp(-half,half,t);
+        const arch=Math.sin(t*Math.PI);
+        boundary.push([cx+x,cy-arch*h*.68,cz]);
       }
       for(let i=0;i<boundary.length;i++){
         const a=boundary[i],b=boundary[(i+1)%boundary.length];
         this.flatPush(triangles,cx,cy,cz,...white,alpha);
-        this.flatPush(triangles,...a,...cyan,.18*alpha);
-        this.flatPush(triangles,...b,...cyan,.18*alpha);
+        this.flatPush(triangles,...a,...cyan,.15*alpha);
+        this.flatPush(triangles,...b,...cyan,.15*alpha);
       }
+      const gazeX=cx+this.rotation.x*.028;
+      const gazeY=cy-this.rotation.y*.018;
+      circle(gazeX,gazeY,cz+.018,.034*scale,22,cyan,.55*alpha);
+      circle(gazeX,gazeY,cz+.020,.012*scale,18,white,.82*alpha);
     };
-    eye(-1,1.72,.075);eye(1,1.72,.075);
-    eye(-1,1.18,.16);eye(1,1.18,.16);
-    eye(-1,1,.98);eye(1,1,.98);
-    line(lines,[-.565,.30,.585],[-.035,.30,.585],white,.70+.18*energy);
-    line(lines,[.035,.30,.585],[.565,.30,.585],white,.70+.18*energy);
+    eye(-1,1.50,.07);eye(1,1.50,.07);
+    eye(-1,1.13,.15);eye(1,1.13,.15);
+    eye(-1,1,.96);eye(1,1,.96);
+    line(lines,[-.545,.335,.590],[-.055,.322,.590],white,.48+.16*energy);
+    line(lines,[.055,.322,.590],[.545,.335,.590],white,.48+.16*energy);
 
     const quad=(x0,y0,x1,y1,z,color,a0,a1=a0)=>{
       this.flatPush(triangles,x0,y0,z,...color,a0);
@@ -683,9 +726,28 @@ export class WebGLAvatar{
     line(lines,[.055,.16,.55],[.018,-.17,.60],cyan,.095);
 
     const level=this.speaking?this.audioLevel:0;
-    const mouthY=-.585,open=.006+.046*level;
-    line(lines,[-.205,mouthY,.555],[0,mouthY-open,.575],cyan,.25+.24*level);
-    line(lines,[0,mouthY-open,.575],[.205,mouthY,.555],cyan,.25+.24*level);
+    const drawHumanMouth=()=>{
+      const mouthY=-.575,open=.008+.070*level;
+      const upper=[],lower=[],inner=[];
+      const seg=26;
+      for(let i=0;i<=seg;i++){
+        const t=-1+i/seg*2,x=.225*t,arch=1-t*t;
+        const cupid=.012*Math.exp(-(t/.22)**2);
+        upper.push([x,mouthY+.020*arch-cupid,.585+.018*arch]);
+        lower.push([x,mouthY-.020*arch-open*arch,.590+.026*arch]);
+        inner.push([x,mouthY-.002-open*.50*arch,.602]);
+      }
+      polyline(upper,cyan,.38+.28*level);
+      polyline(lower,[.48,.82,1],.34+.30*level);
+      polyline(inner,white,.16+.22*level);
+      const highlight=[];
+      for(let i=4;i<=22;i++){
+        const t=-1+i/seg*2,x=.225*t,arch=1-t*t;
+        highlight.push([x,mouthY-.013*arch-open*arch,.615]);
+      }
+      polyline(highlight,white,.11+.18*level);
+    };
+    drawHumanMouth();
 
     if(this.state==='processing'||this.evolving){
       circle(0,.12,-.25,1.42,72,[.38,.62,1],.18+.10*energy,time*.00045);
