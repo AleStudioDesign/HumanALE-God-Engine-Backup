@@ -1,11 +1,11 @@
-import {HologramAvatar} from './hologram-avatar.js';
+import {BinaryAvatar} from './avatar.js';
 import {DudidamPopup} from './dudidam-popup.js';
 import {parseCommand} from './commands.js';
 import {AudioReactor} from './audio-reactor.js';
 import {containsAleWakeWord,HOLD_TO_SUMMON_MS} from './wake-utils.js';
 import {isExplicitProjectWorkRequest} from './work-intent.js';
 import {emotionFromText,emotions} from './avatar-emotion.js';
-const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,params=new URLSearchParams(location.search),popup=params.get('popup')==='1',panelOnly=Boolean(desktop&&params.has('panel')),avatar=new HologramAvatar($('#avatar'));
+const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,params=new URLSearchParams(location.search),popup=params.get('popup')==='1',panelOnly=Boolean(desktop&&params.has('panel')),avatar=new BinaryAvatar($('#avatar'));
 const panelChannel=desktop?new BroadcastChannel('dudidam-avatar-panel'):null;
 const assistantPopup=new DudidamPopup($('#assistantPopup'),{
  onAction:async action=>{
@@ -160,7 +160,7 @@ function syncFaceAudio(){const level=Math.max(ttsActive?ttsEnergy:0,audioEnergy,
 function setPersona(provider=aiProvider){
  const persona=provider==='copilot'?'copilot':provider==='chatgpt'?'chatgpt':'dudidam';
  document.body.dataset.persona=persona;avatar.persona=persona;
- if(persona==='copilot')avatar.color='cyan';else if(persona==='chatgpt')avatar.color='spectrum';
+ if(persona==='copilot')avatar.color='cyan';else if(persona==='chatgpt')avatar.color='green';
  $('#personaBadge').textContent=persona==='copilot'?'HUMANALE GOD ENGINE · GITHUB COPILOT':persona==='chatgpt'?'HUMANALE GOD ENGINE · CHATGPT':'HUMANALE GOD ENGINE · '+provider.toUpperCase();
  if(panelOnly)panelChannel?.postMessage({type:'persona',provider});
 }
@@ -432,7 +432,7 @@ async function startWakeListening(){
 }
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function activateAllEffects(){
- avatar.activateAllEffects?.(true);avatar.animate=true;avatar.track=true;avatar.color='spectrum';
+ avatar.activateAllEffects?.(true);avatar.animate=true;avatar.track=true;avatar.color='green';
  $('#animate').checked=true;$('#track').checked=true;$('#color').value='spectrum';
  document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed','true'));
 }
