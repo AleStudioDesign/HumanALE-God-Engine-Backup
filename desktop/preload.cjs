@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  chooseProjectRoot:()=>ipcRenderer.invoke('dudidam:project-root-choose'),
  runAgent:payload=>ipcRenderer.invoke('dudidam:agent-run',payload),
  openAgent:id=>ipcRenderer.invoke('dudidam:agent-open',id),
+ openTerminal:()=>ipcRenderer.invoke('dudidam:terminal-open'),
  center:()=>ipcRenderer.send('dudidam:center'),
  move:delta=>ipcRenderer.send('dudidam:move',delta),
  passthrough:value=>ipcRenderer.send('dudidam:passthrough',value),
