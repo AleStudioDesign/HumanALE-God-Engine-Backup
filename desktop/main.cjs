@@ -5,6 +5,8 @@ const {mkdtempSync}=require('node:fs');
 const path=require('node:path');
 const {tmpdir}=require('node:os');
 const {spawn}=require('node:child_process');
+const {sampleBackdrop}=require('./avatar-backdrop.cjs');
+let avatarEnvironment='auto',backdropTimer,backdropBusy=false;
 
 let win,panelWin,server,origin,bridges,agentHub,terminalManager,terminalPolicy,indonesianStt,indonesianTts,tray,saveTimer,pointerTimer;
 let baseWindowSize={width:420,height:480};
@@ -276,6 +278,19 @@ else{
   win.once('ready-to-show',()=>win.show());
   await win.loadURL(origin+'/');
   pointerTimer=setInterval(publishGlobalPointer,50);
+  win.setContentProtection(true);
+  backdropTimer=setInterval(async()=>{
+   if(backdropBusy||avatarEnvironment!=='auto'||!win||win.isDestroyed()||!win.isVisible())return;
+   backdropBusy=true;
+   try{const target=win,grid=await sampleBackdrop(target.getBounds());if(!target.isDestroyed()&&avatarEnvironment==='auto')target.webContents.send('dudidam:avatar-backdrop',grid);}
+   catch{/* A stale sample falls back to system contrast in the renderer. */}
+   finally{backdropBusy=false;}
+  },950);
+  ipcMain.on('dudidam:avatar-environment',(e,value)=>{
+   if(!trusted(e)||!['auto','dark','light'].includes(value))return;
+   avatarEnvironment=value;win.setContentProtection(value==='auto');
+  });
+  app.once('before-quit',()=>clearInterval(backdropTimer));
   if(ciSmoke){
    const rendererReady=await win.webContents.executeJavaScript("Boolean(document.querySelector('#avatar')) && Boolean(document.querySelector('#assistantPopup')) && typeof window.dudidamAvatar?.setAvatarState === 'function' && typeof window.dudidamDesktop?.onGlobalPointer === 'function' && typeof window.dudidamDesktop?.avatarViewport === 'function' && typeof window.dudidamDesktop?.openTerminal === 'function' && document.title.includes('HumanALE god egine')");
    if(!rendererReady)throw new Error('Renderer HumanALE god egine tidak siap.');
@@ -308,6 +323,7 @@ else{
     const copilotReady=await panelWin.webContents.executeJavaScript("window.dudidamDesktop.ask({provider:'copilot',message:'Jawab satu kata: siap',history:[]}).then(result=>Boolean(result.text)&&!result.error)");
     if(!copilotReady)throw new Error('Percakapan GitHub Copilot dari panel gagal.');
    }
+   await require('./avatar-smoke.cjs').run({win,panelWin});
    console.log('HumanALE god egine CI smoke passed: packaged runtime, renderer, and detached panel loaded.');
    quitting=true;app.quit();return;
   }

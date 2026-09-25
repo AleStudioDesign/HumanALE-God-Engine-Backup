@@ -24,15 +24,11 @@ test('ekspresi otomatis mengerti ungkapan Indonesia',()=>{
  assert.equal(emotionFromText('Halo, apa kabar?'),'neutral');
 });
 
-test('mulut bahagia dan sedih menghasilkan bentuk yang berbeda',()=>{
- const mouthFor=emotion=>{
-  const calls=[];
-  const avatar={emotion,speaking:false,drawBinaryQuadratic:(...args)=>calls.push(args)};
-  BinaryAvatar.prototype.drawEmotionOverlay.call(avatar,{},420,210,210,205,260,130,false,0);
-  return calls.at(-1);
- };
- const happy=mouthFor('happy'),sad=mouthFor('sad');
- assert.equal(happy.length,10);
- assert.ok(happy[2].y>happy[1].y);
- assert.ok(sad[2].y<sad[1].y);
+test('mulut bahagia dan sedih memiliki arah deformasi yang berbeda pada kisi wajah',()=>{
+ const avatar=Object.create(BinaryAvatar.prototype);
+ avatar.setEmotion('happy');assert.equal(avatar.emotion,'happy');
+ const engine=Object.create(globalThis.NeuralAvatar.prototype);
+ engine.setEmotion(avatar.emotion);const happy=engine.targetEmotion.smile;
+ avatar.setEmotion('sad');engine.setEmotion(avatar.emotion);
+ assert.ok(happy>0);assert.ok(engine.targetEmotion.smile<0);
 });

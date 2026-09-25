@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('dudidamDesktop',Object.freeze({
  openTerminal:()=>ipcRenderer.invoke('dudidam:terminal-open'),
  center:()=>ipcRenderer.send('dudidam:center'),
  move:delta=>ipcRenderer.send('dudidam:move',delta),
+ setAvatarEnvironment:value=>ipcRenderer.send('dudidam:avatar-environment',value),
+ onAvatarBackdrop:callback=>{if(typeof callback!=='function')return()=>{};const handler=(_event,grid)=>callback(grid);ipcRenderer.on('dudidam:avatar-backdrop',handler);return()=>ipcRenderer.removeListener('dudidam:avatar-backdrop',handler);},
  passthrough:value=>ipcRenderer.send('dudidam:passthrough',value),
  passthroughLock:value=>ipcRenderer.send('dudidam:passthrough-lock',value),
  avatarViewport:value=>ipcRenderer.send('dudidam:avatar-viewport',value),

@@ -55,8 +55,8 @@ test('only bounded user and assistant history is forwarded',()=>{const r=validat
 test('bridge reads model response, not tool output or progress',()=>{const result=parseEvents('log noise\n'+JSON.stringify({type:'item.completed',item:{type:'command_execution',text:'not an answer'}})+'\n'+JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'Jawaban nyata.'}})+'\n'+JSON.stringify({type:'turn.completed'}));assert.deepEqual(result,{text:'Jawaban nyata.',failure:false});});
 test('bridge identifies failed turns even if partial text exists',()=>{assert.equal(parseEvents('{"type":"turn.failed"}').failure,true);});
 test('transparent desktop and popup surfaces are applied before the first paint',async()=>{const [html,surface,css]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8')]);assert.match(html,/<script src="\/surface\.js"><\/script><link rel="stylesheet"/);assert.match(surface,/transparent-surface/);assert.match(css,/\.transparent-surface body/);});
-test('neural stream mode and floating desktop layer stay wired',async()=>{const [html,app,avatar,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/data-mode="neural"/);assert.match(app,/HOLD_TO_SUMMON_MS/);assert.match(app,/setMode\('neural'\)/);assert.match(avatar,/drawNeuralField/);assert.match(avatar,/globalCompositeOperation='source-over'/);assert.match(desktop,/setVisibleOnAllWorkspaces/);});
-test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="green" selected/);assert.match(app,/\$\('#color'\)\.value='green'/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(avatar,/prefers-color-scheme: light/);assert.match(avatar,/adaptiveColors/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/if\(this\.speaking\)\{/);assert.match(avatar,/this\.viseme/);});
+test('neural stream mode and floating desktop layer stay wired',async()=>{const [html,app,avatar,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/data-mode="neural"/);assert.match(app,/HOLD_TO_SUMMON_MS/);assert.match(app,/setMode\('neural'\)/);assert.match(avatar,/neural:'neural'/);assert.match(avatar,/NeuralAvatar/);assert.match(desktop,/setVisibleOnAllWorkspaces/);});
+test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="green" selected/);assert.match(app,/\$\('#color'\)\.value='green'/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(avatar,/setBackdrop\(grid\)/);assert.match(avatar,/setEnvironment\(value='auto'\)/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/engine\.externalSpeech=this\.speaking\?Math\.max\(this\.speechTarget,this\.audioLevel\):0/);});
 test('real audio energy is normalized for mouth and head motion',()=>{assert.equal(normalizedAudioLevel(new Uint8Array(32).fill(128)),0);assert.ok(normalizedAudioLevel(Uint8Array.from({length:32},(_,i)=>i%2?208:48))>.5);});
 test('microphone, music and Windows loopback controls remain wired',async()=>{const [html,app,audio,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/audio-reactor.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/id="audioMic"/);assert.match(html,/id="musicFile"/);assert.match(app,/getDisplayMedia/);assert.match(audio,/createAnalyser/);assert.match(desktop,/audio:'loopback'/);});
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
@@ -68,9 +68,9 @@ test('detached panel does not duplicate the heavy avatar evolution renderer',asy
   readFile(new URL('../public/app.js',import.meta.url),'utf8')
  ]);
  assert.match(avatar,/setPaused\(value=false\)/);
- assert.match(avatar,/if\(this\.paused\|\|document\.hidden\)return/);
- assert.match(avatar,/performanceModeUntil/);
- assert.match(avatar,/if\(lowCost&&sampleIndex%2===1\)continue/);
+ assert.match(avatar,/this\.engine\.setPaused\(this\.paused\)/);
+ const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ assert.match(renderer,/cancelAnimationFrame\(this\.frameRequest\)/);
  assert.match(app,/if\(panelOnly\)avatar\.setPaused\?\.\(true\)/);
  assert.match(app,/if\(panelOnly\)\{panelChannel\?\.postMessage\(\{type:'evolution',mode\}\);return;\}/);
 });
@@ -83,10 +83,9 @@ test('developer work visibly drives particle self-repair evolution',async()=>{
  assert.match(avatar,/this\.evolving=false/);
  assert.match(avatar,/setEvolving\(value=false\)/);
  assert.match(avatar,/completeEvolution\(\)/);
- assert.match(avatar,/drawEvolutionField/);
- assert.match(avatar,/if\(!this\.evolving&&!completing\)return/);
- assert.match(avatar,/repairBand/);
- assert.match(avatar,/evolutionLight/);
+ assert.match(avatar,/engine\.flowEnergy=this\.evolving\?1\.7/);
+ assert.match(avatar,/this\.evolutionCompleteUntil/);
+ assert.match(avatar,/this\.pulse\(\)/);
  assert.match(app,/function setEvolutionVisual/);
  assert.match(app,/EVOLVING · memperbaiki diri/);
  assert.match(app,/EVOLUTION COMPLETE/);
@@ -107,8 +106,8 @@ test('avatar adds particle depth and listening ear frequency waves',async()=>{
  assert.match(avatar,/setListening\(value=false\)/);
  assert.match(avatar,/drawEarFrequencyWaves/);
  assert.match(avatar,/if\(!this\.listening&&Math\.max\(bands\.low,bands\.mid,bands\.high\)<\.025\)return/);
- assert.match(avatar,/const depthShift=fw\*/);
- assert.match(avatar,/const lipDepth=fh\*/);
+ assert.match(avatar,/engine\.project\(/);
+ assert.match(avatar,/engine\.externalSpeech/);
  assert.match(app,/function syncListeningVisual/);
  assert.match(app,/avatar\.setListening/);
  assert.match(app,/wakeListening=false;syncListeningVisual\(\)/);
@@ -117,21 +116,17 @@ test('avatar adds particle depth and listening ear frequency waves',async()=>{
  assert.doesNotMatch(avatar,/\.lineTo\(/);
 });
 
-test('avatar structure uses binary and neural particles instead of continuous lines',async()=>{
- const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
- for(const feature of ['drawNeuralRoots','drawNeck','drawEars','drawMagneticField','drawMouthSignal','magneticOffset','rootStrands','neckGlyphs','livingHue','adaptiveColors','drawBinarySampler','drawBinaryCubic','drawBinaryQuadratic','drawBinarySegment'])assert.match(avatar,new RegExp(feature));
- assert.match(avatar,/strokeText/);
- assert.match(avatar,/const maxYaw=Math\.PI\/6/);
- assert.match(avatar,/rx=clamp\(rx,-maxYaw,maxYaw\)/);
- assert.doesNotMatch(avatar,/strokeAdaptivePath/);
- assert.doesNotMatch(avatar,/context\.stroke\(\)/);
- assert.doesNotMatch(avatar,/\.lineTo\(/);
- assert.doesNotMatch(avatar,/bezierCurveTo/);
- assert.doesNotMatch(avatar,/quadraticCurveTo/);
- assert.doesNotMatch(avatar,/context\.ellipse/);
+test('face anatomy stays in one particle surface with no drawn eye or mouth contours',async()=>{
+ const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ for(const feature of ['mouthWeights','depthAt','drawConvergingCode','drawFace','prepareGlyphs'])assert.match(renderer,new RegExp(feature));
+ assert.doesNotMatch(renderer,/pupil-code|eye-glint|quadraticCurveTo|bezierCurveTo/);
+ const face=renderer.slice(renderer.indexOf('    drawFace(c, time)'));
+ assert.doesNotMatch(face,/\.stroke\(|\.lineTo\(|\.arc\(/);
+ assert.match(face,/R\.mouthWeights\(pt\.baseX,pt\.baseY\)/);
 });
+
 test('build keeps private Sites identity optional in GitHub checkouts',async()=>{const build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');assert.match(build,/error\.code!==['"]ENOENT['"]/);});
-test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow,builder,desktop]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8'),readFile(new URL('../electron-builder.yml',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.name,'humanale-god-egine');assert.equal(pkg.version,'2.4.2');assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pkg.scripts['package:installer'],/electron-builder@26\.16\.1/);assert.match(pkg.scripts['package:installer'],/--publish never/);assert.match(pack,/HumanALE-God-Engine\.exe/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(builder,/productName: HumanALE god egine/);assert.match(builder,/HumanALE-God-Engine-Setup/);assert.match(builder,/target: nsis/);assert.match(builder,/oneClick: false/);assert.match(builder,/allowToChangeInstallationDirectory: true/);assert.match(workflow,/npm run package:installer/);assert.match(workflow,/gh release upload/);assert.doesNotMatch(workflow,/actions\/upload-artifact/);assert.match(desktop,/app\.setAppUserModelId\('id\.my\.aleprinting\.dudidam'\)/);});
+test('windows packaging and CI verification stay wired',async()=>{const [pkgText,pack,workflow,builder,desktop]=await Promise.all([readFile(new URL('../package.json',import.meta.url),'utf8'),readFile(new URL('../package-desktop.mjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8'),readFile(new URL('../electron-builder.yml',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);const pkg=JSON.parse(pkgText);assert.equal(pkg.name,'humanale-god-egine');assert.equal(pkg.version,'2.5.0');assert.equal(pkg.main,'desktop/main.cjs');assert.equal(pkg.scripts.verify,'npm test && npm run build');assert.equal(pkg.scripts['package:desktop'],'install-electron --no && node package-desktop.mjs');assert.match(pkg.scripts['package:installer'],/electron-builder@26\.16\.1/);assert.match(pkg.scripts['package:installer'],/--publish never/);assert.match(pack,/HumanALE-God-Engine\.exe/);assert.match(pack,/path\.resolve\('node_modules','electron','dist'\)/);assert.match(builder,/productName: HumanALE god egine/);assert.match(builder,/HumanALE-God-Engine-Setup/);assert.match(builder,/target: nsis/);assert.match(builder,/oneClick: false/);assert.match(builder,/allowToChangeInstallationDirectory: true/);assert.match(workflow,/npm run package:installer/);assert.match(workflow,/gh release upload/);assert.doesNotMatch(workflow,/actions\/upload-artifact/);assert.match(desktop,/app\.setAppUserModelId\('id\.my\.aleprinting\.dudidam'\)/);});
 test('safe launcher starts only the packaged HumanALE god egine application',async()=>{const launcher=await readFile(new URL('../Jalankan-entitasale170925-SAFE.bat',import.meta.url),'utf8');assert.match(launcher,/HumanALE-God-Engine-Desktop\\HumanALE-God-Engine\.exe/);assert.match(launcher,/if not exist/);assert.doesNotMatch(launcher,/runas|powershell|reg add|taskkill/i);});
 test('desktop CI smoke mode verifies the packaged renderer',async()=>{const [desktop,workflow]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')]);assert.match(desktop,/--ci-smoke/);assert.match(desktop,/HumanALE god egine CI smoke passed/);assert.match(desktop,/executeJavaScript/);assert.match(desktop,/app\.exit\(1\)/);assert.match(workflow,/HumanALE-God-Engine\.exe --ci-smoke/);});
 test('avatar surface stays transparent and the detached panel is opaque',async()=>{const [css,surface,main,preload]=await Promise.all([readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(css,/body\.desktop,body\.popup-widget\{background:transparent!important\}/);assert.match(css,/html\.panel-surface,html\.panel-surface body\{background:#081610!important/);assert.match(surface,/\(isDesktop && !isPanel\) \|\| isPopup/);assert.match(main,/panelWin=new BrowserWindow/);assert.match(preload,/openPanel:view/);});
@@ -271,8 +266,8 @@ test('custom avatar size, soft summon and bounded project work mode stay wired',
  assert.match(app,/SUMMON_DURATION_MS=4200/);
  assert.match(css,/--avatar-size:420px/);
  assert.match(avatar,/awaken\(duration=4200\)/);
- assert.match(avatar,/fluidStrength/);
- assert.match(avatar,/rawAssembly-delay/);
+ assert.match(avatar,/this\.engine\.setVisible\(true/);
+ assert.match(avatar,/this\.engine\.setVisible\(false/);
  assert.match(hub,/workspace-write/);
  assert.match(hub,/available-tools=view,grep,glob,edit,create,apply_patch/);
  assert.match(hub,/--allow-tool=write/);
@@ -297,10 +292,11 @@ test('avatar size, full-desktop gaze and smooth brain-bound light pulses stay wi
  assert.match(desktop,/dudidam:global-pointer/);
  assert.match(preload,/onGlobalPointer/);
  assert.match(avatar,/gazePointer/);
- assert.match(avatar,/gazeEase/);
- assert.match(avatar,/drawBrainCorePulse/);
- assert.match(avatar,/shadowBlur/);
- assert.match(avatar,/rawProgress/);
+ assert.match(avatar,/engine\.setPointer/);
+ const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ assert.match(renderer,/flowPosition\(lane, phase\)/);
+ assert.match(renderer,/drawConvergingCode/);
+ assert.doesNotMatch(renderer,/shadowBlur/);
  assert.doesNotMatch(desktop,/globalHook|keylogger/i);
 });
 
@@ -319,34 +315,29 @@ test('larger avatar default and slow-motion particle clock stay wired',async()=>
  assert.match(css,/--avatar-size:420px/);
  assert.match(css,/#avatarArea\{[^}]*width:min\(var\(--avatar-size\),94vw\)/);
  assert.match(desktop,/resizeForAvatar\(value=420\)/);
- assert.match(avatar,/PARTICLE_TIME_SCALE=\.58/);
- assert.match(avatar,/motionClock=auto\?time\*PARTICLE_TIME_SCALE:0/);
- assert.match(avatar,/drawNeuralRoots\([^\n]*motionClock/);
- assert.match(avatar,/drawNeuralField\([^\n]*motionClock/);
- assert.match(avatar,/drawMouthSignal\([^\n]*hue,clock,/);
+ assert.match(avatar,/engine\.animate=this\.animate;engine\.flow=this\.animate/);
+ const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ assert.match(renderer,/this\.reducedMotion \? 0\.000009 : 0\.000032/);
+ assert.match(renderer,/Math\.sin\(time\*0\.00031\)/);
 });
 
 test('particle ears follow head yaw without continuous strokes',async()=>{
  const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
- assert.match(avatar,/drawEars\(context,size,cx,cy,fw,fh,hue,lightEnvironment,yaw,clock\)/);
- assert.match(avatar,/visibility=clamp\(\.78\+side\*Math\.sin\(yaw\)\*\.34/);
- assert.match(avatar,/this\.drawEars\(context,size,cx,cy,faceWidth,faceHeight,hue,lightEnvironment,rx,motionClock\)/);
+ assert.match(avatar,/drawEarFrequencyWaves\(c,time\)/);
+ assert.match(avatar,/engine\.project\([\s\S]*time,true\)/);
+ assert.match(avatar,/this\.engine\.onRender=/);
  assert.doesNotMatch(avatar,/context\.stroke\(\)/);
  assert.doesNotMatch(avatar,/context\.ellipse/);
 });
 
-test('human head uses 3D perspective and a single smoothed speech viseme',async()=>{
- const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
- assert.match(avatar,/drawHeadStructure/);
- assert.match(avatar,/const perspective=clamp/);
- assert.match(avatar,/rotatedDepth/);
- assert.match(avatar,/depthLight/);
- assert.match(avatar,/this\.visemeTarget/);
- assert.match(avatar,/visemeEase/);
- assert.match(avatar,/this\.viseme\+=/);
- assert.match(avatar,/jawWeight/);
- assert.doesNotMatch(avatar,/time\/\(60\+Math\.abs\(px\)/);
- assert.doesNotMatch(avatar,/Math\.abs\(Math\.sin\(clock\*\.011\)\)/);
+test('human head uses 3D perspective and continuously skinned audio-driven lips',async()=>{
+ const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ assert.match(renderer,/const perspective = camera/);
+ assert.match(renderer,/R\.deform\(/);
+ assert.match(renderer,/const speech = this\.externalSpeech !== null/);
+ assert.match(renderer,/this\.speechEnergy = lerp/);
+ assert.match(renderer,/weights\.influence/);
+ assert.match(renderer,/jawWeight/);
 });
 
 test('summon and dismiss transitions cannot lose the latest window command',async()=>{
@@ -375,7 +366,7 @@ test('tray show restores avatar without triggering summon or microphone',async()
  assert.match(preload,/onShow/);
  assert.match(app,/function showAle/);
  assert.match(app,/desktop\?\.onShow\?\.\(showAle\)/);
- assert.match(avatar,/reveal\(\)\{this\.transitionKind=''/);
+ assert.match(avatar,/reveal\(\)\{this\.transitionKind='assemble'/);
 });
 
 test('Copilot chat uses a valid minimal tool allowlist',async()=>{
@@ -416,8 +407,8 @@ test('cinematic avatar assembles and dissolves without a permanent particle swar
   readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')
  ]);
  assert.match(avatar,/dismiss\(duration=3000\)/);
- assert.match(avatar,/drawTransitionRibbons/);
- assert.match(avatar,/transition\.kind==='disassemble'/);
+ assert.match(avatar,/this\.engine\.setVisible\(false/);
+ assert.match(avatar,/this\.transitionKind='disassemble'/);
  assert.doesNotMatch(avatar,/this\.particles=Array/);
  assert.doesNotMatch(avatar,/drawElectronOrbits/);
  assert.match(app,/DISMISS_DURATION_MS=3000/);
@@ -428,17 +419,15 @@ test('cinematic avatar assembles and dissolves without a permanent particle swar
 });
 
 
-test('pointer magnet stays visually ring-free',async()=>{
- const avatar=await readFile(new URL('../public/avatar.js',import.meta.url),'utf8');
- const start=avatar.indexOf('drawMagneticField');
- const end=avatar.indexOf('drawNeuralRoots',start);
- const block=avatar.slice(start,end);
- assert.match(avatar,/Math\.exp\(\-\(distance\*distance\)/);
- assert.doesNotMatch(block,/context\.arc/);
- assert.doesNotMatch(block,/drawAdaptiveGlyph/);
- assert.doesNotMatch(block,/radius=size/);
+test('pointer magnet stays visually ring-free and protects facial anatomy',async()=>{
+ const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ const start=renderer.indexOf('if (useBinary && !pt.feature');
+ const end=renderer.indexOf('const p = this.project(x, y, z',start);
+ const block=renderer.slice(start,end);
+ assert.match(block,/anatomyGuard/);
+ assert.match(block,/magnet/);
+ assert.doesNotMatch(block,/\.arc\(|drawImage|fillText/);
 });
-
 
 test('custom panel zoom and transparency persist',async()=>{
  const [html,app,css]=await Promise.all([

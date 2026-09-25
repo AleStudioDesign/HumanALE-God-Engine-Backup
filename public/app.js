@@ -7,6 +7,14 @@ import {isExplicitProjectWorkRequest} from './work-intent.js';
 import {emotionFromText,emotions} from './avatar-emotion.js';
 const $=s=>document.querySelector(s),desktop=window.dudidamDesktop,params=new URLSearchParams(location.search),popup=params.get('popup')==='1',panelOnly=Boolean(desktop&&params.has('panel')),avatar=new BinaryAvatar($('#avatar'));
 const panelChannel=desktop?new BroadcastChannel('dudidam-avatar-panel'):null;
+const neuralZoom=document.querySelector('#neuralZoom'),neuralZoomValue=document.querySelector('#neuralZoomValue');
+function applyNeuralZoom(value,broadcast=true){
+ const zoom=Math.max(1,Math.min(3.8,Number(value)||1));
+ avatar.setZoom(zoom);
+ if(broadcast&&panelOnly)panelChannel?.postMessage({type:'neural-zoom',value:zoom});
+}
+avatar.onZoom=value=>{if(neuralZoom)neuralZoom.value=value;if(neuralZoomValue)neuralZoomValue.textContent=value.toFixed(1)+'×';};
+if(neuralZoom)neuralZoom.oninput=e=>applyNeuralZoom(e.target.value);
 const assistantPopup=new DudidamPopup($('#assistantPopup'),{
  onAction:async action=>{
   if(action==='terminal'){
@@ -605,6 +613,7 @@ if(panelChannel)panelChannel.onmessage=event=>{
  if(data.type==='panel-ready'&&!panelOnly){setWakeStatus($('#wakeIndicator').textContent,$('#wakeIndicator').dataset.active==='true');setPersona(aiProvider);return;}
  if(panelOnly)return;
  if(data.type==='avatar-size'){applyAvatarSize(data.size);return;}
+ if(data.type==='neural-zoom'){applyNeuralZoom(data.value,false);return;}
  if(data.type==='mode'){setMode(data.mode);return;}
  if(data.type==='action'){avatar.trigger(data.action);return;}
  if(data.type==='summon'){summonAle(data.source);return;}
@@ -618,6 +627,7 @@ if(panelChannel)panelChannel.onmessage=event=>{
  }
 };
 if(!panelOnly){
+ desktop?.onAvatarBackdrop?.(grid=>avatar.setBackdrop(grid));
  desktop?.onShow?.(showAle);
  desktop?.onSummon?.(()=>summonAle('global-hotkey'));
  desktop?.onDismiss?.(reason=>dismissAle(reason));
@@ -631,6 +641,8 @@ if(panelOnly){
 }
 document.querySelectorAll('dialog').forEach(enableDialogDrag);window.addEventListener('resize',()=>{document.querySelectorAll('dialog[open]').forEach(clampDialog);avatar.resize?.();});
 window.dudidamAvatar=Object.freeze({
+ setAvatarZoom:value=>applyNeuralZoom(value),
+ getAvatarSnapshot:()=>({ready:avatar.ready,points:avatar.engine.referencePoints.length,zoom:avatar.engine.zoomTarget,presence:avatar.engine.presence,head:{...avatar.engine.headPose},speech:avatar.engine.speechEnergy,emotion:avatar.emotion,flow:avatar.engine.flow,nodes:avatar.engine.neuralCore.nodes.length,paused:avatar.paused}),
  setAvatarState:value=>{avatar.setState?.(value);assistantPopup.setStatus(value);},
  setAvatarAudioLevel:value=>avatar.setAudioLevel?.(value),
  setAvatarEmotion:value=>avatar.setEmotion?.(value),

@@ -1,9 +1,27 @@
-# HumanALE god egine 2 — Floating Binary Human
-Avatar wajah biner mengambang di tengah layar. Saat ALE dipanggil, biner/neural/electron mengalir dari pusat secara perlahan selama sekitar 4,2 detik, membentuk wajah dengan gerak lebih abstrak, elastis, dan lembut. Panel tersembunyi. Matrix, statistik generatif, abstrak, neural, dan campuran; kode biner membelok serta mengorbit di sekitar kursor sebagai medan magnet. Wajah tidak memakai bayang hitam atau pelat buram. Setiap glyph membentuk kontrasnya sendiri melalui outline gelap berwarna dan inti terang berwarna, sementara hue, saturasi, energi, serta opasitasnya berevolusi perlahan. Karena sisi gelap dan terang hadir bersamaan, glyph tetap terbaca di area wallpaper terang maupun gelap tanpa mengganti seluruh avatar ke satu mode. Leher biner mengikuti rotasi kepala maksimal ±30°, sementara akar neural dari belakang leher mengalirkan pulsa data dan gelombang frekuensi menuju area otak. Bibir dan glyph mulut bergerak berdasarkan energi suara saat HumanALE god egine berbicara.
+# HumanALE god egine 2.5 — Dudidam reference neural avatar
+
+Avatar Dudidam kini memakai wajah referensi sebagai sekitar 16 ribu partikel berkedalaman. Gambar dipakai untuk menyusun posisi/intensitas kode, bukan ditempel sebagai bitmap di kanvas. Kepala, pipi, dahi, dagu, dan leher memakai proyeksi 3D dari permukaan frontal; ini bukan model kepala 360 derajat atau renderer WebGL. Bibir berasal dari kisi wajah yang sama dengan deformasi kulit kontinu, bukan lapisan bibir tambahan. Mata lebih kecil, cekung, dan berisi permukaan bola mata melengkung dari biner tanpa titik pupil/kilau terpisah.
+
+Aliran kode perlahan berkumpul dari leher menuju inti otak. Kedipan lembut, napas, mikro-gerak kepala, serta tatapan mengikuti pointer berjalan tanpa kilatan acak. Gerak besar dikurangi saat preferensi reduced-motion aktif. Seret wajah untuk memindahkan avatar; posisi desktop tetap disimpan. Panel, percakapan, provider, terminal, emosi, reaksi telinga, dan energi suara memakai jalur Dudidam yang sudah ada. Tidak ada provider, kredensial, atau backend AI yang diganti.
+
+## Zoom, material, dan transisi
+
+- Gulir pada wajah atau gunakan **Jelajah inti neural** di kontrol untuk zoom 1–3.8×. Turunkan ke 1× untuk wajah utuh.
+- Zoom membuka permukaan kepala dan memperlihatkan 459 simpul, 677 sambungan, serta 9 jalur leher–otak. Jaringan ini visualisasi artistik, bukan data otak, big data eksternal, atau koneksi AI yang sesungguhnya.
+- Campuran memakai biner, partikel neural dan kubus; Matrix memakai biner; Statistik menambahkan angka generatif; Abstrak memakai kubus; Neural memakai titik-titik jaringan.
+- Saat muncul, partikel menyusun wajah dari bentuk abstrak. Saat ditutup/disembunyikan, partikel terurai dahulu sebelum jendela hilang.
+- Bibir menerima energi audio nyata dari jalur suara Dudidam. Uji renderer menggunakan energi sintetis tanpa menghubungi provider AI atau membuka mikrofon.
+
+## Kontras desktop dan privasi
+
+Mode **Otomatis per area desktop** menghitung grid luminansi 16×20 di belakang jendela setiap sekitar 950 ms: hitam/grafit di atas latar putih, palet terang di atas latar gelap, termasuk latar campuran. Thumbnail layar hanya sementara di memori proses utama; gambar tidak disimpan, dicatat, atau dikirim ke jaringan. Renderer hanya menerima grid angka pada area widget. Browser biasa tidak dapat membaca desktop dan mengikuti tema sistem/manual. Bila sampel desktop tidak tersedia selama 5.5 detik, renderer kembali ke tema sistem.
+
+Agar tidak membaca warna dirinya sendiri, widget dikecualikan dari tangkapan layar Windows saat mode otomatis aktif. Widget dapat tidak muncul dalam rekaman/screenshot OS: pilih **Manual: latar gelap/terang** untuk merekam dan menghentikan pembacaan latar. Pengecualian memerlukan Windows 10 2004 atau lebih baru. Palet **Hitam grafit** juga dapat dipilih sendiri.
+
 
 ## Dua alur, satu repository
 
-Riwayat aplikasi aktif dan proyek standalone lama sudah disatukan tanpa force-push atau penggantian source secara massal. Aplikasi 2.2.0 tetap menjadi alur aktif, sedangkan snapshot standalone dipertahankan pada branch `legacy/binary-assistant-v2`. Lihat [HUMANALE-FLOWS.md](HUMANALE-FLOWS.md) untuk hubungan branch dan aturan integrasi agar kedua alur tidak saling menimpa.
+Riwayat aplikasi aktif dan proyek standalone lama sudah disatukan tanpa force-push atau penggantian source secara massal. Aplikasi 2.5.0 menjadi alur aktif, sedangkan snapshot standalone dipertahankan pada branch `legacy/binary-assistant-v2`. Lihat [HUMANALE-FLOWS.md](HUMANALE-FLOWS.md) untuk hubungan branch dan aturan integrasi agar kedua alur tidak saling menimpa.
 
 ## Versi desktop Windows
 Jalankan HumanALE-God-Engine.exe dalam folder output HumanALE-God-Engine-Desktop. Jendela avatar 420×480 transparan tanpa bingkai, selalu di atas, dapat diseret, dan menyimpan posisi terakhir. Kontrol, percakapan, dan Developer Agent Hub membuka **jendela panel terpisah** yang dapat diseret melalui bilah judul Windows, dipindah jauh dari avatar atau ke monitor lain, serta diubah ukurannya. Mengklik kanan wajah atau menekan H membuka kontrol; Enter membuka percakapan. Avatar tetap terlihat ketika panel dipindah. HumanALE god egine dapat dipulihkan dari ikon tray saat disembunyikan. Area kosong di sekitar wajah otomatis meneruskan klik ke aplikasi di bawahnya. Untuk source development: npm install, kemudian npm run desktop. Electron 44.4.3.
