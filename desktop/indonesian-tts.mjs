@@ -15,7 +15,7 @@ async function modelFolder(){
 }
 
 async function pythonPath(){
- const candidates=[process.env.HUMANALE_PYTHON_PATH,process.env.DUDIDAM_PYTHON_PATH,join(homedir(),'.cache','codex-runtimes','codex-primary-runtime','dependencies','python','python.exe')].filter(Boolean);
+ const candidates=[process.env.HUMANALE_PYTHON_PATH,process.env.DUDIDAM_PYTHON_PATH,join(appDataRoot,'HumanALE god egine','voice-runtime','Scripts','python.exe'),join(homedir(),'.cache','codex-runtimes','codex-primary-runtime','dependencies','python','python.exe')].filter(Boolean);
  for(const candidate of candidates){try{await access(candidate);return candidate;}catch{}}
  return process.platform==='win32'?'python.exe':'python3';
 }

@@ -1,15 +1,28 @@
 $ErrorActionPreference = 'Stop'
 
-$voicePython = $env:HUMANALE_PYTHON_PATH
-if (-not $voicePython) { $voicePython = $env:DUDIDAM_PYTHON_PATH }
-if (-not $voicePython) {
-    $voicePython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+$bootstrapPython = $env:HUMANALE_PYTHON_PATH
+if (-not $bootstrapPython) { $bootstrapPython = $env:DUDIDAM_PYTHON_PATH }
+if (-not $bootstrapPython) {
+    $bootstrapPython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
 }
-if (-not (Test-Path -LiteralPath $voicePython)) {
+if (-not (Test-Path -LiteralPath $bootstrapPython) -and -not $env:HUMANALE_PYTHON_PATH -and -not $env:DUDIDAM_PYTHON_PATH) {
+    $installedPython = Get-Command python.exe -ErrorAction SilentlyContinue
+    if ($installedPython) { $bootstrapPython = $installedPython.Source }
+}
+if (-not (Test-Path -LiteralPath $bootstrapPython)) {
     throw 'Python 3.12 tidak ditemukan. Atur HUMANALE_PYTHON_PATH (atau DUDIDAM_PYTHON_PATH lama) ke python.exe lalu jalankan ulang.'
 }
+$voicePython = $bootstrapPython
+if (-not $env:HUMANALE_PYTHON_PATH -and -not $env:DUDIDAM_PYTHON_PATH) {
+    $runtime = Join-Path $env:LOCALAPPDATA 'HumanALE god egine\voice-runtime'
+    $voicePython = Join-Path $runtime 'Scripts\python.exe'
+    if (-not (Test-Path -LiteralPath $voicePython)) {
+        & $bootstrapPython -m venv $runtime
+        if ($LASTEXITCODE -ne 0) { throw 'Lingkungan suara Indonesia gagal dibuat.' }
+    }
+}
 
-& $voicePython -m pip install --user 'faster-whisper==1.2.1' 'piper-tts==1.4.1'
+& $voicePython -m pip install 'faster-whisper==1.2.1' 'piper-tts==1.4.1'
 if ($LASTEXITCODE -ne 0) { throw 'Pemasangan runtime suara gagal.' }
 
 @'

@@ -12,6 +12,21 @@
     const lower = bump(x,y,0,seam+0.017,0.176,0.022);
     return { upper, lower, seam, influence: bump(x,y,0,MOUTH_Y,0.25,0.105) };
   }
+  function mouthDeform(x, y, energy = 0, smile = 0, surprised = false) {
+    const weights = mouthWeights(x,y);
+    const opening = clamp(energy,0,1)*0.105+(surprised?0.022:0);
+    const lower = smooth(weights.seam-0.006,weights.seam+0.006,y);
+    const chin = bump(x,y,0,0.414,0.24,0.145);
+    const span = Math.pow(Math.max(0,1-(x/0.165)**2),1.3);
+    return {
+      x:x*(1-opening*0.18*weights.influence),
+      y:y+opening*(weights.influence*(lower*0.74-(1-lower)*0.24)+chin*0.27)
+        -smile*Math.abs(clamp(x/0.20,-1,1))**1.7*0.024*weights.influence,
+      depth:-opening*(weights.influence*lower*0.12+chin*0.08),
+      seam:weights.seam,
+      aperture:opening*span
+    };
+  }
   function referenceWarp(x,y) {
     for (const side of [-1,1]) {
       const cx = side * EYE_X, dx = x - cx, dy = y - EYE_Y;
@@ -89,5 +104,5 @@
       z: finalZ + (pose.pitch - neck.pitch) * 0.012 * neckBend
     };
   }
-  global.FaceRig = { EYE_X, EYE_Y, EYE_HALF, EYE_UPPER, EYE_LOWER, MOUTH_Y, clamp, smooth, bump, mouthWeights, referenceWarp, depthAt, normalAt, spring, pointerPose, deform };
+  global.FaceRig = { EYE_X, EYE_Y, EYE_HALF, EYE_UPPER, EYE_LOWER, MOUTH_Y, clamp, smooth, bump, mouthWeights, mouthDeform, referenceWarp, depthAt, normalAt, spring, pointerPose, deform };
 })(typeof window === 'undefined' ? globalThis : window);

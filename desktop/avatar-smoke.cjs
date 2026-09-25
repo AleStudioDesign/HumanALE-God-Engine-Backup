@@ -30,10 +30,30 @@ exports.run=async({win,panelWin})=>{
  await js("document.getElementById('avatarArea').onpointerleave()");
  await change('emotion','happy');await wait(450);assert.equal((await snapshot()).emotion,'happy');
  await change('emotion','neutral');
- await pj("new BroadcastChannel('dudidam-avatar-panel').postMessage({type:'speech-level',level:.65})");
- await wait(500);assert.ok((await snapshot()).speech>.5);await capture('02-audio-lips');
+ await pj("(()=>{for(const id of ['animate','track']){const input=document.getElementById(id);input.checked=false;input.dispatchEvent(new Event('change',{bubbles:true}));}})()");
+ await wait(900);
+ const mouthFrame=()=>js("(()=>{const canvas=document.getElementById('avatar'),scale=Math.min(canvas.width/1.32,canvas.height/1.78),width=Math.round(scale*.50),height=Math.round(scale*.34),x=Math.round((canvas.width-width)/2),y=Math.round(canvas.height*.48+.285*scale-height*.43),pixels=canvas.getContext('2d').getImageData(x,y,width,height).data;return Array.from({length:width*height},(_,i)=>pixels[i*4+3]);})()");
+ const quietMouth=await mouthFrame();await capture('02-mouth-quiet');
+ await pj("new BroadcastChannel('dudidam-avatar-panel').postMessage({type:'speech-level',level:.85})");
+ await wait(500);assert.ok((await snapshot()).speech>.7);const speakingMouth=await mouthFrame();await capture('02-audio-lips');
+ const mouthDifference=quietMouth.reduce((sum,value,i)=>sum+Math.abs(value-speakingMouth[i]),0)/quietMouth.length;
+ assert.ok(mouthDifference>3,'mouth pixels must visibly change while speaking: '+mouthDifference.toFixed(2));
  await pj("new BroadcastChannel('dudidam-avatar-panel').postMessage({type:'speech-level',level:0})");
  await wait(600);assert.ok((await snapshot()).speech<.04);
+ let liveVoiceLevels=[];
+ if(process.env.DUDIDAM_VOICE_SMOKE==='1'){
+  await pj("(()=>{document.getElementById('prompt').value='halo';document.getElementById('chatForm').requestSubmit();})()");
+  let captured=false;
+  for(let i=0;i<90;i++){
+   const level=(await snapshot()).speech;
+   if(level>.04){liveVoiceLevels.push(level);if(!captured&&level>.35){await capture('02-live-voice');captured=true;}}
+   if(liveVoiceLevels.length>10&&level<.04)break;
+   await wait(80);
+  }
+  assert.ok(liveVoiceLevels.length>8&&Math.max(...liveVoiceLevels)>.35,'Indonesian reply must drive the actual avatar mouth');
+  assert.ok(Math.max(...liveVoiceLevels)-Math.min(...liveVoiceLevels)>.08,'real speech must vary the mouth opening');
+ }
+ await pj("(()=>{for(const id of ['animate','track']){const input=document.getElementById(id);input.checked=true;input.dispatchEvent(new Event('change',{bubbles:true}));}})()");
  const first=(await snapshot()).head;await wait(500);const second=(await snapshot()).head;
  assert.ok(Math.abs(first.yaw-second.yaw)+Math.abs(first.pitch-second.pitch)>1e-7,'idle pose must remain alive');
  await change('neuralZoom','2.7');await wait(1100);
@@ -61,7 +81,7 @@ exports.run=async({win,panelWin})=>{
  win.show();win.webContents.send('dudidam:show');await wait(450);await capture('05-assemble');
  await wait(1200);assert.equal((await snapshot()).presence,1);
  await js("document.body.style.removeProperty('background')");
- const report={passed:true,reference:ready,directions:{left,right,up,down},core,drag:{before,after},speech:true,emotions:true,transitions:true};
+ const report={passed:true,reference:ready,directions:{left,right,up,down},core,drag:{before,after},mouthDifference,liveVoiceSamples:liveVoiceLevels.length,speech:true,emotions:true,transitions:true};
  if(out)await writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));
  console.log('Reference avatar smoke passed: '+JSON.stringify(report));
 };

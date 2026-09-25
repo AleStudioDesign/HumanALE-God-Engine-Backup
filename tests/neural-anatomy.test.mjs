@@ -29,6 +29,12 @@ test('continuous mouth weights and code flow travel smoothly from neck toward br
  }
  const left=R.mouthWeights(.03,R.MOUTH_Y-.0001),right=R.mouthWeights(.03,R.MOUTH_Y+.0001);
  assert.ok(Math.abs(left.influence-right.influence)<.002);
+ const upper=R.mouthDeform(0,R.MOUTH_Y-.014,.85);
+ const lower=R.mouthDeform(0,R.MOUTH_Y+.016,.85);
+ assert.ok(upper.y<R.MOUTH_Y-.018,'upper lip rises when speaking');
+ assert.ok(lower.y>R.MOUTH_Y+.055,'lower lip and jaw descend visibly');
+ assert.ok(lower.aperture>.08,'code lattice creates an observable mouth opening');
+ assert.equal(R.mouthDeform(0,R.MOUTH_Y+.016,0).aperture,0);
 });
 
 test('brain and neck nodes form one connected network',()=>{

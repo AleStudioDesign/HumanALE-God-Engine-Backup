@@ -12,6 +12,7 @@ import {parseClaudeResponse} from '../desktop/claude.mjs';
 import {parseDeepSeekResponse} from '../desktop/deepseek.mjs';
 import {agentDefinitions,isCodexLoggedIn,parseCodexJsonOutput,agentTimeoutMs} from '../desktop/agent-hub.mjs';
 import {AudioReactor,normalizedAudioLevel} from '../public/audio-reactor.js';
+import {nativeSpeechLevel} from '../public/speech-motion.js';
 import {isExplicitProjectWorkRequest} from '../public/work-intent.js';
 import {IndonesianStt} from '../desktop/indonesian-stt.mjs';
 import {IndonesianTts} from '../desktop/indonesian-tts.mjs';
@@ -58,6 +59,12 @@ test('transparent desktop and popup surfaces are applied before the first paint'
 test('neural stream mode and floating desktop layer stay wired',async()=>{const [html,app,avatar,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/data-mode="neural"/);assert.match(app,/HOLD_TO_SUMMON_MS/);assert.match(app,/setMode\('neural'\)/);assert.match(avatar,/neural:'neural'/);assert.match(avatar,/NeuralAvatar/);assert.match(desktop,/setVisibleOnAllWorkspaces/);});
 test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="green" selected/);assert.match(app,/\$\('#color'\)\.value='green'/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(app,/speechReactor\.useElement\(player,/);assert.match(avatar,/setBackdrop\(grid\)/);assert.match(avatar,/setEnvironment\(value='auto'\)/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/engine\.externalSpeech=Math\.max\(this\.speaking\?this\.speechTarget:0,this\.audioLevel\)/);});
 test('real audio energy is normalized for mouth and head motion',()=>{assert.equal(normalizedAudioLevel(new Uint8Array(32).fill(128)),0);assert.ok(normalizedAudioLevel(Uint8Array.from({length:32},(_,i)=>i%2?208:48))>.5);});
+test('native Indonesian voice moves the mouth even without word-boundary callbacks',()=>{
+ const values=Array.from({length:30},(_,i)=>nativeSpeechLevel(i*50,0,'Selamat pagi, saya siap membantu.'));
+ assert.ok(Math.min(...values)<.16&&Math.max(...values)>.65);
+ assert.ok(new Set(values.map(value=>value.toFixed(2))).size>10);
+ assert.ok(nativeSpeechLevel(400,12,'Selamat pagi, saya siap membantu.')<.55);
+});
 test('speech analyser follows waveform and reconnects to each new reply',async()=>{
  const previousFrame=globalThis.requestAnimationFrame,previousCancel=globalThis.cancelAnimationFrame;
  globalThis.requestAnimationFrame=()=>1;globalThis.cancelAnimationFrame=()=>{};
@@ -92,6 +99,8 @@ test('detached panel does not duplicate the heavy avatar evolution renderer',asy
  assert.match(avatar,/this\.engine\.setPaused\(this\.paused\)/);
  const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
  assert.match(renderer,/cancelAnimationFrame\(this\.frameRequest\)/);
+ assert.match(renderer,/this\.frameRequest = requestAnimationFrame\(\(t\) => this\.render\(t\)\)/);
+ assert.match(renderer,/rowStep = 3, columnStep = 4/);
  assert.match(app,/if\(panelOnly\)avatar\.setPaused\?\.\(true\)/);
  assert.match(app,/if\(panelOnly\)\{panelChannel\?\.postMessage\(\{type:'evolution',mode\}\);return;\}/);
 });
@@ -354,13 +363,14 @@ test('particle ears follow head yaw without continuous strokes',async()=>{
 
 test('human head uses 3D perspective and continuously skinned audio-driven lips',async()=>{
  const renderer=await readFile(new URL('../public/neural/renderer.js',import.meta.url),'utf8');
+ const rig=await readFile(new URL('../public/neural/face-rig.js',import.meta.url),'utf8');
  assert.match(renderer,/const perspective = camera/);
  assert.match(renderer,/R\.deform\(/);
  assert.match(renderer,/const speech = this\.externalSpeech !== null/);
  assert.match(renderer,/this\.speechEnergy = lerp/);
- assert.match(renderer,/weights\.influence/);
- assert.match(renderer,/chin\*0\.30/);
- assert.match(renderer,/const aperture=jaw\*span/);
+ assert.match(rig,/weights\.influence/);
+ assert.match(renderer,/R\.mouthDeform\(/);
+ assert.match(renderer,/mouth\.aperture/);
 });
 
 test('summon and dismiss transitions cannot lose the latest window command',async()=>{

@@ -96,7 +96,7 @@
         }
       });
       this.updateCssAccent();
-      requestAnimationFrame((t) => this.render(t));
+      this.frameRequest = requestAnimationFrame((t) => this.render(t));
     }
 
     makePoint(x, y, intensity, hash, feature = '', extra = {}) {
@@ -124,15 +124,15 @@
           image.onerror = () => reject(new Error('Gagal memuat peta wajah.'));
           image.src = src;
         });
-        const size = 600, step = 3;
+        const size = 600, rowStep = 3, columnStep = 4;
         const map = document.createElement('canvas');
         map.width = map.height = size;
         const ctx = map.getContext('2d', { willReadFrequently: true });
         ctx.drawImage(image, 0, 0, size, size);
         const pixels = ctx.getImageData(0, 0, size, size).data;
         const hash = seeded(240926), points = [];
-        for (let py = 0; py < size; py += step) {
-          for (let px = 0; px < size; px += step) {
+        for (let py = 0; py < size; py += rowStep) {
+          for (let px = 0; px < size; px += columnStep) {
             const offset = (py * size + px) * 4;
             const lum = (pixels[offset] * 0.2126 + pixels[offset + 1] * 0.7152 + pixels[offset + 2] * 0.0722) * pixels[offset + 3] / 255;
             const {x,y} = R.referenceWarp((px / size - 0.5) * 1.46, (py / size - 0.5) * 1.56);
@@ -614,6 +614,14 @@
     }
     render(time) {
       if (!this.running || this.disposed) return;
+      // A quiet floating face needs half as many frames as an interactive one.
+      // Keep the request ID so pausing and visibility changes cancel this loop.
+      const active = this.speechEnergy > 0.025 || this.externalSpeech > 0.025 || this.pointer.magnet || Boolean(this.presenceTransition);
+      const frameInterval = active ? 1000 / 60 : 1000 / 30;
+      if (this.frame && time - this.last < frameInterval - 1) {
+        this.frameRequest = requestAnimationFrame((t) => this.render(t));
+        return;
+      }
       const elapsed = Math.min(50, Math.max(1, time - this.last));
       this.last = time;
       this.fps = lerp(this.fps, 1000 / elapsed, 0.07);
@@ -635,7 +643,7 @@
       this.onRender?.(c,time);
       c.globalAlpha = 1;
       if (this.onFrame && this.frame % 20 === 0) this.onFrame({ fps: Math.round(this.fps), palette: this.palette(time).name, points: this.referencePoints.length });
-      requestAnimationFrame((t) => this.render(t));
+      this.frameRequest = requestAnimationFrame((t) => this.render(t));
     }
     drawStreams(c, time) {
       c.globalCompositeOperation = 'source-over';
@@ -710,29 +718,21 @@
         } else if (feature === 'mouth-cavity') {
           const weights=R.mouthWeights(pt.baseX,pt.baseY);
           const span=Math.pow(Math.max(0,1-(x/0.16)**2),1.3);
-          const aperture=(this.speechEnergy*0.065+(this.emotionName==='surprised'?0.022:0))*span;
+          const aperture=(this.speechEnergy*0.105+(this.emotionName==='surprised'?0.022:0))*span;
           y=weights.seam+(pt.baseY-MOUTH_Y)/0.006*aperture*0.31;
           z-=0.012;
-          opacity=0.025+this.speechEnergy*0.30;
+          opacity=0.015+this.speechEnergy*0.28;
         } else {
           for (const side of [-1, 1]) {
             const d = ((x - side * EYE_X) / 0.15) ** 2 + ((y - EYE_Y) / 0.10) ** 2;
             if (d < 1) y += (y < EYE_Y ? 0.015 : -0.007) * this.currentBlink * (1 - d) ** 2;
           }
-          if (!pt.outer && feature !== 'ear' && feature !== 'ear-root' && feature !== 'neck') {
-            const weights=R.mouthWeights(pt.baseX,pt.baseY);
-            const mouthX=pt.baseX, lower=smooth(weights.seam-0.003,weights.seam+0.003,pt.baseY);
-            const jaw=this.speechEnergy*0.065+(this.emotionName==='surprised'?0.022:0);
-            const chin=R.bump(mouthX,pt.baseY,0,0.414,0.24,0.145);
-            // Upper lip, lower lip, muzzle and chin all deform in one field.
-            y+=jaw*(weights.influence*(lower*0.78-(1-lower)*0.20)+chin*0.30);
-            z-=jaw*(weights.influence*lower*0.12+chin*0.08);
-            x*=1-jaw*0.24*weights.influence;
-            y-=this.emotion.smile*Math.abs(clamp(mouthX/0.20,-1,1))**1.7*0.024*weights.influence;
-            const span=Math.pow(Math.max(0,1-(mouthX/0.16)**2),1.3);
-            const aperture=jaw*span;
-            if(aperture>0.002&&Math.abs(y-weights.seam)<aperture*0.37)
-              opacity*=smooth(0,aperture*0.37,Math.abs(y-weights.seam));
+          if (!pt.outer && feature !== 'ear' && feature !== 'ear-root' && feature !== 'neck' && Math.abs(pt.baseX)<0.34 && pt.baseY>0.13 && pt.baseY<0.58) {
+            // The same skinning field moves lips, muzzle and chin together.
+            const mouth=R.mouthDeform(pt.baseX,pt.baseY,this.speechEnergy,this.emotion.smile,this.emotionName==='surprised');
+            x=mouth.x;y+=mouth.y-pt.baseY;z+=mouth.depth;
+            if(mouth.aperture>0.002&&Math.abs(y-mouth.seam)<mouth.aperture*0.38)
+              opacity*=smooth(0,mouth.aperture*0.38,Math.abs(y-mouth.seam));
           }
         }
         if (feature === 'ear' || feature === 'ear-root') {
