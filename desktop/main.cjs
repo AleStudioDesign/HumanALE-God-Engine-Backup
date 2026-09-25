@@ -138,12 +138,11 @@ async function openPanel(view='controls'){
 }
 function publishGlobalPointer(){
  if(!win||win.isDestroyed()||!win.isVisible()||win.webContents.isLoading())return;
- const point=screen.getCursorScreenPoint(),areas=screen.getAllDisplays().map(display=>display.workArea);
- const left=Math.min(...areas.map(area=>area.x)),top=Math.min(...areas.map(area=>area.y));
- const right=Math.max(...areas.map(area=>area.x+area.width)),bottom=Math.max(...areas.map(area=>area.y+area.height));
+ const point=screen.getCursorScreenPoint();
  const bounds=win.getBounds(),centerX=bounds.x+bounds.width/2,centerY=bounds.y+bounds.height/2;
- const x=Math.max(-1,Math.min(1,(point.x-centerX)/Math.max(1,(right-left)/2)));
- const y=Math.max(-1,Math.min(1,(point.y-centerY)/Math.max(1,(bottom-top)/2)));
+ // Follow the cursor relative to the floating avatar, not the entire desktop.
+ const x=Math.max(-1,Math.min(1,(point.x-centerX)/Math.max(200,bounds.width*.68)));
+ const y=Math.max(-1,Math.min(1,(point.y-centerY)/Math.max(180,bounds.height*.62)));
  win.webContents.send('dudidam:global-pointer',{x,y});
 }
 

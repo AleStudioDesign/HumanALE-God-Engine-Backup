@@ -288,7 +288,8 @@ test('avatar size, full-desktop gaze and smooth brain-bound light pulses stay wi
  assert.match(app,/avatarViewport/);
  assert.match(desktop,/resizeForAvatar/);
  assert.match(desktop,/getCursorScreenPoint/);
- assert.match(desktop,/getAllDisplays/);
+ assert.match(desktop,/bounds\.width\*\.68/);
+ assert.match(desktop,/bounds\.height\*\.62/);
  assert.match(desktop,/dudidam:global-pointer/);
  assert.match(preload,/onGlobalPointer/);
  assert.match(avatar,/gazePointer/);

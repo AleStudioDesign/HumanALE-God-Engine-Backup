@@ -39,6 +39,54 @@ test('brain and neck nodes form one connected network',()=>{
  assert.equal(seen.size,g.nodes.length);assert.equal(g.paths.length,9);
 });
 
+test('pointer turns the head distinctly in every direction while the neck follows softly',()=>{
+ const leftUp=R.pointerPose(-1,-1),rightDown=R.pointerPose(1,1);
+ assert.ok(leftUp.yaw<-.5&&leftUp.pitch>.3);
+ assert.ok(rightDown.yaw>.5&&rightDown.pitch<-.24);
+ assert.ok(Math.abs(R.pointerPose(0,0).yaw)<1e-12);
+ assert.ok(Math.abs(R.pointerPose(0,0).pitch)<1e-12);
+ const neutral={yaw:0,pitch:0,roll:0},turned={yaw:.5,pitch:.3,roll:0};
+ const neck={yaw:.18,pitch:.10};
+ const crown=R.deform(.1,-.2,.35,turned,neck),crownNeutral=R.deform(.1,-.2,.35,neutral,{yaw:0,pitch:0});
+ const base=R.deform(.1,.76,.18,turned,neck),baseNeutral=R.deform(.1,.76,.18,neutral,{yaw:0,pitch:0});
+ assert.ok(Math.abs(crown.x-crownNeutral.x)>Math.abs(base.x-baseNeutral.x)*4);
+ assert.ok(Math.abs(base.x-baseNeutral.x)>0.0001);
+});
+
+test('ears and neck are code anatomy attached to a connected evolving surface',()=>{
+ const a=Object.create(N.prototype),points=a.buildFallback();
+ const ears=points.filter(p=>p.feature==='ear'),neck=points.filter(p=>p.feature==='neck');
+ assert.ok(ears.length>500&&neck.length>250);
+ assert.ok(ears.some(p=>p.earSide===-1)&&ears.some(p=>p.earSide===1));
+ assert.ok(ears.every(p=>p.binary===true||p.binary===false));
+ const network=a.buildSurfaceNetwork(points),seen=new Set([0]),queue=[0];
+ const neighbors=network.anchors.map(()=>[]);
+ for(const edge of network.links){neighbors[edge.a].push(edge.b);neighbors[edge.b].push(edge.a);}
+ for(let i=0;i<queue.length;i++)for(const next of neighbors[queue[i]])if(!seen.has(next)){seen.add(next);queue.push(next);}
+ assert.ok(network.anchors.length>150&&network.links.length>=network.anchors.length-1);
+ assert.equal(seen.size,network.anchors.length);
+});
+
+test('surface code flows coherently and binary mutations advance without random flicker',()=>{
+ const a=Object.create(N.prototype),pt={baseX:.2,baseY:.1,feature:'eye-surface',digit:0};
+ a.animate=true;a.reducedMotion=false;a.evolution=1;a.mutationClock=0;
+ const eye=a.surfaceDrift(pt,500);
+ pt.feature='ear';const ear=a.surfaceDrift(pt,500);
+ assert.ok(Math.hypot(ear.x,ear.y)>Math.hypot(eye.x,eye.y)*5);
+ assert.equal(a.digitAt(pt),0);
+ a.mutationClock=1.1;assert.equal(a.digitAt(pt),1);
+ a.mutationClock=2.1;assert.equal(a.digitAt(pt),0);
+ const node={x:.14,y:-.3,z:.16};a.evolution=0;
+ const idle=a.corePosition(node,800);
+ a.evolution=1;const evolving=a.corePosition(node,800);
+ assert.ok(Math.hypot(evolving.x-node.x,evolving.y-node.y,evolving.z-node.z)>
+   Math.hypot(idle.x-node.x,idle.y-node.y,idle.z-node.z)*3);
+ a.animate=false;
+ const still=a.surfaceDrift(pt,800);
+ assert.ok(Math.hypot(still.x,still.y)<1e-12);
+ assert.deepEqual(a.corePosition(node,800),node);
+});
+
 test('Dudidam preserves voice energy, emotions, global pointer and all material controls',()=>{
  const a=Object.create(BinaryAvatar.prototype),calls=[];a.earSpectrum={low:0,mid:0,high:0};
  Object.assign(a,{animate:true,track:true,mode:'matrix',color:'cyan',emotion:'happy',speaking:true,
@@ -46,6 +94,8 @@ test('Dudidam preserves voice energy, emotions, global pointer and all material 
  actionStart:-10000,engine:{accent:'',material:'',emotionName:'',setAccent:v=>calls.push(['color',v]),setMaterial:v=>calls.push(['material',v]),setEmotion:v=>calls.push(['emotion',v]),setPointer:(...v)=>calls.push(['pointer',...v])}});
  a.syncRenderer(1000);
  assert.equal(a.engine.externalSpeech,.7);
+ assert.ok(a.engine.evolutionTarget>0);
+ assert.deepEqual(a.engine.earSpectrum,{low:0,mid:0,high:0});
  assert.deepEqual(calls,[['color','cyan'],['material','binary'],['emotion','happy'],['pointer',.5,-.3,true,false]]);
  a.setSpeechEnergy(99);assert.equal(a.speechTarget,1);
  a.setSpeechEnergy(-9);assert.equal(a.speechTarget,0);

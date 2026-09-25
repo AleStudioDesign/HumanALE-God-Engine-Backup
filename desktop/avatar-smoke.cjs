@@ -18,6 +18,16 @@ exports.run=async({win,panelWin})=>{
  await change('color','cyan');
  await js("document.body.style.setProperty('background','#03080d','important');window.dudidamAvatar.hideAssistantPopup()");
  await wait(1800);await capture('01-reference-face');
+ const base=await snapshot();assert.ok(base.surfaceLinks>200&&base.evolution>.02,'surface code must be connected and alive');
+ const aim=async(x,y,name)=>{
+  await js("(()=>{clearInterval(window.__smokeAimTimer);const area=document.getElementById('avatarArea'),r=area.getBoundingClientRect();const tick=()=>area.onpointermove({clientX:r.left+r.width*"+x+",clientY:r.top+r.height*"+y+",screenX:0,screenY:0});tick();window.__smokeAimTimer=setInterval(tick,35);})()");
+  await wait(850);const head=(await snapshot()).head;await capture(name);
+  await js("clearInterval(window.__smokeAimTimer)");return head;
+ };
+ const left=await aim(.06,.5,'06-look-left'),right=await aim(.94,.5,'07-look-right');
+ const up=await aim(.5,.06,'08-look-up'),down=await aim(.5,.94,'09-look-down');
+ assert.ok(left.yaw<-.28&&right.yaw>.28&&up.pitch>.17&&down.pitch<-.17,'four-way gaze must be visually distinct: '+JSON.stringify({left,right,up,down}));
+ await js("document.getElementById('avatarArea').onpointerleave()");
  await change('emotion','happy');await wait(450);assert.equal((await snapshot()).emotion,'happy');
  await change('emotion','neutral');
  await pj("new BroadcastChannel('dudidam-avatar-panel').postMessage({type:'speech-level',level:.65})");
@@ -51,7 +61,7 @@ exports.run=async({win,panelWin})=>{
  win.show();win.webContents.send('dudidam:show');await wait(450);await capture('05-assemble');
  await wait(1200);assert.equal((await snapshot()).presence,1);
  await js("document.body.style.removeProperty('background')");
- const report={passed:true,reference:ready,core,drag:{before,after},speech:true,emotions:true,transitions:true};
+ const report={passed:true,reference:ready,directions:{left,right,up,down},core,drag:{before,after},speech:true,emotions:true,transitions:true};
  if(out)await writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));
  console.log('Reference avatar smoke passed: '+JSON.stringify(report));
 };

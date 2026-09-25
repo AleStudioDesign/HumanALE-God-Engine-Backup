@@ -48,11 +48,15 @@
       this.presenceTransition = null;
       this.pointer = { x: 0, y: 0, active: false, magnet: false };
       this.gaze = { x: 0, y: 0 };
+      this.earSpectrum = { low: 0, mid: 0, high: 0 };
       this.headPose = { yaw: 0, pitch: 0, roll: 0 };
       this.neckPose = { yaw: 0, pitch: 0 };
       this.poseVelocity = { yaw: 0, pitch: 0, roll: 0 };
       this.neckVelocity = { yaw: 0, pitch: 0 };
       this.breath = 0;
+      this.evolution = 0;
+      this.evolutionTarget = 0;
+      this.mutationClock = 0;
       this.currentBlink = 0;
       this.nextBlink = performance.now() + 3100;
       this.blinkStart = -1;
@@ -74,6 +78,7 @@
       this.backdrop = null;
       this.neuralCore = global.NeuralCore.create();
       this.facePoints = this.buildFallback();
+      this.surfaceNetwork = this.buildSurfaceNetwork(this.facePoints);
       this.referencePromise = options.referenceSrc ? this.loadReference(options.referenceSrc) : Promise.resolve(false);
       if (!options.referenceSrc) this.setVisible(true, { initial: true });
       this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -150,6 +155,7 @@
         if (points.length < 800) throw new Error('Peta wajah tidak lengkap.');
         points.sort((a, b) => a.z - b.z);
         this.referencePoints = points;
+        this.surfaceNetwork = this.buildSurfaceNetwork(points);
         this.referenceReady = true;
         this.referenceState = 'ready';
         this.setVisible(true, { initial: true });
@@ -200,6 +206,32 @@
         const y = MOUTH_Y + (hash() - 0.5) * 0.012;
         add(x, y, 0.08, 'mouth-cavity', { z: depthAt(x, y) - 0.048, size: 0.62 });
       }
+      // Ear cartilage belongs to the turning head, not a detached audio halo.
+      for (const side of [-1, 1]) for (let row = -15; row <= 15; row++) for (let col = -8; col <= 8; col++) {
+        const u = col / 8, v = row / 15, radius = u*u + v*v;
+        if (radius > 1 || hash() < 0.12) continue;
+        const x = side * (0.431 + u * 0.049), y = 0.016 + v * 0.113;
+        const helix = smooth(0.47, 0.85, radius) * (1 - smooth(0.94, 1, radius));
+        const antihelix = R.bump(u, v, -0.18, -0.04, 0.25, 0.68);
+        const concha = R.bump(u, v, -0.12, 0.09, 0.30, 0.36);
+        add(x, y, 0.24 + helix*0.27 + antihelix*0.12 - concha*0.12, 'ear', {
+          earSide: side, z: 0.105 + helix*0.044 + antihelix*0.026 - concha*0.026,
+          normal: { x: side*(0.25 + u*0.35), y: v*0.18, z: 0.9 },
+          binary: hash() > 0.38, size: 0.82
+        });
+      }
+      // These short strands continue the facial lattice below the jaw.
+      for (let row = 0; row <= 25; row++) {
+        const y = 0.49 + row * 0.011, width = 0.18 + row * 0.0018;
+        for (let col = -10; col <= 10; col++) {
+          const x = col / 10 * width;
+          if (hash() < 0.22) continue;
+          const tendon = R.bump(x, y, Math.sign(x)*0.115, 0.61, 0.055, 0.20);
+          add(x, y, 0.22 + tendon*0.21 + hash()*0.12, 'neck', {
+            z: depthAt(x,y) + tendon*0.022, binary: hash() > 0.48, size: 0.9
+          });
+        }
+      }
     }
 
     buildFallback() {
@@ -214,6 +246,52 @@
       }
       this.addFacialCode(points, hash);
       return points.sort((a, b) => a.z - b.z);
+    }
+
+    buildSurfaceNetwork(points) {
+      const cells = new Map(), unit = 0.058;
+      for (const pt of points) {
+        if (pt.outer || pt.feature.startsWith('eye-') || pt.feature.startsWith('lip-') || pt.feature === 'mouth-cavity') continue;
+        if (pt.intensity < 0.19 || pt.y < -0.59 || pt.y > 0.77) continue;
+        const key = Math.floor((pt.x + 0.55) / unit) + ':' + Math.floor((pt.y + 0.62) / unit);
+        if (!cells.has(key) || cells.get(key).intensity < pt.intensity) cells.set(key, pt);
+      }
+      const anchors = [...cells.values()].sort((a,b) => a.y-b.y || a.x-b.x);
+      const links = [], seen = new Set();
+      const connect = (a,b,alt=b) => {
+        const key = [a,b].sort((x,y)=>x-y).join(':');
+        if (a !== b && !seen.has(key)) { links.push({a,b,alt}); seen.add(key); }
+      };
+      for (let i=1;i<anchors.length;i++) {
+        let previous=-1,nearest=-1,alternate=-1,previousDistance=Infinity,nearestDistance=Infinity,alternateDistance=Infinity;
+        const p=anchors[i];
+        for (let j=0;j<anchors.length;j++) {
+          if (i===j) continue;
+          const q=anchors[j],d=Math.hypot(p.x-q.x,p.y-q.y);
+          if (j<i&&d<previousDistance) { previousDistance=d;previous=j; }
+          if (d<nearestDistance) { alternate=nearest;alternateDistance=nearestDistance;nearest=j;nearestDistance=d; }
+          else if (d<alternateDistance) { alternate=j;alternateDistance=d; }
+        }
+        connect(i,previous,alternateDistance<0.14?alternate:previous);
+        if (nearestDistance<0.105) connect(i,nearest,alternateDistance<0.14?alternate:nearest);
+      }
+      return { anchors, links };
+    }
+
+    surfaceDrift(pt,time) {
+      const feature=pt.feature || '';
+      const anatomy=feature.startsWith('eye-')||feature.startsWith('lip-')||feature==='mouth-cavity' ? 0.12 :
+        feature==='neck'||feature==='ear' ? 1.25 : 0.48;
+      const strength=(this.animate?1:0)*(this.reducedMotion?0.25:1)*(0.0017+this.evolution*0.0065)*anatomy;
+      return {
+        x:Math.sin(time*0.00105+pt.baseY*18+pt.baseX*7)*strength,
+        y:Math.cos(time*0.00082+pt.baseX*19-pt.baseY*5)*strength*0.68
+      };
+    }
+
+    digitAt(pt) {
+      const epoch=Math.floor(this.mutationClock+pt.baseY*1.55+pt.baseX*0.45);
+      return pt.digit ^ (epoch&1);
     }
 
     setVisible(visible, options = {}) {
@@ -334,26 +412,34 @@
       for (const key of Object.keys(this.emotion)) this.emotion[key] = lerp(this.emotion[key], this.targetEmotion[key], ease);
       const speech = this.externalSpeech !== null ? this.externalSpeech : this.speaking ? Math.max(0, Math.sin(time * 0.010) * 0.52 + Math.sin(time * 0.016) * 0.26 + 0.22) : 0;
       this.speechEnergy = lerp(this.speechEnergy, speech, 1 - Math.exp(-dt * 11));
+      this.evolution = lerp(this.evolution, this.evolutionTarget, 1 - Math.exp(-dt * 2.8));
+      if (this.animate) this.mutationClock += dt * (this.reducedMotion ? 0.018 : 0.095 + this.evolution * 0.16);
       const idle = this.animate ? (this.reducedMotion ? 0.18 : 1) : 0;
       // A slow breath and uncorrelated micro-turn continue even while looking
       // at a stationary pointer. No sharp oscillation or random frame jitter.
-      const yawTarget = (this.pointer.active ? this.pointer.x*0.27 : 0) +
+      const pointerPose = R.pointerPose(this.pointer.active ? this.pointer.x : 0, this.pointer.active ? this.pointer.y : 0);
+      const yawTarget = pointerPose.yaw +
         (Math.sin(time*0.00031)*0.020 + Math.sin(time*0.000137)*0.010)*idle + (this.gestureYaw || 0);
-      const pitchTarget = (this.pointer.active ? -this.pointer.y*0.14 : 0) +
+      const pitchTarget = pointerPose.pitch +
         (Math.sin(time*0.00043)*0.012 + Math.sin(time*0.00019)*0.006)*idle + (this.gesturePitch || 0);
       const motionScale = this.reducedMotion ? 0.3 : 1;
-      const targets = { yaw: yawTarget * motionScale, pitch: pitchTarget * motionScale, roll: (-yawTarget * 0.055 + Math.sin(time*0.00027)*0.009*idle) * motionScale };
+      // Reduced motion quiets idle animation, not a movement the user requested.
+      const targets = {
+        yaw: pointerPose.yaw + (yawTarget-pointerPose.yaw)*motionScale,
+        pitch: pointerPose.pitch + (pitchTarget-pointerPose.pitch)*motionScale,
+        roll: -pointerPose.yaw*0.073 + (-(yawTarget-pointerPose.yaw)*0.073+Math.sin(time*0.00027)*0.009*idle)*motionScale
+      };
       for (const axis of ['yaw', 'pitch', 'roll']) {
-        const step = R.spring(this.headPose[axis], this.poseVelocity[axis], targets[axis], axis === 'roll' ? 5 : 7, dt);
+        const step = R.spring(this.headPose[axis], this.poseVelocity[axis], targets[axis], axis === 'roll' ? 6 : 9, dt);
         this.headPose[axis] = step.value; this.poseVelocity[axis] = step.velocity;
       }
       for (const axis of ['yaw', 'pitch']) {
-        const step = R.spring(this.neckPose[axis], this.neckVelocity[axis], this.headPose[axis] * 0.18, 3.5, dt);
+        const step = R.spring(this.neckPose[axis], this.neckVelocity[axis], this.headPose[axis] * 0.37, 4.2, dt);
         this.neckPose[axis] = step.value; this.neckVelocity[axis] = step.velocity;
       }
       this.breath = Math.sin(time * 0.00105) * 0.0058 * idle;
-      this.gaze.x = lerp(this.gaze.x, this.pointer.active ? this.pointer.x * 0.019 : 0, 1 - Math.exp(-dt * 12));
-      this.gaze.y = lerp(this.gaze.y, this.pointer.active ? this.pointer.y * 0.010 : 0, 1 - Math.exp(-dt * 12));
+      this.gaze.x = lerp(this.gaze.x, this.pointer.active ? this.pointer.x * 0.032 : 0, 1 - Math.exp(-dt * 13));
+      this.gaze.y = lerp(this.gaze.y, this.pointer.active ? this.pointer.y * 0.022 : 0, 1 - Math.exp(-dt * 13));
       if (this.presenceTransition) {
         const tr = this.presenceTransition;
         const phase = clamp((time - tr.start) / tr.duration, 0, 1);
@@ -392,16 +478,25 @@
       };
       this.glyphCache = { key, dark: create(false), light: create(true) };
     }
+    corePosition(point,time) {
+      const strength=(this.animate?1:0)*(this.reducedMotion?0.18:1)*(0.0025+this.evolution*0.008);
+      return {
+        x:point.x+Math.sin(time*0.00073+point.y*12+point.z*5)*strength,
+        y:point.y+Math.cos(time*0.00063+point.x*14-point.z*7)*strength*0.78,
+        z:point.z+Math.sin(time*0.00081+point.x*9+point.y*6)*strength*0.62
+      };
+    }
     drawCore(c, time) {
       const visibility = smooth(1.18, 2.35, this.zoom) * this.presence;
       if (visibility < 0.002) return;
       const graph = this.neuralCore;
       const chaos = 1 - this.presence;
       const projected = graph.nodes.map((p, i) => {
+        const node=this.corePosition(p,time);
         const phase = i * 2.39996 + time * 0.0004;
         const spread = chaos * (0.12 + (i % 19) * 0.021);
-        return this.project(p.x + Math.cos(phase) * spread, p.y + Math.sin(phase * 1.17) * spread,
-          p.z - spread * 0.3, time, true);
+        return this.project(node.x + Math.cos(phase) * spread, node.y + Math.sin(phase * 1.17) * spread,
+          node.z - spread * 0.3, time, true);
       });
       const color = (p, shade = 12) => this.glyphCache[this.lightAt(p.x, p.y) ? 'light' : 'dark'].colors[shade];
       c.lineWidth = Math.max(0.6, this.scale * 0.0013);
@@ -429,9 +524,9 @@
       // Packets travel continuously from the base of the neck into both lobes.
       for (let lane = 0; lane < graph.paths.length; lane++) for (let packet = 0; packet < 5; packet++) {
         const ids = graph.paths[lane];
-        const phase = ((this.reducedMotion ? 0 : time * 0.000075) + packet / 5 + lane * 0.037) % 1;
+        const phase = ((this.reducedMotion || !this.animate ? 0 : time * 0.000075) + packet / 5 + lane * 0.037) % 1;
         const index = phase * (ids.length - 1), i = Math.floor(index);
-        const a = graph.nodes[ids[i]], b = graph.nodes[ids[Math.min(i+1, ids.length-1)]];
+        const a = this.corePosition(graph.nodes[ids[i]],time), b = this.corePosition(graph.nodes[ids[Math.min(i+1, ids.length-1)]],time);
         const p = this.project(lerp(a.x,b.x,index-i), lerp(a.y,b.y,index-i), lerp(a.z,b.z,index-i), time, true);
         const glyph = this.glyphCache[this.lightAt(p.x,p.y) ? 'light' : 'dark'];
         const h = Math.min(16, Math.max(5, this.scale*0.017*p.scale));
@@ -443,12 +538,46 @@
         const edge = graph.links[i];
         if (edge.a >= graph.brainCount || edge.b >= graph.brainCount) continue;
         const a = projected[edge.a], b = projected[edge.b];
-        const t = ((this.reducedMotion ? 0 : time*0.00016) + i*0.071) % 1;
+        const t = ((this.reducedMotion || !this.animate ? 0 : time*0.00016) + i*0.071) % 1;
         const p = {x:lerp(a.x,b.x,t), y:lerp(a.y,b.y,t)};
         c.globalAlpha = visibility * 0.7; c.fillStyle = color(p,15);
         c.fillRect(p.x-1,p.y-1,2,2);
       }
       c.globalAlpha = 1;
+    }
+    drawSurfaceNetwork(c,time) {
+      const shell=(1-smooth(1.28,2.65,this.zoom))*this.presence;
+      const network=this.surfaceNetwork;
+      if (shell<0.01||!network?.links.length) return;
+      const projected=network.anchors.map(pt=>{
+        const drift=this.surfaceDrift(pt,time);
+        return this.project(pt.x+drift.x,pt.y+drift.y,pt.z,time,true);
+      });
+      c.lineWidth=Math.max(0.5,this.scale*0.0019);
+      for (let i=0;i<network.links.length;i++) {
+        const edge=network.links[i],a=projected[edge.a],b=projected[edge.b];
+        const midpoint={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+        const glyph=this.glyphCache[this.lightAt(midpoint.x,midpoint.y)?'light':'dark'];
+        c.globalAlpha=shell*(0.085+this.evolution*0.07);
+        c.strokeStyle=glyph.colors[12];
+        c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+        if (this.evolution>0.08&&i%3===0&&edge.alt!==edge.b) {
+          const next=projected[edge.alt];
+          c.globalAlpha=shell*this.evolution*0.13;
+          c.beginPath();c.moveTo(a.x,a.y);c.lineTo(next.x,next.y);c.stroke();
+        }
+      }
+      // Signals travel along the same links that hold the binary surface together.
+      for (let i=0;i<network.links.length;i+=9) {
+        const edge=network.links[i],a=projected[edge.a],b=projected[edge.b];
+        const phase=this.reducedMotion||!this.animate?0.38:(time*0.00018+i*0.071)%1;
+        const x=lerp(a.x,b.x,phase),y=lerp(a.y,b.y,phase);
+        const glyph=this.glyphCache[this.lightAt(x,y)?'light':'dark'];
+        const size=clamp(this.scale*0.012*(a.scale+b.scale)*0.5,3.6,7);
+        c.globalAlpha=shell*(0.34+this.evolution*0.31);
+        c.drawImage(glyph.atlas,13*24,this.digitAt(network.anchors[edge.a])*32,24,32,x-size*.375,y-size*.5,size*.75,size);
+      }
+      c.globalAlpha=1;
     }
     render(time) {
       if (!this.running || this.disposed) return;
@@ -467,6 +596,7 @@
       c.globalCompositeOperation = 'source-over';
       this.prepareGlyphs(time);
       this.drawCore(c, time);
+      this.drawSurfaceNetwork(c,time);
       this.drawFace(c, time);
       this.drawConvergingCode(c, time);
       this.onRender?.(c,time);
@@ -529,7 +659,7 @@
         if (feature.startsWith('eye-')) {
           opacity *= feature === 'eye-surface' ? 0.90 : 0.60;
           const cx = pt.eyeSide * EYE_X;
-          if (feature === 'eye-surface') { x += this.gaze.x * 0.22; y += this.gaze.y * 0.14; }
+          if (feature === 'eye-surface') { x += this.gaze.x * 0.70; y += this.gaze.y * 0.52; }
           const t = clamp((x - cx) / EYE_HALF, -1, 1), a = Math.sqrt(Math.max(0, 1 - t * t));
           const seam = EYE_Y + a * 0.007;
           const upper = lerp(EYE_Y - a * EYE_UPPER * open, seam, this.currentBlink);
@@ -564,6 +694,13 @@
           y += this.speechEnergy * 0.019 * jawWeight;
           z -= this.speechEnergy * 0.007 * jawWeight;
         }
+        if (feature === 'ear') {
+          const audio=(this.earSpectrum.mid+this.earSpectrum.high)*0.5;
+          x += pt.earSide*(audio*0.005+(this.animate?Math.sin(time*0.0012+pt.y*12)*0.0015:0));
+          z += audio*0.004;
+        }
+        const drift=this.surfaceDrift(pt,time);
+        x += drift.x;y += drift.y;
         const chaos = 1 - localPresence;
         if (chaos > 0.002) {
           const orbit = pt.phase + time * (0.0003 + pt.type * 0.0008);
@@ -572,7 +709,7 @@
           const glitchBand = Math.sin(pt.y * 43 + time * 0.002 + pt.phase);
           if (glitchBand > 0.7) x += glitchBand * chaos * 0.12;
         }
-        const useBinary = pt.binary || this.material === 'binary' || this.material === 'hybrid' && pt.type < 0.3;
+        const useBinary = pt.binary || this.material === 'binary' || this.material === 'hybrid' && pt.type < 0.42;
         if (useBinary && !pt.feature && this.pointer.magnet && localPresence > 0.9) {
           const dx = pointerFaceX - x, dy = pointerFaceY - y, d = Math.hypot(dx, dy);
           const anatomyGuard = Math.abs(y - EYE_Y) < 0.10 || Math.abs(y - MOUTH_Y) < 0.10 ? 0.15 : 1;
@@ -590,10 +727,11 @@
         const ny = n.y * cosPitch - nz * sinPitch;
         const front = n.y * sinPitch + nz * cosPitch;
         const diffuse = clamp(nx * -0.32 + ny * -0.42 + front * 0.85, 0, 1);
-        const lighting = 0.36 + diffuse * 0.64;
+        const lighting = 0.42 + diffuse * 0.58;
         const intensity = pt.intensity;
         let shade = clamp(Math.round(4 + intensity * 8 + diffuse * 3), 0, 15);
         let alpha = (0.17 + intensity * 0.82) * lighting * localPresence * opacity;
+        if (this.headPose.pitch < -0.1 && feature !== 'neck') alpha *= 1 + smooth(0.1,0.27,-this.headPose.pitch)*0.38;
         if (pt.outer) alpha *= 0.34;
         if (y > 0.52) alpha *= 1 - smooth(0.52, 0.81, y) * 0.53;
         if (feature === 'mouth-cavity') { shade = light ? 15 : 0; alpha = 0.22; }
@@ -601,7 +739,7 @@
         c.globalAlpha = clamp(alpha * shell * localPresence * (light && !pt.outer ? 1.55 : 1), 0, 0.97);
         if (useBinary) {
           const size = clamp(this.scale * 0.0175 * depthScale, feature ? 2.1 : 3.6, 11.4);
-          c.drawImage(glyph.atlas, shade * 24, pt.digit * 32, 24, 32, p.x - size * 0.375, p.y - size * 0.5, size * 0.75, size);
+          c.drawImage(glyph.atlas, shade * 24, this.digitAt(pt) * 32, 24, 32, p.x - size * 0.375, p.y - size * 0.5, size * 0.75, size);
         } else if (this.material === 'cubes' || this.material === 'hybrid' && pt.type > 0.8) {
           const size = Math.max(0.7, this.scale * 0.0053 * depthScale);
           c.fillStyle = glyph.colors[shade];

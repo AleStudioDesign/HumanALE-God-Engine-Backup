@@ -49,6 +49,10 @@ export class BinaryAvatar {
   if(engine.emotionName!==emotion)engine.setEmotion(emotion);
   engine.animate=this.animate;engine.flow=this.animate;
   engine.flowEnergy=this.evolving?1.7:this.thinking||this.state==='processing'?1.4:this.listening?1.15:1;
+  const idleCycle=this.animate&&!engine.reducedMotion?Math.max(0,Math.sin(time*.00027-1))**4:0;
+  const ambientEvolution=this.animate?0.08+idleCycle*0.42:0;
+  engine.evolutionTarget=this.evolving?1:this.evolutionCompleteUntil>time?0.58:ambientEvolution;
+  engine.earSpectrum=this.earSpectrum;
   engine.externalSpeech=this.speaking?Math.max(this.speechTarget,this.audioLevel):0;
   const pointer=this.pointerActive?this.pointer:this.gazePointer;
   engine.setPointer(pointer.x,pointer.y,this.track&&(this.pointerActive||this.gazeActive),this.pointerActive&&!this.dragging);

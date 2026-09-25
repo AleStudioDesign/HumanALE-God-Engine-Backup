@@ -642,7 +642,7 @@ if(panelOnly){
 document.querySelectorAll('dialog').forEach(enableDialogDrag);window.addEventListener('resize',()=>{document.querySelectorAll('dialog[open]').forEach(clampDialog);avatar.resize?.();});
 window.dudidamAvatar=Object.freeze({
  setAvatarZoom:value=>applyNeuralZoom(value),
- getAvatarSnapshot:()=>({ready:avatar.ready,points:avatar.engine.referencePoints.length,zoom:avatar.engine.zoomTarget,presence:avatar.engine.presence,head:{...avatar.engine.headPose},speech:avatar.engine.speechEnergy,emotion:avatar.emotion,flow:avatar.engine.flow,nodes:avatar.engine.neuralCore.nodes.length,paused:avatar.paused}),
+ getAvatarSnapshot:()=>({ready:avatar.ready,points:avatar.engine.referencePoints.length,fps:Math.round(avatar.engine.fps),zoom:avatar.engine.zoomTarget,presence:avatar.engine.presence,head:{...avatar.engine.headPose},speech:avatar.engine.speechEnergy,emotion:avatar.emotion,flow:avatar.engine.flow,evolution:avatar.engine.evolution,surfaceLinks:avatar.engine.surfaceNetwork.links.length,nodes:avatar.engine.neuralCore.nodes.length,paused:avatar.paused}),
  setAvatarState:value=>{avatar.setState?.(value);assistantPopup.setStatus(value);},
  setAvatarAudioLevel:value=>avatar.setAudioLevel?.(value),
  setAvatarEmotion:value=>avatar.setEmotion?.(value),

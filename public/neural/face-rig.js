@@ -58,6 +58,14 @@
     return { value: target + (delta + term * dt) * decay, velocity: (velocity - frequency * term * dt) * decay };
   }
 
+  function pointerPose(x, y) {
+    const horizontal = clamp(x, -1, 1), vertical = clamp(y, -1, 1);
+    return {
+      yaw: horizontal * (0.38 + 0.14 * Math.abs(horizontal)),
+      pitch: -vertical * (vertical > 0 ? 0.17 + 0.08 * vertical : 0.21 + 0.10 * Math.abs(vertical))
+    };
+  }
+
   function deform(x, y, z, pose, neck, breath = 0) {
     const weight = 1 - smooth(0.43, 0.78, y);
     // Shorten the upper cranium while leaving the neck attachment in place.
@@ -72,11 +80,14 @@
     const rz = -x * sy + (z - pivotZ) * cy;
     const ry = (y - pivotY) * cp - rz * sp;
     const finalZ = (y - pivotY) * sp + rz * cp + pivotZ;
+    // The upper neck bends toward the turning head; the base stays planted.
+    const neckBend = 1 - smooth(0.44, 0.82, y);
+    const sway = ((pose.yaw - neck.yaw) * 0.047 + neck.yaw * 0.022) * neckBend;
     return {
-      x: rx * Math.cos(roll) - ry * Math.sin(roll),
+      x: rx * Math.cos(roll) - ry * Math.sin(roll) + sway,
       y: rx * Math.sin(roll) + ry * Math.cos(roll) + pivotY + breath * (0.25 + weight * 0.75),
-      z: finalZ
+      z: finalZ + (pose.pitch - neck.pitch) * 0.012 * neckBend
     };
   }
-  global.FaceRig = { EYE_X, EYE_Y, EYE_HALF, EYE_UPPER, EYE_LOWER, MOUTH_Y, clamp, smooth, bump, mouthWeights, referenceWarp, depthAt, normalAt, spring, deform };
+  global.FaceRig = { EYE_X, EYE_Y, EYE_HALF, EYE_UPPER, EYE_LOWER, MOUTH_Y, clamp, smooth, bump, mouthWeights, referenceWarp, depthAt, normalAt, spring, pointerPose, deform };
 })(typeof window === 'undefined' ? globalThis : window);
