@@ -11,7 +11,7 @@ import {parseOpenAIResponse} from '../desktop/openai-api.mjs';
 import {parseClaudeResponse} from '../desktop/claude.mjs';
 import {parseDeepSeekResponse} from '../desktop/deepseek.mjs';
 import {agentDefinitions,isCodexLoggedIn,parseCodexJsonOutput,agentTimeoutMs} from '../desktop/agent-hub.mjs';
-import {normalizedAudioLevel} from '../public/audio-reactor.js';
+import {AudioReactor,normalizedAudioLevel} from '../public/audio-reactor.js';
 import {isExplicitProjectWorkRequest} from '../public/work-intent.js';
 import {IndonesianStt} from '../desktop/indonesian-stt.mjs';
 import {IndonesianTts} from '../desktop/indonesian-tts.mjs';
@@ -56,8 +56,29 @@ test('bridge reads model response, not tool output or progress',()=>{const resul
 test('bridge identifies failed turns even if partial text exists',()=>{assert.equal(parseEvents('{"type":"turn.failed"}').failure,true);});
 test('transparent desktop and popup surfaces are applied before the first paint',async()=>{const [html,surface,css]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/surface.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8')]);assert.match(html,/<script src="\/surface\.js"><\/script><link rel="stylesheet"/);assert.match(surface,/transparent-surface/);assert.match(css,/\.transparent-surface body/);});
 test('neural stream mode and floating desktop layer stay wired',async()=>{const [html,app,avatar,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/data-mode="neural"/);assert.match(app,/HOLD_TO_SUMMON_MS/);assert.match(app,/setMode\('neural'\)/);assert.match(avatar,/neural:'neural'/);assert.match(avatar,/NeuralAvatar/);assert.match(desktop,/setVisibleOnAllWorkspaces/);});
-test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="green" selected/);assert.match(app,/\$\('#color'\)\.value='green'/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(avatar,/setBackdrop\(grid\)/);assert.match(avatar,/setEnvironment\(value='auto'\)/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/engine\.externalSpeech=this\.speaking\?Math\.max\(this\.speechTarget,this\.audioLevel\):0/);});
+test('speech-driven motion and shadow-free adaptive contrast remain active',async()=>{const [html,app,avatar,css,audioCss]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/avatar.js',import.meta.url),'utf8'),readFile(new URL('../public/style.css',import.meta.url),'utf8'),readFile(new URL('../public/audio.css',import.meta.url),'utf8')]);assert.match(html,/value="green" selected/);assert.match(app,/\$\('#color'\)\.value='green'/);assert.match(html,/id="environment"/);assert.match(app,/onboundary/);assert.match(app,/setSpeechEnergy/);assert.match(app,/setEnvironment/);assert.match(app,/speechReactor\.useElement\(player,/);assert.match(avatar,/setBackdrop\(grid\)/);assert.match(avatar,/setEnvironment\(value='auto'\)/);assert.doesNotMatch(avatar,/createRadialGradient/);assert.doesNotMatch(audioCss,/drop-shadow/);assert.match(css,/#avatar\{filter:none\}/);assert.match(avatar,/engine\.externalSpeech=Math\.max\(this\.speaking\?this\.speechTarget:0,this\.audioLevel\)/);});
 test('real audio energy is normalized for mouth and head motion',()=>{assert.equal(normalizedAudioLevel(new Uint8Array(32).fill(128)),0);assert.ok(normalizedAudioLevel(Uint8Array.from({length:32},(_,i)=>i%2?208:48))>.5);});
+test('speech analyser follows waveform and reconnects to each new reply',async()=>{
+ const previousFrame=globalThis.requestAnimationFrame,previousCancel=globalThis.cancelAnimationFrame;
+ globalThis.requestAnimationFrame=()=>1;globalThis.cancelAnimationFrame=()=>{};
+ const sources=[],levels=[];
+ const context={destination:{},sampleRate:48000,createMediaElementSource:element=>{
+  const source={element,connect(){},disconnect(){}};sources.push(source);return source;
+ },createAnalyser:()=>({fftSize:512,frequencyBinCount:256,connect(){},disconnect(){},getByteTimeDomainData(samples){for(let i=0;i<samples.length;i++)samples[i]=i%2?208:48;},getByteFrequencyData(samples){samples.fill(0);}})};
+ const reactor=new AudioReactor(level=>levels.push(level));reactor.context=async()=>context;
+ try{
+  const first={},second={};
+  await reactor.useElement(first);
+  assert.ok(levels.some(level=>level>.1));
+  await reactor.useElement(second);
+  assert.equal(sources.length,2);
+  assert.equal(reactor.source.element,second);
+ }finally{
+  reactor.stop();
+  globalThis.requestAnimationFrame=previousFrame;
+  globalThis.cancelAnimationFrame=previousCancel;
+ }
+});
 test('microphone, music and Windows loopback controls remain wired',async()=>{const [html,app,audio,desktop]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8'),readFile(new URL('../public/audio-reactor.js',import.meta.url),'utf8'),readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8')]);assert.match(html,/id="audioMic"/);assert.match(html,/id="musicFile"/);assert.match(app,/getDisplayMedia/);assert.match(audio,/createAnalyser/);assert.match(desktop,/audio:'loopback'/);});
 test('speech dictation checks microphone health and always stops probe tracks',async()=>{const [html,app]=await Promise.all([readFile(new URL('../public/index.html',import.meta.url),'utf8'),readFile(new URL('../public/app.js',import.meta.url),'utf8')]);assert.match(html,/id="micStatus"/);assert.match(html,/Dikte suara/);assert.match(app,/getUserMedia\(\{audio:true,video:false\}\)/);assert.match(app,/stream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);for(const reason of ['denied','missing','unsupported','unavailable'])assert.match(app,new RegExp(reason));assert.match(app,/layanan pengenal ucapan tidak dapat dijangkau/);});
 test('desktop popup is recoverable and preserves position without overwriting the repository',async()=>{const [desktop,preload]=await Promise.all([readFile(new URL('../desktop/main.cjs',import.meta.url),'utf8'),readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8')]);assert.match(desktop,/new Tray/);assert.match(desktop,/window-state\.json/);assert.match(desktop,/skipTaskbar:true/);assert.match(desktop,/setIgnoreMouseEvents/);assert.match(desktop,/getDisplayNearestPoint/);assert.match(preload,/passthrough/);});
@@ -338,7 +359,8 @@ test('human head uses 3D perspective and continuously skinned audio-driven lips'
  assert.match(renderer,/const speech = this\.externalSpeech !== null/);
  assert.match(renderer,/this\.speechEnergy = lerp/);
  assert.match(renderer,/weights\.influence/);
- assert.match(renderer,/jawWeight/);
+ assert.match(renderer,/chin\*0\.30/);
+ assert.match(renderer,/const aperture=jaw\*span/);
 });
 
 test('summon and dismiss transitions cannot lose the latest window command',async()=>{

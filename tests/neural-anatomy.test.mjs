@@ -55,8 +55,10 @@ test('pointer turns the head distinctly in every direction while the neck follow
 
 test('ears and neck are code anatomy attached to a connected evolving surface',()=>{
  const a=Object.create(N.prototype),points=a.buildFallback();
- const ears=points.filter(p=>p.feature==='ear'),neck=points.filter(p=>p.feature==='neck');
+ const ears=points.filter(p=>p.feature==='ear'),roots=points.filter(p=>p.feature==='ear-root'),neck=points.filter(p=>p.feature==='neck');
  assert.ok(ears.length>500&&neck.length>250);
+ assert.ok(roots.length>150&&roots.every(p=>p.earFlex<1));
+ assert.ok(roots.some(p=>Math.abs(p.x)<.38)&&ears.some(p=>Math.abs(p.x)<.38));
  assert.ok(ears.some(p=>p.earSide===-1)&&ears.some(p=>p.earSide===1));
  assert.ok(ears.every(p=>p.binary===true||p.binary===false));
  const network=a.buildSurfaceNetwork(points),seen=new Set([0]),queue=[0];
@@ -65,6 +67,29 @@ test('ears and neck are code anatomy attached to a connected evolving surface',(
  for(let i=0;i<queue.length;i++)for(const next of neighbors[queue[i]])if(!seen.has(next)){seen.add(next);queue.push(next);}
  assert.ok(network.anchors.length>150&&network.links.length>=network.anchors.length-1);
  assert.equal(seen.size,network.anchors.length);
+});
+
+test('accent and black modes pass through intermediate tones across gradient bands',()=>{
+ const a=Object.create(N.prototype);
+ a.accent='cyan';a.paletteState={hue:192,sat:72,light:77,name:'CYAN'};
+ const previousDocument=globalThis.document;
+ globalThis.document={createElement:()=>({getContext:()=>({fillText(){}})})};
+ try{
+  a.prepareGlyphs(0);
+  assert.equal(a.glyphCache.darkBands.length,5);
+  assert.notEqual(a.glyphCache.darkBands[0].colors[10],a.glyphCache.darkBands[4].colors[10]);
+  assert.equal(a.glyphCache.lightBands[0].colors[10].split(' ')[1],'0%');
+ }finally{
+  if(previousDocument===undefined)delete globalThis.document;
+  else globalThis.document=previousDocument;
+ }
+ a.accent='violet';a.advancePalette(1000,1/60);
+ assert.ok(a.palette().hue>192&&a.palette().hue<266);
+ for(let i=0;i<180;i++)a.advancePalette(1000+i*16,1/60);
+ assert.ok(Math.abs(a.palette().hue-266)<.1);
+ a.accent='black';a.advancePalette(4000,1/60);
+ assert.ok(a.palette().sat>0&&a.palette().sat<66);
+ assert.ok(a.palette().light>4&&a.palette().light<76);
 });
 
 test('surface code flows coherently and binary mutations advance without random flicker',()=>{
@@ -97,6 +122,8 @@ test('Dudidam preserves voice energy, emotions, global pointer and all material 
  assert.ok(a.engine.evolutionTarget>0);
  assert.deepEqual(a.engine.earSpectrum,{low:0,mid:0,high:0});
  assert.deepEqual(calls,[['color','cyan'],['material','binary'],['emotion','happy'],['pointer',.5,-.3,true,false]]);
+ a.speaking=false;a.speechTarget=0;a.audioLevel=.4;a.syncRenderer(1100);
+ assert.equal(a.engine.externalSpeech,.4);
  a.setSpeechEnergy(99);assert.equal(a.speechTarget,1);
  a.setSpeechEnergy(-9);assert.equal(a.speechTarget,0);
  a.setEarSpectrum({low:.8,mid:-1,high:3});

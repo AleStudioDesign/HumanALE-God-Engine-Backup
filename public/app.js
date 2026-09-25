@@ -70,6 +70,13 @@ const audioReactor=new AudioReactor(level=>{audioEnergy=level;syncFaceAudio();},
  avatar.setEarSpectrum(bands);
  if(panelOnly&&(Math.max(bands.low,bands.mid,bands.high)===0||performance.now()-lastBandsSent>80)){panelChannel?.postMessage({type:'ear-spectrum',bands});lastBandsSent=performance.now();}
 });
+// Follow the actual waveform of locally synthesized speech, independently of
+// the microphone/music visualizer. Silence closes the mouth between syllables.
+const speechReactor=new AudioReactor(level=>{
+ if(!ttsActive)return;
+ ttsEnergy=level>.025?Math.min(1,.07+level*2.1):0;
+ syncFaceAudio();
+});
 if(desktop){document.body.classList.add('desktop');$('.desktop-actions').hidden=false;$('#providerRow').hidden=false;$('#provider').value=aiProvider;$('#popup').hidden=true;if(panelOnly)document.body.classList.add('detached-panel');}else $('#systemAudio').hidden=true;
 if(popup){document.body.classList.add('popup-widget');$('#popup').hidden=true;}
 function applyAvatarSize(value){
@@ -189,7 +196,7 @@ function refreshIndonesianVoices(){
  if(status)status.textContent=voices.length?voices.length+' voice Bahasa Indonesia lokal tersedia.':'Mencari suara Indonesia lokal…';
  if(desktop?.ttsStatus)desktop.ttsStatus().then(result=>{localTtsConfigured=Boolean(result.configured);if(status)status.textContent=localTtsConfigured?'Suara lokal HumanALE god egine siap. Setiap balasan teks akan otomatis dibacakan.':voices.length?voices.length+' voice Bahasa Indonesia lokal tersedia.':'Voice Indonesia belum tersedia. Pasang paket suara Windows atau model Piper Indonesia.';}).catch(()=>{localTtsConfigured=false;});
 }
-function stopSpeech(resumeWake=true){speechGeneration++;clearTimeout(speechTimer);window.speechSynthesis?.cancel();onlineSpeech?.pause();onlineSpeech=null;if(onlineSpeechUrl){URL.revokeObjectURL(onlineSpeechUrl);onlineSpeechUrl=null;}ttsActive=false;ttsEnergy=0;syncFaceAudio();if(!busy&&!listening&&!audioMode)state();if(resumeWake)resumeWakeSoon();}
+function stopSpeech(resumeWake=true){speechGeneration++;clearTimeout(speechTimer);window.speechSynthesis?.cancel();ttsActive=false;speechReactor.stop();onlineSpeech?.pause();onlineSpeech=null;if(onlineSpeechUrl){URL.revokeObjectURL(onlineSpeechUrl);onlineSpeechUrl=null;}ttsEnergy=0;syncFaceAudio();if(!busy&&!listening&&!audioMode)state();if(resumeWake)resumeWakeSoon();}
 async function speakLocal(text){
  const generation=speechGeneration;
  if(!desktop?.synthesize){setMicStatus('Voice Bahasa Indonesia belum tersedia. Balasan tampil sebagai teks.');resumeWakeSoon();return;}
@@ -201,8 +208,11 @@ async function speakLocal(text){
   const bytes=Uint8Array.from(atob(result.audio),character=>character.charCodeAt(0));
   onlineSpeechUrl=URL.createObjectURL(new Blob([bytes],{type:result.mime||'audio/wav'}));
   const player=new Audio(onlineSpeechUrl);onlineSpeech=player;
-  player.onplay=()=>{ttsActive=true;ttsEnergy=.55;syncFaceAudio();avatar.trigger('nod');state('Berbicara · Bahasa Indonesia lokal');};
-  player.ontimeupdate=()=>{ttsEnergy=.35+.25*Math.abs(Math.sin(player.currentTime*9));syncFaceAudio();};
+  let measuredAudio=false;
+  try{measuredAudio=await speechReactor.useElement(player,()=>generation===speechGeneration);}catch(error){console.warn('Analisis suara tidak tersedia; memakai gerak cadangan.',error);}
+  if(generation!==speechGeneration)return;
+  player.onplay=()=>{ttsActive=true;ttsEnergy=measuredAudio?.08:.42;syncFaceAudio();avatar.trigger('nod');state('Berbicara · Bahasa Indonesia lokal');};
+  player.ontimeupdate=()=>{if(!measuredAudio){ttsEnergy=.35+.25*Math.abs(Math.sin(player.currentTime*9));syncFaceAudio();}};
   player.onended=()=>stopSpeech();player.onerror=()=>{setMicStatus('Audio suara Indonesia gagal diputar.');stopSpeech();};
   await player.play();
  }catch(error){

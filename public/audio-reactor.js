@@ -31,13 +31,15 @@ export class AudioReactor{
   this.connect(context,false);
   for(const track of stream.getAudioTracks())track.addEventListener('ended',()=>this.stop(),{once:true});
  }
- async useElement(element){
+ async useElement(element,isCurrent=()=>true){
   this.stop();
   const context=await this.context();
+  if(!isCurrent())return false;
+  if(this.element!==element)this.elementSource=context.createMediaElementSource(element);
   this.element=element;
-  this.elementSource??=context.createMediaElementSource(element);
   this.source=this.elementSource;
   this.connect(context,true);
+  return true;
  }
  connect(context,monitor){
   this.analyser=context.createAnalyser();

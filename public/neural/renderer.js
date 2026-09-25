@@ -36,6 +36,7 @@
       this.environmentQuery = matchMedia('(prefers-color-scheme: light)');
       this.environment = 'auto';
       this.accent = 'cyan';
+      this.paletteState = { ...PALETTES.cyan };
       this.material = 'hybrid';
       this.emotionName = 'neutral';
       this.emotion = { ...EMOTIONS.neutral };
@@ -206,16 +207,30 @@
         const y = MOUTH_Y + (hash() - 0.5) * 0.012;
         add(x, y, 0.08, 'mouth-cavity', { z: depthAt(x, y) - 0.048, size: 0.62 });
       }
-      // Ear cartilage belongs to the turning head, not a detached audio halo.
+      // A shared root of facial code bridges the temple, tragus and ear bowl.
+      for (const side of [-1, 1]) for (let row = 0; row <= 14; row++) for (let col = 0; col <= 8; col++) {
+        if (hash() < 0.13) continue;
+        const x = side * (0.358 + col * 0.007), y = -0.082 + row * 0.013;
+        const attachment = col / 8;
+        add(x, y, 0.34 + attachment * 0.065 + hash() * 0.07, 'ear-root', {
+          earSide:side, earFlex:attachment * 0.35,
+          z:lerp(depthAt(x,y),0.125,attachment * 0.58),
+          normal:{x:side*(0.12 + attachment*0.19),y:(y-0.012)*1.3,z:0.92},
+          binary:hash()>0.38,size:0.80
+        });
+      }
+      // Ear cartilage shares its inner depth with the side of the head.
       for (const side of [-1, 1]) for (let row = -15; row <= 15; row++) for (let col = -8; col <= 8; col++) {
         const u = col / 8, v = row / 15, radius = u*u + v*v;
         if (radius > 1 || hash() < 0.12) continue;
-        const x = side * (0.431 + u * 0.049), y = 0.016 + v * 0.113;
+        const x = side * (0.422 + u * 0.059), y = 0.016 + v * 0.113;
         const helix = smooth(0.47, 0.85, radius) * (1 - smooth(0.94, 1, radius));
         const antihelix = R.bump(u, v, -0.18, -0.04, 0.25, 0.68);
         const concha = R.bump(u, v, -0.12, 0.09, 0.30, 0.36);
+        const attachment = 1-smooth(-0.72,0.02,u);
         add(x, y, 0.24 + helix*0.27 + antihelix*0.12 - concha*0.12, 'ear', {
-          earSide: side, z: 0.105 + helix*0.044 + antihelix*0.026 - concha*0.026,
+          earSide: side, earFlex:1-attachment*0.72,
+          z: lerp(0.105 + helix*0.044 + antihelix*0.026 - concha*0.026,depthAt(x,y)+0.002,attachment),
           normal: { x: side*(0.25 + u*0.35), y: v*0.18, z: 0.9 },
           binary: hash() > 0.38, size: 0.82
         });
@@ -281,6 +296,7 @@
     surfaceDrift(pt,time) {
       const feature=pt.feature || '';
       const anatomy=feature.startsWith('eye-')||feature.startsWith('lip-')||feature==='mouth-cavity' ? 0.12 :
+        feature==='ear-root' ? 0.32 :
         feature==='neck'||feature==='ear' ? 1.25 : 0.48;
       const strength=(this.animate?1:0)*(this.reducedMotion?0.25:1)*(0.0017+this.evolution*0.0065)*anatomy;
       return {
@@ -350,7 +366,11 @@
     setMaterial(value) { if (['hybrid', 'binary', 'neural', 'cubes'].includes(value)) this.material = value; }
     setDensity(value) { this.density = clamp(Number(value) / 100, 0.3, 1); }
     setEnvironment(value = 'auto') { this.environment = value; this.updateCssAccent(); }
-    setAccent(value = 'cyan') { this.accent = value; this.updateCssAccent(); }
+    setAccent(value = 'cyan') {
+      if (value !== 'adaptive' && !PALETTES[value]) return;
+      this.accent = value;
+      this.updateCssAccent();
+    }
     setZoom(value) {
       const n = Number(value);
       if (!Number.isFinite(n)) return;
@@ -381,19 +401,19 @@
     }
     setSpeaking(active) { this.speaking = Boolean(active); }
     isLightEnvironment() { return this.environment === 'light' || this.environment === 'auto' && this.environmentQuery.matches; }
-    palette(time = 0) {
+    targetPalette(time = 0) {
       const base = PALETTES[this.accent] || PALETTES.cyan;
       return this.accent === 'adaptive' ? { ...base, hue: (192 + Math.sin(time * 0.000065) * 115 + 360) % 360, name: 'ADAPTIVE' } : base;
     }
+    palette() { return this.paletteState; }
     color(alpha, lightness = null, time = 0) {
       const p = this.palette(time);
       return 'hsla(' + p.hue + ' ' + p.sat + '% ' + (lightness ?? (this.isLightEnvironment() ? 25 : p.light)) + '% / ' + clamp(alpha, 0, 1) + ')';
     }
     updateCssAccent() {
-      const p = this.palette();
-      document.documentElement.style.setProperty('--accent', this.color(1, p.light));
+      const p = this.targetPalette();
+      document.documentElement.style.setProperty('--accent', 'hsl(' + p.hue + ' ' + p.sat + '% ' + p.light + '%)');
       document.documentElement.style.setProperty('--accent-rgb', this.accent === 'violet' ? '185, 160, 244' : this.accent === 'emerald' ? '124, 227, 181' : this.accent === 'amber' ? '242, 209, 119' : '142, 225, 244');
-      this.glyphCache = null;
     }
     blinkValue(time) {
       if (this.blinkStart < 0 && time >= this.nextBlink) this.blinkStart = time;
@@ -406,10 +426,19 @@
       }
       return age < 145 ? smooth(0, 145, age) : 1 - smooth(175, 480, age);
     }
+    advancePalette(time,dt) {
+      const colorTarget = this.targetPalette(time), colorEase = 1 - Math.exp(-dt * 3.1);
+      const hueDistance = ((colorTarget.hue - this.paletteState.hue + 540) % 360) - 180;
+      this.paletteState.hue = (this.paletteState.hue + hueDistance * colorEase + 360) % 360;
+      this.paletteState.sat = lerp(this.paletteState.sat, colorTarget.sat, colorEase);
+      this.paletteState.light = lerp(this.paletteState.light, colorTarget.light, colorEase);
+      this.paletteState.name = colorTarget.name;
+    }
     update(time, dt) {
       const ease = 1 - Math.exp(-dt * 6);
       this.zoom = lerp(this.zoom, this.zoomTarget, 1 - Math.exp(-dt * 5));
       for (const key of Object.keys(this.emotion)) this.emotion[key] = lerp(this.emotion[key], this.targetEmotion[key], ease);
+      this.advancePalette(time,dt);
       const speech = this.externalSpeech !== null ? this.externalSpeech : this.speaking ? Math.max(0, Math.sin(time * 0.010) * 0.52 + Math.sin(time * 0.016) * 0.26 + 0.22) : 0;
       this.speechEnergy = lerp(this.speechEnergy, speech, 1 - Math.exp(-dt * 11));
       this.evolution = lerp(this.evolution, this.evolutionTarget, 1 - Math.exp(-dt * 2.8));
@@ -458,9 +487,9 @@
     }
     prepareGlyphs(time) {
       const palette = this.palette(time);
-      const key = Math.round(palette.hue / 3) + ':' + this.accent;
+      const key = Math.round(palette.hue / 3) + ':' + Math.round(palette.sat / 4) + ':' + Math.round(palette.light / 3) + ':' + this.accent;
       if (this.glyphCache?.key === key) return;
-      const create = light => {
+      const create = (light, band) => {
         const atlas = document.createElement('canvas');
         atlas.width = 16 * 24; atlas.height = 32 * 2;
         const c = atlas.getContext('2d');
@@ -469,14 +498,18 @@
         const colors = [];
         for (let shade = 0; shade < 16; shade++) {
           // Light backdrops use genuine black/graphite code, including neural.
-          const l = light || this.accent === 'black' ? 2 + (15 - shade) * 0.9 : 14 + shade * 5.25;
-          colors[shade] = 'hsl(' + palette.hue + ' ' + (light ? 0 : palette.sat) + '% ' + l + '%)';
+          const graphite = 2 + (15 - shade) * 0.9;
+          const l = light ? graphite : lerp(14 + shade * 5.25, graphite, 1 - smooth(4, 25, palette.light));
+          const hue = (palette.hue - 8 + band * 5.5 + 360) % 360;
+          colors[shade] = 'hsl(' + hue + ' ' + (light ? 0 : palette.sat) + '% ' + l + '%)';
           c.fillStyle = colors[shade];
           for (let digit = 0; digit < 2; digit++) c.fillText(String(digit), shade * 24 + 12, digit * 32 + 16);
         }
         return { atlas, colors };
       };
-      this.glyphCache = { key, dark: create(false), light: create(true) };
+      const darkBands = Array.from({length:5},(_,band)=>create(false,band));
+      const lightBands = Array.from({length:5},(_,band)=>create(true,band));
+      this.glyphCache = {key, darkBands, lightBands, dark:darkBands[2], light:lightBands[2]};
     }
     corePosition(point,time) {
       const strength=(this.animate?1:0)*(this.reducedMotion?0.18:1)*(0.0025+this.evolution*0.008);
@@ -674,30 +707,39 @@
             if (y < upper || y > lower || this.currentBlink > 0.97) continue;
             opacity *= smooth(0, 0.005, y - upper) * smooth(0, 0.005, lower - y);
           }
-        } else if (feature.startsWith('lip-') || feature === 'mouth-cavity') {
-          const t = clamp(x / 0.20, -1, 1), a = 1 - t*t;
-          const weights = R.mouthWeights(pt.baseX,pt.baseY);
-          const jaw = this.speechEnergy*0.047 + (this.emotionName==='surprised'?0.021:0);
-          // The same continuous skinning field deforms lips, muzzle and chin.
-          const lower = smooth(weights.seam-0.008,weights.seam+0.008,pt.baseY);
-          y += jaw*weights.influence*(lower*0.86-0.16);
-          z -= this.speechEnergy*weights.influence*lower*0.007;
-          x *= 1-this.speechEnergy*0.018*weights.influence;
-          y -= this.emotion.smile*Math.abs(t)**1.7*0.024*weights.influence;
-          if(feature==='mouth-cavity') opacity=0.20;
+        } else if (feature === 'mouth-cavity') {
+          const weights=R.mouthWeights(pt.baseX,pt.baseY);
+          const span=Math.pow(Math.max(0,1-(x/0.16)**2),1.3);
+          const aperture=(this.speechEnergy*0.065+(this.emotionName==='surprised'?0.022:0))*span;
+          y=weights.seam+(pt.baseY-MOUTH_Y)/0.006*aperture*0.31;
+          z-=0.012;
+          opacity=0.025+this.speechEnergy*0.30;
         } else {
           for (const side of [-1, 1]) {
             const d = ((x - side * EYE_X) / 0.15) ** 2 + ((y - EYE_Y) / 0.10) ** 2;
             if (d < 1) y += (y < EYE_Y ? 0.015 : -0.007) * this.currentBlink * (1 - d) ** 2;
           }
-          const jawWeight = R.bump(x, y, 0, 0.405, 0.25, 0.17);
-          y += this.speechEnergy * 0.019 * jawWeight;
-          z -= this.speechEnergy * 0.007 * jawWeight;
+          if (!pt.outer && feature !== 'ear' && feature !== 'ear-root' && feature !== 'neck') {
+            const weights=R.mouthWeights(pt.baseX,pt.baseY);
+            const mouthX=pt.baseX, lower=smooth(weights.seam-0.003,weights.seam+0.003,pt.baseY);
+            const jaw=this.speechEnergy*0.065+(this.emotionName==='surprised'?0.022:0);
+            const chin=R.bump(mouthX,pt.baseY,0,0.414,0.24,0.145);
+            // Upper lip, lower lip, muzzle and chin all deform in one field.
+            y+=jaw*(weights.influence*(lower*0.78-(1-lower)*0.20)+chin*0.30);
+            z-=jaw*(weights.influence*lower*0.12+chin*0.08);
+            x*=1-jaw*0.24*weights.influence;
+            y-=this.emotion.smile*Math.abs(clamp(mouthX/0.20,-1,1))**1.7*0.024*weights.influence;
+            const span=Math.pow(Math.max(0,1-(mouthX/0.16)**2),1.3);
+            const aperture=jaw*span;
+            if(aperture>0.002&&Math.abs(y-weights.seam)<aperture*0.37)
+              opacity*=smooth(0,aperture*0.37,Math.abs(y-weights.seam));
+          }
         }
-        if (feature === 'ear') {
+        if (feature === 'ear' || feature === 'ear-root') {
           const audio=(this.earSpectrum.mid+this.earSpectrum.high)*0.5;
-          x += pt.earSide*(audio*0.005+(this.animate?Math.sin(time*0.0012+pt.y*12)*0.0015:0));
-          z += audio*0.004;
+          const flex=pt.earFlex ?? 1;
+          x += pt.earSide*(audio*0.005+(this.animate?Math.sin(time*0.0012+pt.y*12)*0.0015:0))*flex;
+          z += audio*0.004*flex;
         }
         const drift=this.surfaceDrift(pt,time);
         x += drift.x;y += drift.y;
@@ -720,7 +762,9 @@
         }
         const p = this.project(x, y, z, time, true);
         const light = this.lightAt(p.x, p.y);
-        const glyph = this.glyphCache[light ? 'light' : 'dark'];
+        const gradient = clamp((pt.baseY + 0.68) / 1.5 + Math.abs(pt.baseX) * 0.07, 0, 1) * 4;
+        const band = clamp(Math.floor(gradient) + (pt.type < gradient % 1 ? 1 : 0), 0, 4);
+        const glyph = this.glyphCache[light ? 'lightBands' : 'darkBands'][band];
         const n = pt.normal;
         const nx = n.x * cosYaw + n.z * sinYaw;
         const nz = -n.x * sinYaw + n.z * cosYaw;
@@ -734,7 +778,7 @@
         if (this.headPose.pitch < -0.1 && feature !== 'neck') alpha *= 1 + smooth(0.1,0.27,-this.headPose.pitch)*0.38;
         if (pt.outer) alpha *= 0.34;
         if (y > 0.52) alpha *= 1 - smooth(0.52, 0.81, y) * 0.53;
-        if (feature === 'mouth-cavity') { shade = light ? 15 : 0; alpha = 0.22; }
+        if (feature === 'mouth-cavity') { shade = light ? 15 : 0; alpha = opacity; }
         const depthScale = p.scale * (pt.size || 1);
         c.globalAlpha = clamp(alpha * shell * localPresence * (light && !pt.outer ? 1.55 : 1), 0, 0.97);
         if (useBinary) {

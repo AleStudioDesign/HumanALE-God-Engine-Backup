@@ -53,7 +53,7 @@ export class BinaryAvatar {
   const ambientEvolution=this.animate?0.08+idleCycle*0.42:0;
   engine.evolutionTarget=this.evolving?1:this.evolutionCompleteUntil>time?0.58:ambientEvolution;
   engine.earSpectrum=this.earSpectrum;
-  engine.externalSpeech=this.speaking?Math.max(this.speechTarget,this.audioLevel):0;
+  engine.externalSpeech=Math.max(this.speaking?this.speechTarget:0,this.audioLevel);
   const pointer=this.pointerActive?this.pointer:this.gazePointer;
   engine.setPointer(pointer.x,pointer.y,this.track&&(this.pointerActive||this.gazeActive),this.pointerActive&&!this.dragging);
   engine.gestureYaw=0;engine.gesturePitch=0;
