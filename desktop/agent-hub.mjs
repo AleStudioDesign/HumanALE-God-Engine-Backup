@@ -3,7 +3,7 @@ import {access} from 'node:fs/promises';
 import {join} from 'node:path';
 
 const agents=[
- {id:'humanale-orchestrator',name:'HumanALE Orchestrator',method:'Structured Planner → Worker → Reviewer',internal:true,canRun:true,url:'https://github.com/Kmpsnr26/entitashuman'},
+ {id:'humanale-orchestrator',name:'HumanALE Orchestrator',method:'Structured Planner → Worker → Reviewer',internal:true,canRun:false,url:'https://github.com/Kmpsnr26/entitashuman'},
  {id:'continue',name:'Continue',method:'CLI + MCP',commands:['cn'],envPath:'CONTINUE_CLI_PATH',canRun:true,url:'https://docs.continue.dev/cli/quickstart'},
  {id:'cody',name:'Sourcegraph Cody',method:'CLI + Sourcegraph MCP',commands:['cody'],envPath:'CODY_CLI_PATH',canRun:true,url:'https://sourcegraph.com/docs/cody/clients/install-cli'},
  {id:'pieces',name:'Pieces for Developers',method:'PiecesOS MCP',commands:['pieces-os','pieces'],envPath:'PIECES_CLI_PATH',configEnv:'PIECES_MCP_URL',url:'https://docs.pieces.app/'},
