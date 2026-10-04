@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish legacy Windows artifacts from main (requires explicit operator review)"
+        description: "Publish legacy Windows artifacts from the default backup branch (requires explicit operator review)"
         required: false
         default: false
         type: boolean
@@ -54,7 +54,7 @@ jobs:
           Write-Host "Installer ready: $($installer.FullName) ($($installer.Length) bytes)"
 
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/codex/ale-hologram-gpt-starter/dudidam-neural-avatar'
     needs: windows
     runs-on: windows-latest
     timeout-minutes: 25

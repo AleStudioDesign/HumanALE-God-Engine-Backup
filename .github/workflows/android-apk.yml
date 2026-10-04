@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish the legacy debug APK from main (not a production signed APK)"
+        description: "Publish the legacy debug APK from the default backup branch (not a production signed APK)"
         required: false
         default: false
         type: boolean
@@ -93,7 +93,7 @@ jobs:
           retention-days: 30
 
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/codex/ale-hologram-gpt-starter/dudidam-neural-avatar'
     needs: apk
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -111,6 +111,6 @@ jobs:
         run: |
           TAG="android-latest"
           APK=$(ls release/HumanALE-Android-*.apk | head -n 1)
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --target "$GITHUB_SHA" --title "HumanALE Android debug APK" --notes "Legacy APK debug-installable HumanALE. Publikasi dipilih manual dari main; bukan APK production signed atau bukti acceptance perangkat."
-          gh release edit "$TAG" --target "$GITHUB_SHA" --title "HumanALE Android debug APK" --notes "Legacy APK debug-installable HumanALE. Publikasi dipilih manual dari main; bukan APK production signed atau bukti acceptance perangkat."
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --target "$GITHUB_SHA" --title "HumanALE Android debug APK" --notes "Legacy APK debug-installable HumanALE. Publikasi dipilih manual dari branch default backup; bukan APK production signed atau bukti acceptance perangkat."
+          gh release edit "$TAG" --target "$GITHUB_SHA" --title "HumanALE Android debug APK" --notes "Legacy APK debug-installable HumanALE. Publikasi dipilih manual dari branch default backup; bukan APK production signed atau bukti acceptance perangkat."
           gh release upload "$TAG" "$APK#HumanALE-Android.apk" --clobber
