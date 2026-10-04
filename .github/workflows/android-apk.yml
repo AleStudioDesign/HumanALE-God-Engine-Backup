@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
   push:
-    branches: [main]
+    branches: [main, codex/ale-hologram-gpt-starter/dudidam-neural-avatar]
     paths:
       - "public/**"
       - "capacitor.config.json"
@@ -17,6 +17,17 @@ on:
       - ".github/workflows/android-apk.yml"
       - "build.mjs"
       - "package.json"
+      - "package-lock.json"
+  pull_request:
+    branches: [main, codex/ale-hologram-gpt-starter/dudidam-neural-avatar]
+    paths:
+      - "public/**"
+      - "capacitor.config.json"
+      - "scripts/prepare-android.mjs"
+      - ".github/workflows/android-apk.yml"
+      - "build.mjs"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
   contents: read

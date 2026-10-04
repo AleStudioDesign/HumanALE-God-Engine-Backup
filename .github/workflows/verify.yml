@@ -9,9 +9,9 @@ on:
         default: false
         type: boolean
   pull_request:
-    branches: [main]
+    branches: [main, codex/ale-hologram-gpt-starter/dudidam-neural-avatar]
   push:
-    branches: [main, codex/entitasale170925]
+    branches: [main, codex/entitasale170925, codex/ale-hologram-gpt-starter/dudidam-neural-avatar]
 
 permissions:
   contents: read
