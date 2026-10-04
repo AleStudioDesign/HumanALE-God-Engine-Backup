@@ -1,10 +1,17 @@
 name: Verify and package
 
 on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish legacy Windows artifacts from the default backup branch (requires explicit operator review)"
+        required: false
+        default: false
+        type: boolean
   pull_request:
-    branches: [main]
+    branches: [main, codex/ale-hologram-gpt-starter/dudidam-neural-avatar]
   push:
-    branches: [main, codex/entitasale170925]
+    branches: [main, codex/entitasale170925, codex/ale-hologram-gpt-starter/dudidam-neural-avatar]
 
 permissions:
   contents: read
@@ -15,9 +22,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
@@ -32,7 +39,10 @@ jobs:
       - name: Package portable desktop
         run: npm run package:desktop
       - name: Smoke packaged desktop
-        run: .\HumanALE-God-Engine-Desktop\HumanALE-God-Engine.exe --ci-smoke
+        shell: pwsh
+        run: |
+          $smoke = Start-Process -FilePath '.\HumanALE-God-Engine-Desktop\HumanALE-God-Engine.exe' -ArgumentList '--ci-smoke' -PassThru -Wait -WindowStyle Hidden
+          if ($smoke.ExitCode -ne 0) { throw "Packaged desktop smoke failed with exit code $($smoke.ExitCode)." }
       - name: Build assisted Windows installer
         run: npm run package:installer
       - name: Validate installer output
@@ -44,7 +54,7 @@ jobs:
           Write-Host "Installer ready: $($installer.FullName) ($($installer.Length) bytes)"
 
   release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/codex/ale-hologram-gpt-starter/dudidam-neural-avatar'
     needs: windows
     runs-on: windows-latest
     timeout-minutes: 25
@@ -52,9 +62,9 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
